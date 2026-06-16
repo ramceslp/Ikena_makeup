@@ -350,3 +350,65 @@ describe('courses store — reviews', () => {
     expect(store.reviewDeleting).toBe(false)
   })
 })
+
+describe('courses store — practice submissions', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+  })
+
+  it('submitPractice: POSTs FormData to /lessons/{id}/submissions with multipart header', async () => {
+    const submission = {
+      id: 1, lesson_id: 5, status: 'pending', feedback: null,
+      before_url: 'http://ex.com/b.jpg', after_url: 'http://ex.com/a.jpg',
+      created_at: '2026-06-16T00:00:00Z', graded_at: null,
+      user: { id: 1, name: 'Ana', avatar: null },
+      lesson: { id: 5, title: 'Contorno básico' },
+    }
+    api.post.mockResolvedValueOnce({ data: { data: submission } })
+
+    const store = useCoursesStore()
+    const before = new File(['b'], 'before.jpg', { type: 'image/jpeg' })
+    const after = new File(['a'], 'after.jpg', { type: 'image/jpeg' })
+
+    const result = await store.submitPractice(5, { before, after })
+
+    expect(api.post).toHaveBeenCalledWith(
+      '/lessons/5/submissions',
+      expect.any(FormData),
+      expect.objectContaining({
+        headers: expect.objectContaining({ 'Content-Type': 'multipart/form-data' }),
+      })
+    )
+    expect(result).toEqual(submission)
+    expect(store.submissionSubmitting).toBe(false)
+  })
+
+  it('submitPractice: updates currentLesson.my_submission on success', async () => {
+    const submission = { id: 2, status: 'pending', feedback: null, before_url: 'b', after_url: 'a', lesson_id: 5, created_at: '', graded_at: null, user: { id: 1, name: 'A', avatar: null }, lesson: { id: 5, title: 'L' } }
+    api.post.mockResolvedValueOnce({ data: { data: submission } })
+
+    const store = useCoursesStore()
+    store.currentLesson = { id: 5, title: 'Contorno', is_practice: true, my_submission: null }
+
+    const before = new File(['b'], 'b.jpg', { type: 'image/jpeg' })
+    const after = new File(['a'], 'a.jpg', { type: 'image/jpeg' })
+    await store.submitPractice(5, { before, after })
+
+    expect(store.currentLesson.my_submission).toEqual(submission)
+  })
+
+  it('submitPractice: sets submissionError and rethrows on failure', async () => {
+    api.post.mockRejectedValueOnce({
+      response: { data: { message: 'No autorizado' } },
+    })
+
+    const store = useCoursesStore()
+    const before = new File(['b'], 'b.jpg', { type: 'image/jpeg' })
+    const after = new File(['a'], 'a.jpg', { type: 'image/jpeg' })
+
+    await expect(store.submitPractice(5, { before, after })).rejects.toBeDefined()
+    expect(store.submissionError).toBe('No autorizado')
+    expect(store.submissionSubmitting).toBe(false)
+  })
+})

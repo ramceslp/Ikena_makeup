@@ -70,7 +70,7 @@ Migrated to container/presentational (two-column: video+tabs / playlist). Reuses
 | `player/VideoStage` | ✅ | Embed via `resolveVideo()` (YouTube/Vimeo iframe, native video, fallback). No fake controls overlay (iframes don't expose JS controls without SDK). |
 | `player/PlaylistSidebar` | ✅ | Sections → lessons, active highlight, completion toggle, free badge, **locked state** (lock icon + non-clickable for paid lessons when not enrolled). |
 | `player/LessonTabs` | ✅ | `TabGroup` with a single "Contenido" tab (lesson description). Materiales/Entrega tabs omitted — no backend data. |
-| `player/PracticeSubmission` (Before/After drag & drop) | ✅ backend / 🔨 frontend | Backend READY: `POST /api/lessons/{lesson}/submissions` (multipart before+after images → public disk, upsert, resets to pending on resubmit). Lessons gain `is_practice`; lesson detail exposes `is_practice` + `my_submission`. Eligibility: instructor→403, non-practice→403, not-enrolled→403. Frontend drag&drop (FormData) pending. |
+| `player/PracticeSubmission` (Before/After drag & drop) | ✅ | Full feature: `POST /api/lessons/{lesson}/submissions` (multipart, upsert, resets to pending on resubmit). Lessons gain `is_practice` (toggle in LessonEditor); lesson detail exposes `is_practice` + `my_submission`. Frontend: drag&drop upload (FormData + per-request multipart header), status badge + feedback, conditional "Práctica" tab in LessonTabs (only when `is_practice`). |
 | Instructor CTA / "Preguntar al Tutor" | ❌ skipped | Instructor name shown in sidebar footer; no messaging endpoint. ⚠️ BACKEND. |
 | Lesson completion toggle | ✅ | Store action `toggleComplete` wired through sidebar. |
 
@@ -106,7 +106,7 @@ Ratings + student submissions remain genuinely backend-less (new features).
 | `instructor/MetricCard` (KPI cards) | ✅ | label/value/icon/hint. |
 | `instructor/SalesChart` | ✅ | Hand-rolled dependency-free SVG bar chart (decision: no chart lib for a 6-point series). Divide-by-zero guarded, Spanish month labels, accessible. |
 | `InstructorDashboard.vue` container + route | ✅ | `/instructor/dashboard` (requiresInstructor). Loading/error/zero states; cross-links to `/instructor`. `utils/money.js` `formatCurrency`. |
-| `instructor/ReviewTasksList` + `TaskReviewModal` | ✅ backend / 🔨 frontend | Backend READY: `practice_submissions` table + `GET /api/instructor/submissions` (paginated, `?status=` filter, scoped to own courses) + `PATCH /api/instructor/submissions/{id}` (approved/needs_work + feedback, ownership-guarded). Frontend queue + grading modal pending. |
+| `instructor/ReviewTasksList` + `TaskReviewModal` | ✅ | Full feature. Backend: `GET /api/instructor/submissions` (paginated, `?status=` filter, scoped to own courses) + `PATCH /api/instructor/submissions/{id}` (approved/needs_work + feedback, ownership-guarded). Frontend: `InstructorSubmissions.vue` (`/instructor/submissions`) with status filter + ReviewTasksList + TaskReviewModal (before/after side-by-side, feedback, aprobar/necesita correcciones). Cross-linked from dashboard. |
 | Course ratings / `StarRating` | ✅ | `course_reviews` backend (model + CRUD + aggregates) + full frontend (StarRating atom, ReviewList/Card/Form, store actions, star summaries). Dashboard 5th MetricCard "Valoración media" consumes `average_rating` KPI. |
 | Course management (CRUD) | ✅ | Existing: `InstructorCourseForm`, `InstructorCourseEdit`, `LessonEditor`, `SectionEditor`. |
 

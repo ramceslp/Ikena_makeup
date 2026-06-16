@@ -22,6 +22,7 @@ const formDescription = ref(props.lesson.description ?? '')
 const formVideoUrl = ref(props.lesson.video_url ?? '')
 const formDuration = ref(props.lesson.duration ?? 0)
 const formIsFree = ref(props.lesson.is_free ?? false)
+const formIsPractice = ref(props.lesson.is_practice ?? false)
 
 // Sync if lesson prop changes (e.g., after optimistic updates)
 watch(() => props.lesson, (val) => {
@@ -30,6 +31,7 @@ watch(() => props.lesson, (val) => {
   formVideoUrl.value = val.video_url ?? ''
   formDuration.value = val.duration ?? 0
   formIsFree.value = val.is_free ?? false
+  formIsPractice.value = val.is_practice ?? false
 })
 
 const lessonValidationErrors = computed(() => {
@@ -47,6 +49,7 @@ async function handleSave() {
       video_url: formVideoUrl.value.trim() || null,
       duration: Number(formDuration.value) || null,
       is_free: formIsFree.value,
+      is_practice: formIsPractice.value,
     })
   } finally {
     saving.value = false
@@ -221,6 +224,17 @@ async function moveDown() {
           class="w-4 h-4 accent-brand-accent"
         />
         <label :for="`lesson-free-${lesson.id}`" class="text-xs font-medium text-gray-600">Lección gratuita (visible sin inscripción)</label>
+      </div>
+
+      <!-- is_practice -->
+      <div class="flex items-center gap-2">
+        <input
+          :id="`lesson-practice-${lesson.id}`"
+          v-model="formIsPractice"
+          type="checkbox"
+          class="w-4 h-4 accent-brand-accent"
+        />
+        <label :for="`lesson-practice-${lesson.id}`" class="text-xs font-medium text-gray-600">Lección de práctica (los alumnos suben fotos antes/después)</label>
       </div>
 
       <!-- Save -->

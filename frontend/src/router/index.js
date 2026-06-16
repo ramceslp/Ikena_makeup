@@ -12,6 +12,7 @@ const InstructorCourses = () => import('../views/InstructorCourses.vue')
 const InstructorCourseForm = () => import('../views/InstructorCourseForm.vue')
 const InstructorCourseEdit = () => import('../views/InstructorCourseEdit.vue')
 const InstructorDashboard = () => import('../views/InstructorDashboard.vue')
+const InstructorSubmissions = () => import('../views/InstructorSubmissions.vue')
 
 const routes = [
   {
@@ -70,6 +71,12 @@ const routes = [
     path: '/instructor/dashboard',
     name: 'InstructorDashboard',
     component: InstructorDashboard,
+    meta: { requiresInstructor: true },
+  },
+  {
+    path: '/instructor/submissions',
+    name: 'InstructorSubmissions',
+    component: InstructorSubmissions,
     meta: { requiresInstructor: true },
   },
   {

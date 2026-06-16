@@ -403,3 +403,88 @@ describe('instructor store', () => {
     expect(store.loading).toBe(false)
   })
 })
+
+describe('instructor store — submissions', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+  })
+
+  const makeSubmission = (overrides = {}) => ({
+    id: 1,
+    lesson_id: 5,
+    status: 'pending',
+    feedback: null,
+    before_url: 'http://ex.com/b.jpg',
+    after_url: 'http://ex.com/a.jpg',
+    created_at: '2026-06-16T00:00:00Z',
+    graded_at: null,
+    user: { id: 2, name: 'Carla López', avatar: null },
+    lesson: { id: 5, title: 'Contorno básico' },
+    ...overrides,
+  })
+
+  it('fetchSubmissions: GETs /instructor/submissions without params when status is null', async () => {
+    const submissions = [makeSubmission()]
+    api.get.mockResolvedValueOnce({ data: { data: submissions, meta: { current_page: 1, last_page: 1, total: 1 } } })
+
+    const store = useInstructorStore()
+    await store.fetchSubmissions()
+
+    expect(api.get).toHaveBeenCalledWith('/instructor/submissions', { params: {} })
+    expect(store.submissions).toEqual(submissions)
+    expect(store.submissionsMeta).toMatchObject({ current_page: 1, total: 1 })
+    expect(store.submissionsLoading).toBe(false)
+  })
+
+  it('fetchSubmissions: passes status param when provided', async () => {
+    api.get.mockResolvedValueOnce({ data: { data: [], meta: null } })
+
+    const store = useInstructorStore()
+    await store.fetchSubmissions('pending')
+
+    expect(api.get).toHaveBeenCalledWith('/instructor/submissions', { params: { status: 'pending' } })
+  })
+
+  it('fetchSubmissions: sets error on failure via _handleError', async () => {
+    api.get.mockRejectedValueOnce({
+      response: { status: 500, data: { message: 'Error del servidor' } },
+    })
+
+    const store = useInstructorStore()
+    await store.fetchSubmissions()
+
+    expect(store.error).toBe('Error del servidor')
+    expect(store.submissionsLoading).toBe(false)
+  })
+
+  it('gradeSubmission: PATCHes /instructor/submissions/{id} and updates matching item in submissions', async () => {
+    const original = makeSubmission({ id: 10, status: 'pending' })
+    const updated = { ...original, status: 'approved', feedback: 'Excelente trabajo', graded_at: '2026-06-16T01:00:00Z' }
+    api.patch.mockResolvedValueOnce({ data: { data: updated } })
+
+    const store = useInstructorStore()
+    store.submissions = [original]
+
+    const result = await store.gradeSubmission(10, { status: 'approved', feedback: 'Excelente trabajo' })
+
+    expect(api.patch).toHaveBeenCalledWith('/instructor/submissions/10', { status: 'approved', feedback: 'Excelente trabajo' })
+    expect(store.submissions[0].status).toBe('approved')
+    expect(store.submissions[0].feedback).toBe('Excelente trabajo')
+    expect(result).toEqual(updated)
+    expect(store.grading).toBe(false)
+  })
+
+  it('gradeSubmission: _handleError and rethrows on failure', async () => {
+    api.patch.mockRejectedValueOnce({
+      response: { status: 403, data: { message: 'Acceso denegado' } },
+    })
+
+    const store = useInstructorStore()
+    store.submissions = [makeSubmission({ id: 10 })]
+
+    await expect(store.gradeSubmission(10, { status: 'approved', feedback: null })).rejects.toBeDefined()
+    expect(store.error).toBe('Acceso denegado')
+    expect(store.grading).toBe(false)
+  })
+})

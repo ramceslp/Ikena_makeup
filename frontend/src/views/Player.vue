@@ -56,6 +56,15 @@ async function selectLesson(lesson) {
   }
 }
 
+// ── Practice submission ───────────────────────────────────────────────────────
+async function handlePracticeSubmit({ before, after }) {
+  try {
+    await coursesStore.submitPractice(currentLesson.value.id, { before, after })
+  } catch {
+    // Error is stored in coursesStore.submissionError — displayed by PracticeSubmission via :error prop
+  }
+}
+
 // ── Mark complete toggle ──────────────────────────────────────────────────────
 async function handleToggleComplete(lesson) {
   if (togglingLesson.value === lesson.id) return
@@ -157,7 +166,13 @@ onMounted(async () => {
 
         <!-- Lesson tabs — only rendered when a lesson is loaded -->
         <div v-if="currentLesson && !lessonLoading" class="px-6 py-4">
-          <LessonTabs :lesson="currentLesson" />
+          <LessonTabs
+            :lesson="currentLesson"
+            :submission="currentLesson?.my_submission"
+            :submitting="coursesStore.submissionSubmitting"
+            :error="coursesStore.submissionError || ''"
+            @submit-practice="handlePracticeSubmit"
+          />
         </div>
       </div>
 

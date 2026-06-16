@@ -31,14 +31,23 @@ onMounted(() => {
           </p>
         </div>
 
-        <!-- Cross-navigation to Mis Cursos -->
-        <RouterLink
-          to="/instructor"
-          class="inline-flex items-center gap-2 font-label-md text-label-md text-primary border border-primary px-4 py-2 rounded-xl hover:bg-primary hover:text-on-primary transition-colors self-start sm:self-auto"
-        >
-          <span class="material-symbols-outlined text-[18px]" aria-hidden="true">menu_book</span>
-          Mis Cursos
-        </RouterLink>
+        <!-- Cross-navigation links -->
+        <div class="flex items-center gap-3">
+          <RouterLink
+            to="/instructor/submissions"
+            class="inline-flex items-center gap-2 font-label-md text-label-md text-primary border border-primary px-4 py-2 rounded-xl hover:bg-primary hover:text-on-primary transition-colors self-start sm:self-auto"
+          >
+            <span class="material-symbols-outlined text-[18px]" aria-hidden="true">assignment</span>
+            Entregas
+          </RouterLink>
+          <RouterLink
+            to="/instructor"
+            class="inline-flex items-center gap-2 font-label-md text-label-md text-primary border border-primary px-4 py-2 rounded-xl hover:bg-primary hover:text-on-primary transition-colors self-start sm:self-auto"
+          >
+            <span class="material-symbols-outlined text-[18px]" aria-hidden="true">menu_book</span>
+            Mis Cursos
+          </RouterLink>
+        </div>
       </div>
 
       <!-- Loading skeleton -->

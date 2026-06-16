@@ -1,18 +1,29 @@
 <script setup>
 // Presentational: tab area below the video stage.
-// Only the "Contenido" tab is included — no materials/submissions because
-// the backend LessonResource does not return downloadable resources or
-// submission endpoints. Those tabs are intentionally omitted (MIGRATION_BACKLOG #3).
 // Uses TabGroup atom for accessible keyboard-navigable tabs.
-import { ref } from 'vue'
+// Dynamically adds a "Práctica" tab when lesson.is_practice is true.
+import { ref, computed } from 'vue'
 import TabGroup from '../ui/TabGroup.vue'
+import PracticeSubmission from './PracticeSubmission.vue'
 
-defineProps({
-  // Lesson object from LessonResource: { id, title, description, video_url, duration, is_free, completed }
+const props = defineProps({
+  // Lesson object from LessonResource: { id, title, description, video_url, duration, is_free, is_practice, completed, my_submission }
   lesson: { type: Object, default: null },
+  submission: { type: Object, default: null },
+  submitting: { type: Boolean, default: false },
+  error: { type: String, default: '' },
 })
 
-const TABS = [{ key: 'contenido', label: 'Contenido' }]
+const emit = defineEmits(['submit-practice'])
+
+const TABS = computed(() => {
+  const tabs = [{ key: 'contenido', label: 'Contenido' }]
+  if (props.lesson?.is_practice) {
+    tabs.push({ key: 'practica', label: 'Práctica' })
+  }
+  return tabs
+})
+
 const activeTab = ref('contenido')
 </script>
 
@@ -37,6 +48,18 @@ const activeTab = ref('contenido')
           >
             Este lección no tiene descripción adicional.
           </p>
+        </div>
+      </template>
+
+      <!-- Práctica tab: only shown when lesson.is_practice is true -->
+      <template v-if="lesson?.is_practice" #tab-practica>
+        <div class="px-2 pb-4">
+          <PracticeSubmission
+            :submission="submission"
+            :submitting="submitting"
+            :error="error"
+            @submit="emit('submit-practice', $event)"
+          />
         </div>
       </template>
     </TabGroup>

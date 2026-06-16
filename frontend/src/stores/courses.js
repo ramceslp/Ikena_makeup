@@ -24,6 +24,9 @@ export const useCoursesStore = defineStore('courses', {
     reviewSubmitting: false,
     reviewDeleting: false,
     reviewError: null,
+    // Practice submissions
+    submissionSubmitting: false,
+    submissionError: null,
   }),
 
   actions: {
@@ -159,6 +162,29 @@ export const useCoursesStore = defineStore('courses', {
         throw err
       } finally {
         this.reviewDeleting = false
+      }
+    },
+
+    async submitPractice(lessonId, { before, after }) {
+      this.submissionError = null
+      this.submissionSubmitting = true
+      try {
+        const fd = new FormData()
+        fd.append('before', before)
+        fd.append('after', after)
+        const { data } = await api.post(
+          `/lessons/${lessonId}/submissions`,
+          fd,
+          { headers: { 'Content-Type': 'multipart/form-data' } }
+        )
+        const submission = data.data ?? data
+        if (this.currentLesson) this.currentLesson.my_submission = submission
+        return submission
+      } catch (err) {
+        this.submissionError = err.response?.data?.message || 'Error al enviar la entrega'
+        throw err
+      } finally {
+        this.submissionSubmitting = false
       }
     },
 

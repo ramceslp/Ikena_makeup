@@ -9,6 +9,11 @@ export const useInstructorStore = defineStore('instructor', {
     loading: false,
     error: null,
     validationErrors: {},
+    // Practice submissions
+    submissions: [],
+    submissionsMeta: null,
+    submissionsLoading: false,
+    grading: false,
   }),
 
   actions: {
@@ -290,6 +295,40 @@ export const useInstructorStore = defineStore('instructor', {
       } catch (err) {
         this._handleError(err)
         throw err
+      }
+    },
+
+    // ── Practice Submissions ──────────────────────────────────────────────────
+
+    async fetchSubmissions(status = null) {
+      this._clearErrors()
+      this.submissionsLoading = true
+      try {
+        const params = {}
+        if (status) params.status = status
+        const { data } = await api.get('/instructor/submissions', { params })
+        this.submissions = data.data ?? data
+        this.submissionsMeta = data.meta ?? null
+      } catch (err) {
+        this._handleError(err)
+      } finally {
+        this.submissionsLoading = false
+      }
+    },
+
+    async gradeSubmission(id, { status, feedback }) {
+      this._clearErrors()
+      this.grading = true
+      try {
+        const { data } = await api.patch(`/instructor/submissions/${id}`, { status, feedback })
+        const updated = data.data ?? data
+        this.submissions = this.submissions.map((s) => (s.id === id ? { ...s, ...updated } : s))
+        return updated
+      } catch (err) {
+        this._handleError(err)
+        throw err
+      } finally {
+        this.grading = false
       }
     },
 
