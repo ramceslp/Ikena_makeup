@@ -24,10 +24,21 @@ class CourseCardResource extends JsonResource
                 'id'   => $this->instructor->id,
                 'name' => $this->instructor->name,
             ],
+            'category'       => $this->whenLoaded('category', function () {
+                return $this->category
+                    ? [
+                        'id'   => $this->category->id,
+                        'name' => $this->category->name,
+                        'slug' => $this->category->slug,
+                    ]
+                    : null;
+            }),
             'lessons_count'  => $this->lessons_count ?? 0,
             'sections_count' => $this->sections_count ?? 0,
             'average_rating' => $avgRating,
             'reviews_count'  => $this->reviews_count ?? 0,
+            'is_bestseller'  => (bool) ($this->resource->is_bestseller ?? false),
+            'offers_certificate' => (bool) $this->offers_certificate,
         ];
 
         // Only expose is_enrolled when request is authenticated

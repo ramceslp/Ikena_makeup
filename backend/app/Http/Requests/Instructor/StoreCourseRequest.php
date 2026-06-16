@@ -14,10 +14,12 @@ class StoreCourseRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'title'       => ['required', 'string', 'max:255'],
-            'description' => ['required', 'string'],
-            'price'       => ['sometimes', 'numeric', 'min:0'],
-            'thumbnail'   => ['nullable', 'url'],
+            'title'              => ['required', 'string', 'max:255'],
+            'description'        => ['required', 'string'],
+            'price'              => ['sometimes', 'numeric', 'min:0'],
+            'thumbnail'          => ['nullable', 'url'],
+            'category_id'        => ['nullable', 'integer', 'exists:categories,id'],
+            'offers_certificate' => ['sometimes', 'boolean'],
         ];
     }
 }

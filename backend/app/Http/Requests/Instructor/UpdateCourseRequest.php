@@ -14,10 +14,12 @@ class UpdateCourseRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'title'       => ['sometimes', 'string', 'max:255'],
-            'description' => ['sometimes', 'string'],
-            'price'       => ['sometimes', 'numeric', 'min:0'],
-            'thumbnail'   => ['nullable', 'url'],
+            'title'              => ['sometimes', 'string', 'max:255'],
+            'description'        => ['sometimes', 'string'],
+            'price'              => ['sometimes', 'numeric', 'min:0'],
+            'thumbnail'          => ['nullable', 'url'],
+            'category_id'        => ['nullable', 'integer', 'exists:categories,id'],
+            'offers_certificate' => ['sometimes', 'boolean'],
         ];
     }
 }

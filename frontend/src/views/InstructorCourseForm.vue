@@ -1,25 +1,35 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useInstructorStore } from '../stores/instructor.js'
+import { useCoursesStore } from '../stores/courses.js'
 
 const router = useRouter()
 const instructorStore = useInstructorStore()
+const coursesStore = useCoursesStore()
 
 const title = ref('')
 const description = ref('')
 const price = ref(0)
 const thumbnail = ref('')
+const categoryId = ref('')
+const offersCertificate = ref(false)
 
 const loading = computed(() => instructorStore.loading)
 const validationErrors = computed(() => instructorStore.validationErrors)
 const error = computed(() => instructorStore.error)
+
+onMounted(() => {
+  coursesStore.fetchCategories()
+})
 
 async function handleSubmit() {
   const payload = {
     title: title.value.trim(),
     description: description.value.trim(),
     price: Number(price.value),
+    category_id: categoryId.value ? Number(categoryId.value) : null,
+    offers_certificate: offersCertificate.value,
   }
   if (thumbnail.value.trim()) {
     payload.thumbnail = thumbnail.value.trim()
@@ -129,6 +139,41 @@ async function handleSubmit() {
             </svg>
             {{ Array.isArray(validationErrors.thumbnail) ? validationErrors.thumbnail[0] : validationErrors.thumbnail }}
           </p>
+        </div>
+
+        <!-- Category -->
+        <div>
+          <label for="course-category" class="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
+          <select
+            id="course-category"
+            v-model="categoryId"
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent"
+            :class="validationErrors.category_id ? 'border-red-400' : 'border-gray-300'"
+          >
+            <option value="">Sin categoría</option>
+            <option v-for="cat in coursesStore.categories" :key="cat.id" :value="cat.id">
+              {{ cat.name }}
+            </option>
+          </select>
+          <p v-if="validationErrors.category_id" class="text-red-600 text-xs mt-1 flex items-center gap-1">
+            <svg class="w-3 h-3 shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+            </svg>
+            {{ Array.isArray(validationErrors.category_id) ? validationErrors.category_id[0] : validationErrors.category_id }}
+          </p>
+        </div>
+
+        <!-- Offers certificate -->
+        <div class="flex items-center gap-3">
+          <input
+            id="course-certificate"
+            v-model="offersCertificate"
+            type="checkbox"
+            class="w-4 h-4 accent-brand-accent rounded"
+          />
+          <label for="course-certificate" class="text-sm font-medium text-gray-700 select-none cursor-pointer">
+            Ofrece certificado al completar el curso
+          </label>
         </div>
 
         <!-- Submit -->

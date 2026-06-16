@@ -27,22 +27,33 @@ class CourseDetailResource extends JsonResource
         }
 
         return [
-            'id'             => $this->id,
-            'title'          => $this->title,
-            'slug'           => $this->slug,
-            'description'    => $this->description,
-            'price'          => number_format($this->price, 2, '.', ''),
-            'thumbnail'      => $this->thumbnail,
-            'instructor'     => [
+            'id'                 => $this->id,
+            'title'              => $this->title,
+            'slug'               => $this->slug,
+            'description'        => $this->description,
+            'price'              => number_format($this->price, 2, '.', ''),
+            'thumbnail'          => $this->thumbnail,
+            'instructor'         => [
                 'id'   => $this->instructor->id,
                 'name' => $this->instructor->name,
             ],
-            'total_lessons'  => $this->lessons_count ?? 0,
-            'is_enrolled'    => $user ? $isEnrolled : false,
-            'average_rating' => $avgRating,
-            'reviews_count'  => $this->reviews_count ?? 0,
-            'my_review'      => $myReviewData,
-            'sections'      => $this->sections->map(function ($section) use ($user, $isEnrolled) {
+            'category'           => $this->whenLoaded('category', function () {
+                return $this->category
+                    ? [
+                        'id'   => $this->category->id,
+                        'name' => $this->category->name,
+                        'slug' => $this->category->slug,
+                    ]
+                    : null;
+            }),
+            'total_lessons'      => $this->lessons_count ?? 0,
+            'is_enrolled'        => $user ? $isEnrolled : false,
+            'average_rating'     => $avgRating,
+            'reviews_count'      => $this->reviews_count ?? 0,
+            'is_bestseller'      => (bool) ($this->resource->is_bestseller ?? false),
+            'offers_certificate' => (bool) $this->offers_certificate,
+            'my_review'          => $myReviewData,
+            'sections'           => $this->sections->map(function ($section) use ($user, $isEnrolled) {
                 return [
                     'id'       => $section->id,
                     'title'    => $section->title,

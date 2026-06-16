@@ -34,6 +34,11 @@ class CertificateController extends Controller
             return response()->json(['data' => new CertificateResource($existing)]);
         }
 
+        // Certificate gate: course must offer a certificate
+        if (! $course->offers_certificate) {
+            return response()->json(['message' => 'Este curso no ofrece certificado.'], 403);
+        }
+
         // Enrollment check
         if (! $user->enrolledCourses()->where('courses.id', $course->id)->exists()) {
             return response()->json(['message' => 'No estás inscrito en este curso.'], 403);

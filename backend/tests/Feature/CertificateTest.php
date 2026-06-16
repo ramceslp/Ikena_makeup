@@ -30,12 +30,13 @@ class CertificateTest extends TestCase
      * @return array{0: Course, 1: User, 2: \Illuminate\Database\Eloquent\Collection, 3: \Illuminate\Database\Eloquent\Collection}
      *             [course, instructor, regularLessons, practiceLessons]
      */
-    private function createCourse(int $regularCount = 2, int $practiceCount = 1): array
+    private function createCourse(int $regularCount = 2, int $practiceCount = 1, bool $offersCertificate = true): array
     {
         $instructor = User::factory()->instructor()->create();
         $course     = Course::factory()->create([
-            'instructor_id' => $instructor->id,
-            'is_published'  => true,
+            'instructor_id'      => $instructor->id,
+            'is_published'       => true,
+            'offers_certificate' => $offersCertificate,
         ]);
         $section = Section::factory()->create(['course_id' => $course->id]);
 
@@ -302,8 +303,9 @@ class CertificateTest extends TestCase
     {
         $instructor = User::factory()->instructor()->create();
         $course     = Course::factory()->create([
-            'instructor_id' => $instructor->id,
-            'is_published'  => true,
+            'instructor_id'      => $instructor->id,
+            'is_published'       => true,
+            'offers_certificate' => true,
         ]);
         // No sections, no lessons
 
@@ -360,7 +362,7 @@ class CertificateTest extends TestCase
 
     public function test_two_eligible_students_get_separate_certificates(): void
     {
-        [$course, $instructor, $regularLessons, $practiceLessons] = $this->createCourse(1, 1);
+        [$course, $instructor, $regularLessons, $practiceLessons] = $this->createCourse(1, 1, true);
 
         $studentA = User::factory()->create();
         $studentB = User::factory()->create();
@@ -387,5 +389,53 @@ class CertificateTest extends TestCase
 
         // Two separate rows
         $this->assertDatabaseCount('certificates', 2);
+    }
+
+    // -------------------------------------------------------------------------
+    // 11. Course without offers_certificate → 403 (even if otherwise eligible)
+    // -------------------------------------------------------------------------
+
+    public function test_course_without_offers_certificate_returns_403(): void
+    {
+        // offersCertificate = false
+        [$course, $instructor, $regularLessons, $practiceLessons] = $this->createCourse(1, 0, false);
+
+        $student = User::factory()->create();
+        Sanctum::actingAs($student);
+
+        $this->enroll($student, $course);
+        $this->completeAllLessons($student, $course);
+
+        $this->getJson("/api/courses/{$course->slug}/certificate")
+             ->assertStatus(403)
+             ->assertJsonPath('message', 'Este curso no ofrece certificado.');
+    }
+
+    // -------------------------------------------------------------------------
+    // 12. Idempotency still bypasses offers_certificate gate (already issued)
+    // -------------------------------------------------------------------------
+
+    public function test_existing_certificate_returned_even_when_offers_certificate_later_set_false(): void
+    {
+        // A certificate that was already issued (stored in DB) should always
+        // be returned by the idempotency path, regardless of current flag.
+        [$course, $instructor] = $this->createCourse(1, 0, false);
+
+        $student = User::factory()->create();
+
+        $certificate = Certificate::factory()->create([
+            'user_id'   => $student->id,
+            'course_id' => $course->id,
+            'code'      => 'IKENA-OLDCODE1234',
+            'issued_at' => now(),
+        ]);
+
+        Sanctum::actingAs($student);
+
+        // Should return 200 (idempotency path before the gate)
+        $response = $this->getJson("/api/courses/{$course->slug}/certificate");
+
+        $response->assertStatus(200)
+                 ->assertJsonPath('data.code', 'IKENA-OLDCODE1234');
     }
 }

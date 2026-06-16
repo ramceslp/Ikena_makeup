@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Instructor;
 
+use App\Models\Category;
 use App\Models\Course;
 use App\Models\Lesson;
 use App\Models\Section;
@@ -370,5 +371,122 @@ class InstructorCourseTest extends TestCase
 
         $this->postJson("/api/instructor/courses/{$course->slug}/publish")
             ->assertStatus(403);
+    }
+
+    // -------------------------------------------------------------------------
+    // category_id + offers_certificate on store/update
+    // -------------------------------------------------------------------------
+
+    public function test_store_persists_category_id_and_offers_certificate(): void
+    {
+        $instructor = $this->instructor();
+        $category   = Category::factory()->create(['slug' => 'editorial', 'name' => 'Editorial']);
+
+        Sanctum::actingAs($instructor);
+
+        $response = $this->postJson('/api/instructor/courses', [
+            'title'               => 'Editorial Makeup Course',
+            'description'         => 'Editorial techniques description',
+            'price'               => 29.99,
+            'category_id'         => $category->id,
+            'offers_certificate'  => true,
+        ]);
+
+        $response->assertStatus(201)
+                 ->assertJsonPath('data.category_id', $category->id)
+                 ->assertJsonPath('data.offers_certificate', true);
+
+        $this->assertDatabaseHas('courses', [
+            'title'              => 'Editorial Makeup Course',
+            'category_id'        => $category->id,
+            'offers_certificate' => true,
+        ]);
+    }
+
+    public function test_update_persists_category_id_and_offers_certificate(): void
+    {
+        $instructor = $this->instructor();
+        $category   = Category::factory()->create(['slug' => 'novias', 'name' => 'Novias']);
+        $course     = $this->courseFor($instructor, ['category_id' => null, 'offers_certificate' => false]);
+
+        Sanctum::actingAs($instructor);
+
+        $this->patchJson("/api/instructor/courses/{$course->slug}", [
+            'category_id'        => $category->id,
+            'offers_certificate' => true,
+        ])->assertStatus(200)
+          ->assertJsonPath('data.category_id', $category->id)
+          ->assertJsonPath('data.offers_certificate', true);
+
+        $this->assertDatabaseHas('courses', [
+            'id'                 => $course->id,
+            'category_id'        => $category->id,
+            'offers_certificate' => true,
+        ]);
+    }
+
+    public function test_store_validates_nonexistent_category_id(): void
+    {
+        $instructor = $this->instructor();
+        Sanctum::actingAs($instructor);
+
+        $this->postJson('/api/instructor/courses', [
+            'title'       => 'Test Course',
+            'description' => 'Desc',
+            'category_id' => 99999,
+        ])->assertStatus(422)
+          ->assertJsonValidationErrors(['category_id']);
+    }
+
+    public function test_instructor_course_card_includes_category_id_and_offers_certificate(): void
+    {
+        $instructor = $this->instructor();
+        $category   = Category::factory()->create(['slug' => 'noche', 'name' => 'Noche']);
+        $this->courseFor($instructor, ['category_id' => $category->id, 'offers_certificate' => true]);
+
+        Sanctum::actingAs($instructor);
+
+        $response = $this->getJson('/api/instructor/courses')->assertStatus(200);
+
+        $item = $response->json('data.0');
+        $this->assertArrayHasKey('category_id', $item);
+        $this->assertArrayHasKey('offers_certificate', $item);
+        $this->assertEquals($category->id, $item['category_id']);
+        $this->assertTrue($item['offers_certificate']);
+    }
+
+    // -------------------------------------------------------------------------
+    // is_practice present in instructor course detail lesson payload
+    // -------------------------------------------------------------------------
+
+    public function test_instructor_course_detail_lessons_include_is_practice(): void
+    {
+        $instructor = $this->instructor();
+        $course     = $this->courseFor($instructor);
+        $section    = Section::factory()->create(['course_id' => $course->id]);
+
+        // Create one practice and one regular lesson
+        Lesson::factory()->create([
+            'section_id'  => $section->id,
+            'is_practice' => true,
+        ]);
+        Lesson::factory()->create([
+            'section_id'  => $section->id,
+            'is_practice' => false,
+        ]);
+
+        Sanctum::actingAs($instructor);
+
+        $response = $this->getJson("/api/instructor/courses/{$course->slug}")->assertStatus(200);
+
+        $lessons = $response->json('data.sections.0.lessons');
+        $this->assertCount(2, $lessons);
+
+        foreach ($lessons as $lesson) {
+            $this->assertArrayHasKey('is_practice', $lesson);
+        }
+
+        $practiceLesson = collect($lessons)->first(fn ($l) => $l['is_practice'] === true);
+        $this->assertNotNull($practiceLesson, 'At least one lesson should have is_practice=true');
     }
 }

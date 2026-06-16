@@ -12,6 +12,7 @@ const search = ref('')
 const minPrice = ref('')
 const maxPrice = ref('')
 const sort = ref('newest')
+const category = ref('')
 
 const catalogRef = ref(null)
 
@@ -23,6 +24,7 @@ function buildFilters() {
     min_price: minPrice.value,
     max_price: maxPrice.value,
     sort: sort.value,
+    category: category.value,
     page: 1,
   }
 }
@@ -31,13 +33,13 @@ function applyFilters() {
   coursesStore.fetchCourses(buildFilters())
 }
 
-// Search is debounced; price/sort apply immediately (original behavior preserved)
+// Search is debounced; price/sort/category apply immediately
 watch(search, () => {
   clearTimeout(debounceTimer)
   debounceTimer = setTimeout(applyFilters, 400)
 })
 
-watch([minPrice, maxPrice, sort], applyFilters)
+watch([minPrice, maxPrice, sort, category], applyFilters)
 
 function goToPage(page) {
   coursesStore.fetchCourses({ ...buildFilters(), page })
@@ -48,6 +50,7 @@ function scrollToCatalog() {
 }
 
 onMounted(() => {
+  coursesStore.fetchCategories()
   coursesStore.fetchCourses()
 })
 </script>
@@ -61,6 +64,8 @@ onMounted(() => {
       v-model:min-price="minPrice"
       v-model:max-price="maxPrice"
       v-model:sort="sort"
+      v-model:category="category"
+      :categories="coursesStore.categories"
     />
 
     <div ref="catalogRef">

@@ -42,8 +42,8 @@ Legend: ✅ built · 🔨 to build · ⚠️ BACKEND needed
 | `home/CourseFilters` | ✅ |
 | `home/CourseCatalog` | ✅ |
 | `home/NewsletterCta` | ✅ (local-only; ⚠️ BACKEND for real subscription) |
-| Category filter pills | 🔨 ⚠️ BACKEND | Stitch shows "Editorial / Novias / Noche". No `category` field on courses. |
-| "Bestseller" / "Certificado" card ribbons | 🔨 ⚠️ BACKEND | No flags in data — omitted for now. |
+| Category filter pills | ✅ | `categories` table (FK on courses) + seeder (Editorial/Novias/Noche). `GET /api/categories` + `?category={slug}` filter. Pills in CourseFilters; category `<select>` in instructor form. |
+| "Bestseller" / "Certificado" card ribbons | ✅ | Bestseller = DERIVED (top course(s) by paid-order count, global). Certificado = `offers_certificate` flag (also gates issuance). Both as ribbons on CourseCard. |
 
 ---
 

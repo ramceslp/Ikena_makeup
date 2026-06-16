@@ -16,19 +16,22 @@ class Course extends Model
 
     protected $fillable = [
         'instructor_id',
+        'category_id',
         'title',
         'slug',
         'description',
         'price',
         'thumbnail',
         'is_published',
+        'offers_certificate',
     ];
 
     protected function casts(): array
     {
         return [
-            'price' => 'decimal:2',
-            'is_published' => 'boolean',
+            'price'              => 'decimal:2',
+            'is_published'       => 'boolean',
+            'offers_certificate' => 'boolean',
         ];
     }
 
@@ -37,6 +40,16 @@ class Course extends Model
     public function instructor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'instructor_id');
+    }
+
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(Category::class);
+    }
+
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class);
     }
 
     public function sections(): HasMany

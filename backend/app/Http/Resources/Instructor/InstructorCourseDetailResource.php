@@ -10,15 +10,17 @@ class InstructorCourseDetailResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id'            => $this->id,
-            'title'         => $this->title,
-            'slug'          => $this->slug,
-            'description'   => $this->description,
-            'price'         => number_format($this->price, 2, '.', ''),
-            'thumbnail'     => $this->thumbnail,
-            'is_published'  => $this->is_published,
-            'total_lessons' => $this->lessons_count ?? 0,
-            'sections'      => $this->whenLoaded('sections', function () {
+            'id'                 => $this->id,
+            'title'              => $this->title,
+            'slug'               => $this->slug,
+            'description'        => $this->description,
+            'price'              => number_format($this->price, 2, '.', ''),
+            'thumbnail'          => $this->thumbnail,
+            'is_published'       => $this->is_published,
+            'category_id'        => $this->category_id,
+            'offers_certificate' => (bool) $this->offers_certificate,
+            'total_lessons'      => $this->lessons_count ?? 0,
+            'sections'           => $this->whenLoaded('sections', function () {
                 return $this->sections->map(function ($section) {
                     return [
                         'id'       => $section->id,
@@ -32,6 +34,7 @@ class InstructorCourseDetailResource extends JsonResource
                             'duration'    => $lesson->duration,
                             'position'    => $lesson->position,
                             'is_free'     => $lesson->is_free,
+                            'is_practice' => $lesson->is_practice,
                         ]),
                     ];
                 });

@@ -66,12 +66,32 @@ function isFree(price) {
           Inscrito
         </BaseBadge>
       </div>
+
+      <!-- Ribbons: top-right corner, stacked vertically -->
+      <div class="absolute top-4 right-4 flex flex-col items-end gap-1">
+        <BaseBadge v-if="course.is_bestseller" variant="accent" pill>
+          <span class="material-symbols-outlined text-[14px]" aria-hidden="true">trending_up</span>
+          Bestseller
+        </BaseBadge>
+        <BaseBadge v-if="course.offers_certificate" variant="secondary" pill>
+          <span class="material-symbols-outlined text-[14px]" aria-hidden="true">workspace_premium</span>
+          Certificado
+        </BaseBadge>
+      </div>
     </div>
 
     <!-- Content -->
     <div class="p-6 flex flex-col flex-grow">
       <!-- Meta row -->
       <div class="flex flex-wrap items-center gap-4 mb-3 text-outline">
+        <!-- Category label — only when present -->
+        <span
+          v-if="course.category"
+          class="font-label-sm text-label-sm flex items-center gap-1 text-on-surface-variant"
+        >
+          <span class="material-symbols-outlined text-[14px]" aria-hidden="true">sell</span>
+          {{ course.category.name }}
+        </span>
         <span class="font-label-sm text-label-sm flex items-center gap-1">
           <span class="material-symbols-outlined text-[14px]" aria-hidden="true">menu_book</span>
           {{ course.lessons_count }} lecciones

@@ -20,6 +20,11 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // ---------------------------------------------------------------
+        // 0. Categories (must exist before courses reference them)
+        // ---------------------------------------------------------------
+        $this->call(CategorySeeder::class);
+
+        // ---------------------------------------------------------------
         // 1. Instructor
         // ---------------------------------------------------------------
         $instructor = User::updateOrCreate(

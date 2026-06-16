@@ -8,8 +8,10 @@ use App\Http\Resources\CourseDetailResource;
 use App\Http\Resources\MyCourseResource;
 use App\Models\Course;
 use App\Models\Enrollment;
+use App\Models\Order;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 class CourseController extends Controller
 {
@@ -20,7 +22,7 @@ class CourseController extends Controller
     {
         $query = Course::query()
             ->where('is_published', true)
-            ->with('instructor')
+            ->with(['instructor', 'category'])
             ->withCount(['lessons', 'sections', 'reviews'])
             ->withAvg('reviews as reviews_avg_rating', 'rating');
 
@@ -30,6 +32,11 @@ class CourseController extends Controller
                 $q->where('title', 'like', "%{$search}%")
                   ->orWhere('description', 'like', "%{$search}%");
             });
+        }
+
+        // Category filter
+        if ($cat = $request->query('category')) {
+            $query->whereHas('category', fn ($q) => $q->where('slug', $cat));
         }
 
         // Price range filters
@@ -51,15 +58,24 @@ class CourseController extends Controller
 
         $courses = $query->paginate(12);
 
-        // Resolve is_enrolled for authenticated users
+        // Compute global bestseller set (across all published courses)
+        $bestsellerIds = $this->resolveBestsellerIds();
+
+        // Resolve enrollment state for authenticated users
+        $enrolledIds = [];
         if ($user = $request->user()) {
             $enrolledIds = $user->enrolledCourses()->pluck('courses.id')->toArray();
-
-            $courses->getCollection()->transform(function ($course) use ($enrolledIds) {
-                $course->is_enrolled = in_array($course->id, $enrolledIds);
-                return $course;
-            });
         }
+
+        $courses->getCollection()->transform(function ($course) use ($enrolledIds, $bestsellerIds, $request) {
+            $course->is_bestseller = $bestsellerIds->contains($course->id);
+
+            if ($request->user()) {
+                $course->is_enrolled = in_array($course->id, $enrolledIds);
+            }
+
+            return $course;
+        });
 
         return response()->json(CourseCardResource::collection($courses)->response()->getData(true));
     }
@@ -73,6 +89,7 @@ class CourseController extends Controller
             ->where('is_published', true)
             ->with([
                 'instructor',
+                'category',
                 'sections.lessons',
             ])
             ->withCount(['lessons', 'reviews'])
@@ -95,8 +112,9 @@ class CourseController extends Controller
                 ->first();
         }
 
-        $course->is_enrolled = $isEnrolled;
-        $course->my_review   = $myReview;
+        $course->is_enrolled  = $isEnrolled;
+        $course->my_review    = $myReview;
+        $course->is_bestseller = $this->resolveBestsellerIds()->contains($course->id);
 
         // Attach completed flag to each lesson
         foreach ($course->sections as $section) {
@@ -140,5 +158,34 @@ class CourseController extends Controller
         return response()->json([
             'data' => new MyCourseResource($course),
         ], 201);
+    }
+
+    // -------------------------------------------------------------------------
+    // Private helpers
+    // -------------------------------------------------------------------------
+
+    /**
+     * Compute the set of course IDs that qualify as "bestseller".
+     *
+     * A course is a bestseller if its count of paid orders equals the global
+     * maximum paid-order count. If no paid orders exist, returns an empty
+     * collection (no bestsellers).
+     */
+    private function resolveBestsellerIds(): Collection
+    {
+        $maxPaid = Order::where('status', 'paid')
+            ->groupBy('course_id')
+            ->selectRaw('COUNT(*) as cnt')
+            ->orderByDesc('cnt')
+            ->value('cnt');
+
+        if (! $maxPaid) {
+            return collect();
+        }
+
+        return Order::where('status', 'paid')
+            ->groupBy('course_id')
+            ->havingRaw('COUNT(*) = ?', [$maxPaid])
+            ->pluck('course_id');
     }
 }

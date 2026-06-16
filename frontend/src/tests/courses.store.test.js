@@ -432,6 +432,70 @@ describe('courses store — certificate', () => {
   })
 })
 
+// ---------------------------------------------------------------------------
+// Categories: fetchCategories
+// ---------------------------------------------------------------------------
+
+describe('courses store — categories', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+  })
+
+  it('fetchCategories: GETs /categories and populates categories from data.data', async () => {
+    const fakeCategories = [
+      { id: 1, name: 'Editorial', slug: 'editorial' },
+      { id: 2, name: 'Novias', slug: 'novias' },
+    ]
+    api.get.mockResolvedValueOnce({ data: { data: fakeCategories } })
+
+    const store = useCoursesStore()
+    await store.fetchCategories()
+
+    expect(api.get).toHaveBeenCalledWith('/categories')
+    expect(store.categories).toEqual(fakeCategories)
+  })
+
+  it('fetchCategories: handles flat response (no nested data key)', async () => {
+    const fakeCategories = [{ id: 1, name: 'Noche', slug: 'noche' }]
+    api.get.mockResolvedValueOnce({ data: fakeCategories })
+
+    const store = useCoursesStore()
+    await store.fetchCategories()
+
+    expect(store.categories).toEqual(fakeCategories)
+  })
+
+  it('fetchCategories: leaves categories empty on error (no throw)', async () => {
+    api.get.mockRejectedValueOnce(new Error('Network error'))
+
+    const store = useCoursesStore()
+    await expect(store.fetchCategories()).resolves.toBeUndefined()
+    expect(store.categories).toEqual([])
+  })
+
+  it('fetchCourses passes category slug in params when category filter is set', async () => {
+    api.get.mockResolvedValueOnce({ data: { data: [], meta: {} } })
+
+    const store = useCoursesStore()
+    await store.fetchCourses({ category: 'novias' })
+
+    expect(api.get).toHaveBeenCalledWith('/courses', {
+      params: expect.objectContaining({ category: 'novias' }),
+    })
+  })
+
+  it('fetchCourses omits category param when category is empty string', async () => {
+    api.get.mockResolvedValueOnce({ data: { data: [], meta: {} } })
+
+    const store = useCoursesStore()
+    await store.fetchCourses({ category: '' })
+
+    const callArgs = api.get.mock.calls[0]
+    expect(callArgs[1].params).not.toHaveProperty('category')
+  })
+})
+
 describe('courses store — practice submissions', () => {
   beforeEach(() => {
     setActivePinia(createPinia())

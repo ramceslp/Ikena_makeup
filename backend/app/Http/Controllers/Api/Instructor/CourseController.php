@@ -42,13 +42,15 @@ class CourseController extends Controller
         $slug = $this->uniqueSlug(Str::slug($data['title']));
 
         $course = Course::create([
-            'instructor_id' => $request->user()->id,
-            'title'         => $data['title'],
-            'slug'          => $slug,
-            'description'   => $data['description'],
-            'price'         => $data['price'] ?? 0,
-            'thumbnail'     => $data['thumbnail'] ?? null,
-            'is_published'  => false,
+            'instructor_id'      => $request->user()->id,
+            'category_id'        => $data['category_id'] ?? null,
+            'title'              => $data['title'],
+            'slug'               => $slug,
+            'description'        => $data['description'],
+            'price'              => $data['price'] ?? 0,
+            'thumbnail'          => $data['thumbnail'] ?? null,
+            'is_published'       => false,
+            'offers_certificate' => $data['offers_certificate'] ?? false,
         ]);
 
         $course->loadCount('lessons');

@@ -5,12 +5,14 @@ export const useCoursesStore = defineStore('courses', {
   state: () => ({
     courses: [],
     meta: null,
+    categories: [],
     filters: {
       search: '',
       min_price: '',
       max_price: '',
       sort: 'newest',
       page: 1,
+      category: '',
     },
     currentCourse: null,
     myCourses: [],
@@ -54,6 +56,15 @@ export const useCoursesStore = defineStore('courses', {
         this.error = err.response?.data?.message || 'Error al cargar los cursos'
       } finally {
         this.loading = false
+      }
+    },
+
+    async fetchCategories() {
+      try {
+        const { data } = await api.get('/categories')
+        this.categories = data.data ?? data
+      } catch {
+        // Leave categories empty — non-critical
       }
     },
 

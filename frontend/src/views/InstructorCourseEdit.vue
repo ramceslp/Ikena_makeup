@@ -2,10 +2,12 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useInstructorStore } from '../stores/instructor.js'
+import { useCoursesStore } from '../stores/courses.js'
 import SectionEditor from '../components/SectionEditor.vue'
 
 const route = useRoute()
 const instructorStore = useInstructorStore()
+const coursesStore = useCoursesStore()
 
 const course = computed(() => instructorStore.currentCourse)
 const loading = computed(() => instructorStore.loading)
@@ -17,6 +19,8 @@ const formTitle = ref('')
 const formDescription = ref('')
 const formPrice = ref(0)
 const formThumbnail = ref('')
+const formCategoryId = ref('')
+const formOffersCertificate = ref(false)
 const savingCourse = ref(false)
 
 // New section input
@@ -29,11 +33,14 @@ watch(course, (val) => {
     formDescription.value = val.description ?? ''
     formPrice.value = val.price ?? 0
     formThumbnail.value = val.thumbnail ?? ''
+    formCategoryId.value = val.category_id ?? ''
+    formOffersCertificate.value = val.offers_certificate ?? false
   }
 }, { immediate: true })
 
 onMounted(() => {
   instructorStore.fetchCourse(route.params.slug)
+  coursesStore.fetchCategories()
 })
 
 async function handleSaveCourse() {
@@ -44,6 +51,8 @@ async function handleSaveCourse() {
       description: formDescription.value.trim(),
       price: Number(formPrice.value),
       thumbnail: formThumbnail.value.trim() || undefined,
+      category_id: formCategoryId.value ? Number(formCategoryId.value) : null,
+      offers_certificate: formOffersCertificate.value,
     })
   } finally {
     savingCourse.value = false
@@ -189,6 +198,38 @@ async function handleAddSection() {
               <p v-if="validationErrors.thumbnail" class="text-red-600 text-xs mt-1">
                 {{ Array.isArray(validationErrors.thumbnail) ? validationErrors.thumbnail[0] : validationErrors.thumbnail }}
               </p>
+            </div>
+
+            <!-- Category -->
+            <div>
+              <label for="edit-category" class="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
+              <select
+                id="edit-category"
+                v-model="formCategoryId"
+                class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent"
+                :class="validationErrors.category_id ? 'border-red-400' : 'border-gray-300'"
+              >
+                <option value="">Sin categoría</option>
+                <option v-for="cat in coursesStore.categories" :key="cat.id" :value="cat.id">
+                  {{ cat.name }}
+                </option>
+              </select>
+              <p v-if="validationErrors.category_id" class="text-red-600 text-xs mt-1">
+                {{ Array.isArray(validationErrors.category_id) ? validationErrors.category_id[0] : validationErrors.category_id }}
+              </p>
+            </div>
+
+            <!-- Offers certificate -->
+            <div class="flex items-center gap-3">
+              <input
+                id="edit-certificate"
+                v-model="formOffersCertificate"
+                type="checkbox"
+                class="w-4 h-4 accent-brand-accent rounded"
+              />
+              <label for="edit-certificate" class="text-sm font-medium text-gray-700 select-none cursor-pointer">
+                Ofrece certificado al completar el curso
+              </label>
             </div>
 
             <div class="flex justify-end pt-1">

@@ -134,4 +134,69 @@ describe('CourseCard.vue', () => {
     expect(wrapper.text()).toContain('Short description')
     expect(wrapper.text()).not.toContain('...')
   })
+
+  // ── Ribbons: is_bestseller ──────────────────────────────────────────────────
+
+  it('shows "Bestseller" ribbon when is_bestseller is true', () => {
+    const wrapper = mountCard({ ...baseCourse, is_bestseller: true })
+    expect(wrapper.text()).toContain('Bestseller')
+  })
+
+  it('does NOT show "Bestseller" ribbon when is_bestseller is false', () => {
+    const wrapper = mountCard({ ...baseCourse, is_bestseller: false })
+    expect(wrapper.text()).not.toContain('Bestseller')
+  })
+
+  it('does NOT show "Bestseller" ribbon when is_bestseller is absent', () => {
+    const wrapper = mountCard({ ...baseCourse })
+    expect(wrapper.text()).not.toContain('Bestseller')
+  })
+
+  // ── Ribbons: offers_certificate ─────────────────────────────────────────────
+
+  it('shows "Certificado" ribbon when offers_certificate is true', () => {
+    const wrapper = mountCard({ ...baseCourse, offers_certificate: true })
+    expect(wrapper.text()).toContain('Certificado')
+  })
+
+  it('does NOT show "Certificado" ribbon when offers_certificate is false', () => {
+    const wrapper = mountCard({ ...baseCourse, offers_certificate: false })
+    expect(wrapper.text()).not.toContain('Certificado')
+  })
+
+  it('does NOT show "Certificado" ribbon when offers_certificate is absent', () => {
+    const wrapper = mountCard({ ...baseCourse })
+    expect(wrapper.text()).not.toContain('Certificado')
+  })
+
+  // ── Both ribbons stacked ────────────────────────────────────────────────────
+
+  it('shows both "Bestseller" and "Certificado" ribbons when both flags are true', () => {
+    const wrapper = mountCard({ ...baseCourse, is_bestseller: true, offers_certificate: true })
+    expect(wrapper.text()).toContain('Bestseller')
+    expect(wrapper.text()).toContain('Certificado')
+  })
+
+  // ── Category label ──────────────────────────────────────────────────────────
+
+  it('renders the category name when course.category is present', () => {
+    const wrapper = mountCard({
+      ...baseCourse,
+      category: { id: 1, name: 'Editorial', slug: 'editorial' },
+    })
+    expect(wrapper.text()).toContain('Editorial')
+  })
+
+  it('does NOT render a category label when course.category is null', () => {
+    const wrapper = mountCard({ ...baseCourse, category: null })
+    // No spurious category text leaking in
+    expect(wrapper.text()).not.toContain('Editorial')
+    expect(wrapper.text()).not.toContain('Novias')
+  })
+
+  it('does NOT render a category label when course.category is absent', () => {
+    const wrapper = mountCard({ ...baseCourse })
+    // The baseCourse has no category key — just a sanity guard
+    expect(wrapper.text()).not.toContain('Sin categoría')
+  })
 })
