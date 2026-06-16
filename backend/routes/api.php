@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\Instructor\SubmissionController as InstructorSubmis
 use App\Http\Controllers\Api\LessonController;
 use App\Http\Controllers\Api\MyCourseController;
 use App\Http\Controllers\Api\PracticeSubmissionController;
+use App\Http\Controllers\Api\ProfileController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -27,6 +28,12 @@ Route::get('/courses/{course:slug}/reviews', [CourseReviewController::class, 'in
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
+
+    // Profile — POST instead of PATCH/PUT because PHP does not parse multipart
+    // (file upload) bodies for PUT/PATCH requests.
+    Route::post('/profile', [ProfileController::class, 'update']);
+    Route::put('/profile/password', [ProfileController::class, 'updatePassword']);
+    Route::get('/profile/orders', [ProfileController::class, 'orders']);
 
     Route::get('/my-courses', [MyCourseController::class, 'index']);
 

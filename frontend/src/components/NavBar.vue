@@ -66,7 +66,7 @@ const activeClass = 'text-primary border-b-2 border-apricot-glow'
 
             <!-- User avatar + logout -->
             <div class="flex items-center gap-3">
-              <div class="flex items-center gap-2">
+              <RouterLink to="/profile" class="flex items-center gap-2 hover:opacity-80 transition-opacity">
                 <img
                   v-if="user?.avatar"
                   :src="user.avatar"
@@ -80,7 +80,7 @@ const activeClass = 'text-primary border-b-2 border-apricot-glow'
                   {{ initials(user?.name) }}
                 </div>
                 <span class="font-body-md text-body-md text-on-surface font-medium">{{ user?.name }}</span>
-              </div>
+              </RouterLink>
               <button
                 @click="handleLogout"
                 class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors"
@@ -143,14 +143,16 @@ const activeClass = 'text-primary border-b-2 border-apricot-glow'
           >
             Panel instructor
           </RouterLink>
-          <div class="flex items-center gap-2 py-2">
+          <RouterLink to="/profile" @click="mobileOpen = false" class="flex items-center gap-2 py-2 hover:opacity-80 transition-opacity">
+            <img v-if="user?.avatar" :src="user.avatar" :alt="user.name" class="w-9 h-9 rounded-full object-cover ring-2 ring-apricot-glow" />
             <div
+              v-else
               class="w-9 h-9 rounded-full bg-primary text-on-primary flex items-center justify-center font-label-md text-label-md shrink-0"
             >
               {{ initials(user?.name) }}
             </div>
             <span class="font-body-md text-body-md text-on-surface font-medium">{{ user?.name }}</span>
-          </div>
+          </RouterLink>
           <button
             @click="handleLogout"
             class="block w-full text-left py-2 font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors"

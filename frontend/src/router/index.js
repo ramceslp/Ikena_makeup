@@ -13,6 +13,7 @@ const InstructorCourseForm = () => import('../views/InstructorCourseForm.vue')
 const InstructorCourseEdit = () => import('../views/InstructorCourseEdit.vue')
 const InstructorDashboard = () => import('../views/InstructorDashboard.vue')
 const InstructorSubmissions = () => import('../views/InstructorSubmissions.vue')
+const Profile = () => import('../views/Profile.vue')
 
 const routes = [
   {
@@ -59,6 +60,12 @@ const routes = [
     path: '/payment/callback',
     name: 'PaymentCallback',
     component: PaymentCallback,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/profile',
+    name: 'Profile',
+    component: Profile,
     meta: { requiresAuth: true },
   },
   {

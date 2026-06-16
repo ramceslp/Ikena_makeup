@@ -13,8 +13,10 @@ class UserResource extends JsonResource
             'id'     => $this->id,
             'name'   => $this->name,
             'email'  => $this->email,
-            'avatar' => $this->avatar,
+            'avatar' => $this->avatarUrl(),
             'role'   => $this->role,
+            // Lets the client hide the password-change form for Google-only accounts
+            'has_password' => ! is_null($this->password),
         ];
     }
 }

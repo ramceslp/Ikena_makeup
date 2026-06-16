@@ -11,6 +11,7 @@ vi.mock('../services/api.js', () => ({
   default: {
     post: vi.fn(),
     get: vi.fn(),
+    put: vi.fn(),
     interceptors: {
       request: { use: vi.fn() },
       response: { use: vi.fn() },
@@ -171,5 +172,70 @@ describe('auth store', () => {
 
     expect(store.token).toBe(fakeToken)
     expect(store.user).toEqual(fakeUser)
+  })
+
+  // -------------------------------------------------------------------------
+  // updateProfile
+  // -------------------------------------------------------------------------
+
+  it('updateProfile posts FormData to /profile with multipart header and updates user + localStorage', async () => {
+    const updatedUser = { id: 1, name: 'Updated', email: 'u@test.com', avatar: null, role: 'student', has_password: true }
+
+    api.post.mockResolvedValueOnce({ data: { data: updatedUser } })
+
+    const store = useAuthStore()
+    await store.updateProfile(new FormData())
+
+    expect(api.post).toHaveBeenCalledWith(
+      '/profile',
+      expect.any(FormData),
+      expect.objectContaining({ headers: expect.objectContaining({ 'Content-Type': 'multipart/form-data' }) }),
+    )
+    expect(store.user.name).toBe('Updated')
+    expect(JSON.parse(localStorage.getItem('auth_user')).name).toBe('Updated')
+  })
+
+  // -------------------------------------------------------------------------
+  // changePassword
+  // -------------------------------------------------------------------------
+
+  it('changePassword PUTs /profile/password with the payload', async () => {
+    api.put.mockResolvedValueOnce({ data: { message: 'Contraseña actualizada' } })
+
+    const store = useAuthStore()
+    await store.changePassword({ current_password: 'old', password: 'newpass8', password_confirmation: 'newpass8' })
+
+    expect(api.put).toHaveBeenCalledWith('/profile/password', {
+      current_password: 'old',
+      password: 'newpass8',
+      password_confirmation: 'newpass8',
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // fetchOrders
+  // -------------------------------------------------------------------------
+
+  it('fetchOrders GETs /profile/orders and populates orders', async () => {
+    const fakeOrders = [
+      {
+        id: 1,
+        status: 'paid',
+        amount_cents: 4999,
+        currency: 'USD',
+        paid_at: '2026-01-01',
+        created_at: '2026-01-01',
+        course: { id: 1, title: 'Curso Test', slug: 'curso-test', thumbnail: null },
+      },
+    ]
+
+    api.get.mockResolvedValueOnce({ data: { data: fakeOrders, meta: { total: 1 } } })
+
+    const store = useAuthStore()
+    await store.fetchOrders()
+
+    expect(store.orders).toHaveLength(1)
+    expect(store.orders[0].status).toBe('paid')
+    expect(store.ordersMeta.total).toBe(1)
   })
 })

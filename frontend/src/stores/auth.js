@@ -5,6 +5,8 @@ export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: JSON.parse(localStorage.getItem('auth_user') || 'null'),
     token: localStorage.getItem('auth_token') || null,
+    orders: [],
+    ordersMeta: null,
   }),
 
   getters: {
@@ -16,6 +18,11 @@ export const useAuthStore = defineStore('auth', {
       this.user = user
       this.token = token
       localStorage.setItem('auth_token', token)
+      localStorage.setItem('auth_user', JSON.stringify(user))
+    },
+
+    _setUser(user) {
+      this.user = user
       localStorage.setItem('auth_user', JSON.stringify(user))
     },
 
@@ -58,6 +65,23 @@ export const useAuthStore = defineStore('auth', {
         localStorage.removeItem('auth_token')
         localStorage.removeItem('auth_user')
       }
+    },
+
+    async updateProfile(formData) {
+      const { data } = await api.post('/profile', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+      this._setUser(data.data ?? data)
+      return this.user
+    },
+
+    async changePassword({ current_password, password, password_confirmation }) {
+      const { data } = await api.put('/profile/password', { current_password, password, password_confirmation })
+      return data
+    },
+
+    async fetchOrders() {
+      const { data } = await api.get('/profile/orders')
+      this.orders = data.data ?? data
+      this.ordersMeta = data.meta ?? null
     },
   },
 })

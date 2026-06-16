@@ -78,18 +78,17 @@ Migrated to container/presentational (two-column: video+tabs / playlist). Reuses
 
 ## 4. Mi perfil e historial de compras → `MyCourses.vue` (+ future Profile)
 
-The enrolled-courses-with-progress list is DONE. Stitch's full account/profile
-page (info / security / purchase history) remains, blocked on backend — build it
-as a separate `Profile.vue` route later.
+The enrolled-courses-with-progress list AND the full account/profile page
+(info / security / purchase history) are DONE. `Profile.vue` at `/profile`.
 
 | Component | Status | Description |
 |---|---|---|
 | `mycourses/EnrolledCourseRow` (with progress) | ✅ | Thumbnail + title + instructor + `ProgressBar` + "Continuar" → `/learn/:slug`. Real fields: progress_percentage, completed_lessons, total_lessons. |
 | `MyCourses.vue` container | ✅ | Loading/error/empty (empty → CTA to catalog). |
-| `profile/ProfileSidebarNav` | 🔨 | Desktop section nav (Perfil / Seguridad / Historial). For future Profile.vue. |
-| `profile/PersonalInfoForm` | 🔨 ⚠️ BACKEND | Edit name/email/avatar. Needs update-profile endpoint. |
-| `profile/SecurityForm` (change password) | 🔨 ⚠️ BACKEND | Needs change-password endpoint. |
-| `profile/PurchaseHistory` + `PurchaseRow` | 🔨 ⚠️ BACKEND | Order history. No orders/transactions endpoint exposed yet. |
+| `profile/ProfileSidebarNav` | ✅ | Section nav (Perfil / Seguridad / Historial), `defineModel()` active key, responsive. |
+| `profile/PersonalInfoForm` | ✅ | Edit name/email/avatar. `POST /profile` (multipart upload, real file → public disk). Avatar preview. Field-level + server errors. |
+| `profile/SecurityForm` (change password) | ✅ | `PUT /profile/password` (current+new+confirm). Hidden for Google-only accounts via `user.has_password`. |
+| `profile/PurchaseHistory` + `PurchaseRow` | ✅ | `GET /profile/orders` (all statuses). Course thumbnail/title + `formatCurrency(amount_cents)` + status badge + date. |
 
 ---
 
