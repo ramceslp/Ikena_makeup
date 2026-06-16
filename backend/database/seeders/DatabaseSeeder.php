@@ -38,7 +38,20 @@ class DatabaseSeeder extends Seeder
         );
 
         // ---------------------------------------------------------------
-        // 2. Student (fixed credentials for testing)
+        // 2. Admin
+        // ---------------------------------------------------------------
+        User::updateOrCreate(
+            ['email' => 'admin@ikena.test'],
+            [
+                'name'              => 'Admin Ikena',
+                'password'          => Hash::make('password'),
+                'role'              => 'admin',
+                'email_verified_at' => now(),
+            ]
+        );
+
+        // ---------------------------------------------------------------
+        // 3. Student (fixed credentials for testing)
         // ---------------------------------------------------------------
         $student = User::updateOrCreate(
             ['email' => 'student@ikena.test'],
@@ -51,7 +64,7 @@ class DatabaseSeeder extends Seeder
         );
 
         // ---------------------------------------------------------------
-        // 3. Course 1 — "Fundamentos del Maquillaje" (student enrolled here)
+        // 4. Course 1 — "Fundamentos del Maquillaje" (student enrolled here)
         // ---------------------------------------------------------------
         $course1 = Course::updateOrCreate(
             ['slug' => 'makeup-fundamentals'],
@@ -136,7 +149,7 @@ class DatabaseSeeder extends Seeder
         );
 
         // ---------------------------------------------------------------
-        // 4. Course 2 — "Maestría en Maquillaje de Ojos"
+        // 5. Course 2 — "Maestría en Maquillaje de Ojos"
         // ---------------------------------------------------------------
         $course2 = Course::updateOrCreate(
             ['slug' => 'eye-makeup-mastery'],
@@ -194,7 +207,7 @@ class DatabaseSeeder extends Seeder
         );
 
         // ---------------------------------------------------------------
-        // 5. Course 3 — "Maquillaje de Novia Esencial" (free course)
+        // 6. Course 3 — "Maquillaje de Novia Esencial" (free course)
         // ---------------------------------------------------------------
         $course3 = Course::updateOrCreate(
             ['slug' => 'bridal-makeup-essentials'],
@@ -236,7 +249,7 @@ class DatabaseSeeder extends Seeder
         );
 
         // ---------------------------------------------------------------
-        // 6. Enroll student in Course 1 (idempotent)
+        // 7. Enroll student in Course 1 (idempotent)
         // ---------------------------------------------------------------
         Enrollment::firstOrCreate(
             ['user_id' => $student->id, 'course_id' => $course1->id],
@@ -244,7 +257,7 @@ class DatabaseSeeder extends Seeder
         );
 
         // ---------------------------------------------------------------
-        // 7. Mark 2 lessons as completed for the student (idempotent)
+        // 8. Mark 2 lessons as completed for the student (idempotent)
         // ---------------------------------------------------------------
         $student->completedLessons()->syncWithoutDetaching([
             $lesson1_1_1->id => ['completed_at' => now()],

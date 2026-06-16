@@ -6,7 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-class EnsureUserIsInstructor
+class EnsureUserIsAdmin
 {
     public function handle(Request $request, Closure $next): Response
     {
@@ -16,9 +16,9 @@ class EnsureUserIsInstructor
             ], 401);
         }
 
-        if (! $request->user()->canInstruct()) {
+        if (! $request->user()->isAdmin()) {
             return response()->json([
-                'message' => 'Instructor role required.',
+                'message' => 'Admin role required.',
             ], 403);
         }
 

@@ -73,6 +73,27 @@ class User extends Authenticatable
     // Helpers
     // -------------------------------------------------------------------------
 
+    /** Returns true only when the user's role is 'admin'. */
+    public function isAdmin(): bool
+    {
+        return $this->role === 'admin';
+    }
+
+    /** Returns true only when the user's role is 'instructor'. */
+    public function isInstructor(): bool
+    {
+        return $this->role === 'instructor';
+    }
+
+    /**
+     * Returns true when the user can access instructor-level resources.
+     * Admins are superusers and therefore also satisfy instructor-level access.
+     */
+    public function canInstruct(): bool
+    {
+        return $this->isAdmin() || $this->isInstructor();
+    }
+
     /**
      * Return the avatar as an absolute URL.
      *
