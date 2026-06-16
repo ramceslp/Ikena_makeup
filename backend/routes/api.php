@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\CertificateController;
 use App\Http\Controllers\Api\CheckoutController;
 use App\Http\Controllers\Api\CourseController;
 use App\Http\Controllers\Api\CourseReviewController;
+use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\Instructor\CourseController as InstructorCourseController;
 use App\Http\Controllers\Api\Instructor\DashboardController as InstructorDashboardController;
 use App\Http\Controllers\Api\Instructor\LessonController as InstructorLessonController;
@@ -26,6 +27,9 @@ Route::get('/categories', [CategoryController::class, 'index']);
 
 Route::get('/courses', [CourseController::class, 'index']);
 Route::get('/courses/{slug}', [CourseController::class, 'show']);
+
+Route::get('/services', [ServiceController::class, 'index']);
+Route::get('/services/{slug}', [ServiceController::class, 'show']);
 Route::get('/courses/{course:slug}/reviews', [CourseReviewController::class, 'index']);
 Route::get('/certificates/verify/{code}', [CertificateController::class, 'verify']);
 
