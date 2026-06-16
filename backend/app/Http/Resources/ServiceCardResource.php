@@ -19,7 +19,6 @@ class ServiceCardResource extends JsonResource
             'price'             => number_format((float) $this->price, 2, '.', ''),
             'duration_hours'    => $this->duration_hours,
             'availability_type' => $this->availability_type,
-            'is_published'      => (bool) $this->is_published,
             'thumbnail'         => $this->thumbnailUrl,
             'images_count'      => $this->images_count ?? $this->images->count(),
             'category'          => $this->whenLoaded('category', function () {

@@ -98,8 +98,11 @@ class Service extends Model
      * Resolve a path to an absolute URL.
      * If the path already starts with http/https, return it as-is.
      * Otherwise defer to Storage::disk('public')->url().
+     *
+     * Public so that resources (ServiceDetailResource) can delegate here
+     * instead of duplicating the resolution logic.
      */
-    private function resolveImageUrl(string $path): string
+    public function resolveImageUrl(string $path): string
     {
         if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
             return $path;

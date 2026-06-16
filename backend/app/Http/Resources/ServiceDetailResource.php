@@ -17,12 +17,12 @@ class ServiceDetailResource extends JsonResource
             'price'             => number_format((float) $this->price, 2, '.', ''),
             'duration_hours'    => $this->duration_hours,
             'availability_type' => $this->availability_type,
-            'is_published'      => (bool) $this->is_published,
             'thumbnail'         => $this->thumbnailUrl,
             'images_count'      => $this->images->count(),
+            // Delegate URL resolution to the model — single source of truth for path → URL
             'images'            => $this->images->map(fn ($img) => [
                 'id'         => $img->id,
-                'url'        => $this->resolveUrl($img->path),
+                'url'        => $this->resource->resolveImageUrl($img->path),
                 'sort_order' => $img->sort_order,
             ])->values()->toArray(),
             'category'          => $this->whenLoaded('category', function () {
@@ -35,18 +35,5 @@ class ServiceDetailResource extends JsonResource
                     : null;
             }),
         ];
-    }
-
-    /**
-     * Resolve a stored path to an absolute URL.
-     * Pass-through if the path is already an absolute HTTP URL.
-     */
-    private function resolveUrl(string $path): string
-    {
-        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
-            return $path;
-        }
-
-        return \Illuminate\Support\Facades\Storage::disk('public')->url($path);
     }
 }

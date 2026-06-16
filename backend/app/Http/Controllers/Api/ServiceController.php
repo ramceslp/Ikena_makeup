@@ -42,17 +42,18 @@ class ServiceController extends Controller
             $query->whereHas('category', fn ($q) => $q->where('slug', $cat));
         }
 
-        // Price range filters
-        if ($minPrice = $request->query('min_price')) {
-            $query->where('price', '>=', (float) $minPrice);
+        // Price range filters — use filled() so "0" is not silently dropped
+        if ($request->filled('min_price')) {
+            $query->where('price', '>=', (float) $request->query('min_price'));
         }
 
-        if ($maxPrice = $request->query('max_price')) {
-            $query->where('price', '<=', (float) $maxPrice);
+        if ($request->filled('max_price')) {
+            $query->where('price', '<=', (float) $request->query('max_price'));
         }
 
-        // Availability filter
-        if ($availability = $request->query('availability_type')) {
+        // Availability filter — only apply for known valid values; invalid values are ignored
+        $availability = $request->query('availability_type');
+        if (in_array($availability, ['immediate', 'by_appointment'], true)) {
             $query->where('availability_type', $availability);
         }
 

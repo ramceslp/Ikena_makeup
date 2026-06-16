@@ -87,6 +87,36 @@ class ServiceCatalogTest extends TestCase
         }
     }
 
+    /** W-1: min_price=0 must NOT be silently ignored — free services must be returned. */
+    public function test_min_price_zero_is_not_ignored(): void
+    {
+        Service::factory()->published()->create(['price' => 0.00, 'slug' => 'free-svc']);
+        Service::factory()->published()->create(['price' => 50.00, 'slug' => 'paid-svc']);
+
+        $response = $this->getJson('/api/services?min_price=0');
+
+        $response->assertStatus(200);
+        $prices = collect($response->json('data'))->pluck('price')->toArray();
+        // Both services satisfy price >= 0
+        $this->assertCount(2, $response->json('data'));
+        // The free service must be present
+        $this->assertContains('0.00', $prices);
+    }
+
+    /** W-1: max_price=0 must NOT be silently ignored — only free services returned. */
+    public function test_max_price_zero_is_not_ignored(): void
+    {
+        Service::factory()->published()->create(['price' => 0.00, 'slug' => 'free-svc-2']);
+        Service::factory()->published()->create(['price' => 50.00, 'slug' => 'paid-svc-2']);
+
+        $response = $this->getJson('/api/services?max_price=0');
+
+        $response->assertStatus(200);
+        $data = $response->json('data');
+        $this->assertCount(1, $data);
+        $this->assertEquals('0.00', $data[0]['price']);
+    }
+
     public function test_availability_type_filter_narrows_results(): void
     {
         Service::factory()->published()->create(['availability_type' => 'immediate', 'slug' => 'svc-immediate']);
@@ -98,6 +128,20 @@ class ServiceCatalogTest extends TestCase
         $data = $response->json('data');
         $this->assertCount(1, $data);
         $this->assertEquals('immediate', $data[0]['availability_type']);
+    }
+
+    /** W-4: Invalid availability value must not 500 and must not act as a real filter. */
+    public function test_invalid_availability_type_does_not_500_and_returns_all_published(): void
+    {
+        Service::factory()->published()->create(['availability_type' => 'immediate', 'slug' => 'svc-imm2']);
+        Service::factory()->published()->create(['availability_type' => 'by_appointment', 'slug' => 'svc-app2']);
+
+        $response = $this->getJson('/api/services?availability_type=invalid_value');
+
+        // Must not crash
+        $response->assertStatus(200);
+        // Invalid value is silently ignored — both published services are returned
+        $this->assertCount(2, $response->json('data'));
     }
 
     public function test_sort_price_asc_orders_correctly(): void
@@ -128,6 +172,26 @@ class ServiceCatalogTest extends TestCase
         $sorted = $prices;
         rsort($sorted);
         $this->assertEquals($sorted, $prices);
+    }
+
+    /** S-3: Omitting ?sort returns results ordered by created_at DESC (newest first). */
+    public function test_default_sort_is_newest_first(): void
+    {
+        // Create services 1 second apart to guarantee distinct created_at
+        $older  = Service::factory()->published()->create(['slug' => 'older-svc']);
+        $older->forceFill(['created_at' => now()->subSeconds(5)])->save();
+
+        $newer  = Service::factory()->published()->create(['slug' => 'newer-svc']);
+
+        $response = $this->getJson('/api/services');
+
+        $response->assertStatus(200);
+        $ids = collect($response->json('data'))->pluck('id')->toArray();
+        // Newer service must appear before older
+        $this->assertLessThan(
+            array_search($older->id, $ids),
+            array_search($newer->id, $ids)
+        );
     }
 
     public function test_search_filter_matches_title(): void
@@ -164,17 +228,42 @@ class ServiceCatalogTest extends TestCase
         $this->assertEquals('Generic Service', $data[0]['title']);
     }
 
-    public function test_list_is_paginated_at_12_per_page(): void
+    /** S-5: Search must NOT surface an unpublished service whose title/description matches. */
+    public function test_search_does_not_return_unpublished_matching_service(): void
+    {
+        Service::factory()->published()->create([
+            'title' => 'Maquillaje Nupcial',
+            'slug'  => 'maquillaje-nupcial-pub',
+        ]);
+        Service::factory()->unpublished()->create([
+            'title' => 'Maquillaje Nupcial Draft',
+            'slug'  => 'maquillaje-nupcial-draft',
+        ]);
+
+        $response = $this->getJson('/api/services?search=nupcial');
+
+        $response->assertStatus(200);
+        $data = $response->json('data');
+        $this->assertCount(1, $data);
+        $this->assertEquals('Maquillaje Nupcial', $data[0]['title']);
+    }
+
+    /** W-5: Pagination must return exactly 12 on page 1 and the remaining 3 on page 2. */
+    public function test_list_is_paginated_at_exactly_12_per_page(): void
     {
         Service::factory()->count(15)->published()->create();
 
-        $response = $this->getJson('/api/services?page=1');
+        $responsePage1 = $this->getJson('/api/services?page=1');
+        $responsePage2 = $this->getJson('/api/services?page=2');
 
-        $response->assertStatus(200)
-                 ->assertJsonStructure(['data', 'links', 'meta']);
+        $responsePage1->assertStatus(200)
+                      ->assertJsonStructure(['data', 'links', 'meta']);
 
-        $this->assertLessThanOrEqual(12, count($response->json('data')));
-        $this->assertEquals(15, $response->json('meta.total'));
+        $this->assertCount(12, $responsePage1->json('data'));
+        $this->assertEquals(15, $responsePage1->json('meta.total'));
+
+        $responsePage2->assertStatus(200);
+        $this->assertCount(3, $responsePage2->json('data'));
     }
 
     public function test_thumbnail_is_first_image_by_sort_order(): void
@@ -224,7 +313,7 @@ class ServiceCatalogTest extends TestCase
                  ->assertJsonStructure([
                      'data' => [
                          'id', 'title', 'slug', 'description', 'price',
-                         'duration_hours', 'availability_type', 'is_published',
+                         'duration_hours', 'availability_type',
                          'images',
                      ],
                  ]);
@@ -252,19 +341,27 @@ class ServiceCatalogTest extends TestCase
         $this->assertEquals([0, 1, 2], $orders);
     }
 
+    /** S-6: Gallery image URLs must start with 'http' (absolute).
+     *  Using an already-absolute HTTP path exercises the pass-through branch and
+     *  guarantees the assertion is stable regardless of test APP_URL configuration.
+     */
     public function test_show_image_urls_are_absolute(): void
     {
-        Storage::fake('public');
-
         $service = Service::factory()->published()->create(['slug' => 'absolute-url-test']);
-        ServiceImage::factory()->create(['service_id' => $service->id, 'path' => 'services/photo.jpg', 'sort_order' => 0]);
+        // Store an already-absolute URL path — the model/resource must pass it through unchanged
+        ServiceImage::factory()->create([
+            'service_id' => $service->id,
+            'path'       => 'https://cdn.example.com/services/photo.jpg',
+            'sort_order' => 0,
+        ]);
 
         $response = $this->getJson('/api/services/absolute-url-test');
 
         $response->assertStatus(200);
         $url = $response->json('data.images.0.url');
         $this->assertNotNull($url);
-        $this->assertStringContainsString('services/photo.jpg', $url);
+        $this->assertStringStartsWith('http', $url);
+        $this->assertEquals('https://cdn.example.com/services/photo.jpg', $url);
     }
 
     public function test_show_returns_404_for_unpublished_service(): void
@@ -287,6 +384,7 @@ class ServiceCatalogTest extends TestCase
     // Resource structure assertions
     // -------------------------------------------------------------------------
 
+    /** S-2: is_published must NOT be present in the public card resource. */
     public function test_list_response_has_expected_card_fields(): void
     {
         Service::factory()->published()->create();
@@ -298,10 +396,26 @@ class ServiceCatalogTest extends TestCase
                      'data' => [
                          '*' => [
                              'id', 'title', 'slug', 'description', 'price',
-                             'duration_hours', 'availability_type', 'is_published',
+                             'duration_hours', 'availability_type',
                              'thumbnail', 'images_count',
                          ],
                      ],
                  ]);
+
+        // is_published must not be exposed in the public catalog response
+        $item = $response->json('data.0');
+        $this->assertArrayNotHasKey('is_published', $item);
+    }
+
+    /** S-2: is_published must NOT be present in the public detail resource. */
+    public function test_show_response_does_not_expose_is_published(): void
+    {
+        Service::factory()->published()->create(['slug' => 'no-is-published-test']);
+
+        $response = $this->getJson('/api/services/no-is-published-test');
+
+        $response->assertStatus(200);
+        $data = $response->json('data');
+        $this->assertArrayNotHasKey('is_published', $data);
     }
 }
