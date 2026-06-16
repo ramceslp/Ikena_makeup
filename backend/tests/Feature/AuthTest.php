@@ -68,6 +68,22 @@ class AuthTest extends TestCase
                  ->assertJsonValidationErrors(['password']);
     }
 
+    public function test_register_rejects_attempt_to_self_assign_non_student_role(): void
+    {
+        $response = $this->postJson('/api/register', [
+            'name'                  => 'Sneaky User',
+            'email'                 => 'sneaky@example.com',
+            'password'              => 'password123',
+            'password_confirmation' => 'password123',
+            'role'                  => 'admin',
+        ]);
+
+        $response->assertStatus(422)
+                 ->assertJsonValidationErrors(['role']);
+
+        $this->assertDatabaseMissing('users', ['email' => 'sneaky@example.com']);
+    }
+
     // -------------------------------------------------------------------------
     // POST /api/login
     // -------------------------------------------------------------------------

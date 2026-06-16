@@ -2,8 +2,11 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Http\Middleware\EnsureUserIsAdmin;
+use App\Http\Middleware\EnsureUserIsInstructor;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -174,5 +177,30 @@ class AdminRoleTest extends TestCase
             'email' => 'admin@ikena.test',
             'role'  => 'admin',
         ]);
+    }
+
+    // =========================================================================
+    // Hardening — middleware return 401 (not 403) when the user is unauthenticated,
+    // so the guard is correct even if ever used outside an auth:sanctum group.
+    // =========================================================================
+
+    public function test_admin_middleware_returns_401_when_user_is_unauthenticated(): void
+    {
+        $middleware = new EnsureUserIsAdmin();
+        $request    = Request::create('/api/admin/ping', 'GET');
+
+        $response = $middleware->handle($request, fn () => response('next'));
+
+        $this->assertSame(401, $response->getStatusCode());
+    }
+
+    public function test_instructor_middleware_returns_401_when_user_is_unauthenticated(): void
+    {
+        $middleware = new EnsureUserIsInstructor();
+        $request    = Request::create('/api/instructor/dashboard', 'GET');
+
+        $response = $middleware->handle($request, fn () => response('next'));
+
+        $this->assertSame(401, $response->getStatusCode());
     }
 }

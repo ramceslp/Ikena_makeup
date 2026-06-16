@@ -17,6 +17,9 @@ class RegisterRequest extends FormRequest
             'name'     => ['required', 'string', 'max:255'],
             'email'    => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
+            // Self-registration may never assign a privileged role. If a client
+            // sends `role`, it must be 'student'; otherwise the DB default wins.
+            'role'     => ['sometimes', 'in:student'],
         ];
     }
 }

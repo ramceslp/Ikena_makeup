@@ -10,7 +10,13 @@ class EnsureUserIsInstructor
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (! $request->user()?->canInstruct()) {
+        if (! $request->user()) {
+            return response()->json([
+                'message' => 'Unauthenticated.',
+            ], 401);
+        }
+
+        if (! $request->user()->canInstruct()) {
             return response()->json([
                 'message' => 'Instructor role required.',
             ], 403);
