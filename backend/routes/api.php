@@ -56,6 +56,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/courses/{course:slug}/certificate', [CertificateController::class, 'show']);
 
+    // Admin routes
+    Route::middleware('admin')->prefix('admin')->group(function () {
+        Route::get('/ping', fn () => response()->json(['message' => 'pong']));
+    });
+
     // Instructor authoring routes
     Route::middleware('instructor')->prefix('instructor')->group(function () {
         // Dashboard analytics (read-only aggregates)
