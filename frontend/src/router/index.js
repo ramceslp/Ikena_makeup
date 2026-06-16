@@ -115,30 +115,58 @@ const router = createRouter({
   },
 })
 
+/**
+ * Pure guard-decision function — extracted so it can be unit-tested without
+ * needing a running router or real navigation.
+ *
+ * Returns:
+ *   null             → proceed (call next() with no arguments)
+ *   { name, ... }   → redirect target (call next(destination))
+ */
+export function resolveGuard(to, authStore) {
+  if (to.meta.requiresAdmin) {
+    if (!authStore.isAuthenticated) {
+      return { name: 'Login', query: { redirect: to.fullPath } }
+    }
+    if (authStore.user?.role !== 'admin') {
+      return { name: 'Home' }
+    }
+    return null
+  }
+
+  if (to.meta.requiresInstructor) {
+    if (!authStore.isAuthenticated) {
+      return { name: 'Login', query: { redirect: to.fullPath } }
+    }
+    const role = authStore.user?.role
+    if (role !== 'instructor' && role !== 'admin') {
+      return { name: 'Home' }
+    }
+    return null
+  }
+
+  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+    return { name: 'Login', query: { redirect: to.fullPath } }
+  }
+
+  if (to.meta.requiresGuest && authStore.isAuthenticated) {
+    return { name: 'Home' }
+  }
+
+  return null
+}
+
 router.beforeEach((to, _from, next) => {
   // Import the store inside the guard to avoid circular dependency issues.
   // By the time any navigation fires, pinia is already installed via main.js.
   import('../stores/auth.js').then(({ useAuthStore }) => {
     const authStore = useAuthStore()
-
-    if (to.meta.requiresInstructor) {
-      if (!authStore.isAuthenticated) { next({ name: 'Login', query: { redirect: to.fullPath } }); return }
-      if (authStore.user?.role !== 'instructor') { next({ name: 'Home' }); return }
+    const destination = resolveGuard(to, authStore)
+    if (destination !== null) {
+      next(destination)
+    } else {
       next()
-      return
     }
-
-    if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-      next({ name: 'Login', query: { redirect: to.fullPath } })
-      return
-    }
-
-    if (to.meta.requiresGuest && authStore.isAuthenticated) {
-      next({ name: 'Home' })
-      return
-    }
-
-    next()
   })
 })
 
