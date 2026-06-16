@@ -10,7 +10,7 @@ class EnsureUserIsInstructor
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if ($request->user()?->role !== 'instructor') {
+        if (! $request->user()?->canInstruct()) {
             return response()->json([
                 'message' => 'Instructor role required.',
             ], 403);
