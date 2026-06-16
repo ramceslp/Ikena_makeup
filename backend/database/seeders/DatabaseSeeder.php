@@ -38,7 +38,20 @@ class DatabaseSeeder extends Seeder
         );
 
         // ---------------------------------------------------------------
-        // 2. Student (fixed credentials for testing)
+        // 2. Admin
+        // ---------------------------------------------------------------
+        User::updateOrCreate(
+            ['email' => 'admin@ikena.test'],
+            [
+                'name'              => 'Admin Ikena',
+                'password'          => Hash::make('password'),
+                'role'              => 'admin',
+                'email_verified_at' => now(),
+            ]
+        );
+
+        // ---------------------------------------------------------------
+        // 3. Student (fixed credentials for testing)
         // ---------------------------------------------------------------
         $student = User::updateOrCreate(
             ['email' => 'student@ikena.test'],
@@ -51,7 +64,7 @@ class DatabaseSeeder extends Seeder
         );
 
         // ---------------------------------------------------------------
-        // 3. Course 1 — "Fundamentos del Maquillaje" (student enrolled here)
+        // 4. Course 1 — "Fundamentos del Maquillaje" (student enrolled here)
         // ---------------------------------------------------------------
         $course1 = Course::updateOrCreate(
             ['slug' => 'makeup-fundamentals'],
