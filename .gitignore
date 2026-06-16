@@ -1,0 +1,20 @@
+# ── Root .gitignore ───────────────────────────────────────────────
+# Per-app ignores live in backend/.gitignore and frontend/.gitignore
+# (git honors nested .gitignore files). This file covers root-level
+# artifacts and a global safety net for secrets.
+
+# ── Secrets: never commit a real .env (commit .env.example instead) ──
+.env
+*.env.local
+
+# ── Local tooling / agent state ────────────────────────────────────
+.atl/
+
+# ── OS ─────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Editors ────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp

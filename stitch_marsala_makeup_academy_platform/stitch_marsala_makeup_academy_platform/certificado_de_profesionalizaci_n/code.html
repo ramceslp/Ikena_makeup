@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+
+<html class="light" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap');
+        
+        body {
+            background-color: #fcf9f9;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .certificate-container {
+            aspect-ratio: 1.414 / 1;
+            box-shadow: 0 20px 50px rgba(106, 58, 60, 0.1);
+        }
+
+        .paper-texture {
+            background-image: url("https://www.transparenttextures.com/patterns/natural-paper.png");
+            background-color: #FDF9F8;
+        }
+
+        .signature-font {
+            font-family: 'Playfair Display', serif;
+            font-style: italic;
+        }
+
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            .certificate-container {
+                box-shadow: none;
+                margin: 0;
+                width: 100%;
+            }
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary-fixed-variant": "#733518",
+                        "surface-container-low": "#f6f3f3",
+                        "on-primary": "#ffffff",
+                        "surface-dim": "#dcd9d9",
+                        "on-tertiary": "#ffffff",
+                        "background": "#fcf9f9",
+                        "surface-variant": "#e4e2e2",
+                        "surface-container": "#f0eded",
+                        "on-tertiary-fixed": "#370e00",
+                        "on-surface": "#1b1b1c",
+                        "tertiary": "#582005",
+                        "blush-canvas": "#F4ACAB",
+                        "primary-container": "#6a3a3c",
+                        "outline": "#847373",
+                        "primary": "#4f2427",
+                        "on-secondary-fixed": "#360e0f",
+                        "on-error-container": "#93000a",
+                        "on-secondary-fixed-variant": "#6b3838",
+                        "secondary-container": "#fdb4b3",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-muted": "#FDF9F8",
+                        "on-primary-fixed-variant": "#69393b",
+                        "surface-container-high": "#eae7e7",
+                        "on-primary-container": "#e7a6a7",
+                        "surface-container-highest": "#e4e2e2",
+                        "surface-bright": "#fcf9f9",
+                        "surface-tint": "#845052",
+                        "tertiary-container": "#743519",
+                        "inverse-on-surface": "#f3f0f0",
+                        "on-background": "#1b1b1c",
+                        "tertiary-fixed-dim": "#ffb598",
+                        "deep-marsala": "#6A3A3C",
+                        "surface": "#fcf9f9",
+                        "on-secondary-container": "#794343",
+                        "tertiary-fixed": "#ffdbce",
+                        "on-error": "#ffffff",
+                        "secondary": "#874f4f",
+                        "error": "#ba1a1a",
+                        "primary-fixed": "#ffdada",
+                        "on-secondary": "#ffffff",
+                        "secondary-fixed-dim": "#fdb4b3",
+                        "secondary-fixed": "#ffdad9",
+                        "apricot-glow": "#FFA580",
+                        "on-primary-fixed": "#340f12",
+                        "inverse-surface": "#303031",
+                        "on-surface-variant": "#514343",
+                        "error-container": "#ffdad6",
+                        "outline-variant": "#d6c2c2",
+                        "on-tertiary-container": "#f9a07c",
+                        "primary-fixed-dim": "#f9b5b7",
+                        "inverse-primary": "#f9b5b7"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Hanken Grotesk"],
+                        "label-sm": ["JetBrains Mono"],
+                        "title-md": ["Hanken Grotesk"],
+                        "headline-lg": ["Hanken Grotesk"],
+                        "display-lg": ["Hanken Grotesk"],
+                        "label-md": ["JetBrains Mono"]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="font-body-md text-on-surface min-h-screen flex flex-col">
+<!-- Header / Top Bar -->
+<nav class="bg-surface/80 backdrop-blur-xl sticky top-0 z-50 w-full no-print">
+<div class="flex justify-between items-center px-gutter w-full max-w-container-max mx-auto py-4">
+<span class="font-headline-lg text-headline-lg font-bold text-primary tracking-tight">Makeup Academy</span>
+<div class="hidden md:flex items-center gap-8">
+<a class="text-on-surface-variant hover:text-primary transition-colors font-title-md text-title-md" href="#">Cursos</a>
+<a class="text-primary border-b-2 border-apricot-glow pb-1 font-title-md text-title-md" href="#">Mis Clases</a>
+<div class="flex items-center gap-4 ml-4">
+<button class="p-2 rounded-lg hover:bg-surface-container-low transition-all active:scale-95">
+<span class="material-symbols-outlined text-primary">notifications</span>
+</button>
+<button class="p-2 rounded-lg hover:bg-surface-container-low transition-all active:scale-95">
+<span class="material-symbols-outlined text-primary">account_circle</span>
+</button>
+</div>
+</div>
+</div>
+</nav>
+<main class="flex-grow flex flex-col items-center justify-center py-12 px-margin-mobile md:px-margin-desktop">
+<!-- Controls -->
+<div class="w-full max-w-4xl flex justify-between items-end mb-8 no-print">
+<div>
+<h1 class="font-headline-lg text-headline-lg text-deep-marsala">Vista Previa de Certificado</h1>
+<p class="text-on-surface-variant font-body-md text-body-md">Has completado satisfactoriamente tu formación académica.</p>
+</div>
+<div class="flex gap-4">
+<button class="flex items-center gap-2 bg-surface-container-highest text-primary font-title-md text-title-md px-6 py-3 rounded-xl hover:bg-blush-canvas/20 transition-all active:scale-95" onclick="window.print()">
+<span class="material-symbols-outlined">print</span>
+                    Imprimir
+                </button>
+<button class="flex items-center gap-2 bg-apricot-glow text-deep-marsala font-title-md text-title-md px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all active:scale-95">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">download</span>
+                    Descargar PDF
+                </button>
+</div>
+</div>
+<!-- Certificate Canvas -->
+<div class="certificate-container w-full max-w-5xl paper-texture relative border-[16px] border-surface p-1">
+<!-- Subtle Blush Border -->
+<div class="absolute inset-4 border border-blush-canvas/40 pointer-events-none"></div>
+<div class="absolute inset-8 border-2 border-blush-canvas/20 pointer-events-none"></div>
+<div class="h-full w-full flex flex-col items-center justify-between py-20 px-24 relative z-10 text-center">
+<!-- Brand Header -->
+<div class="space-y-4">
+<div class="w-24 h-px bg-deep-marsala mx-auto mb-6"></div>
+<span class="font-label-md text-label-md tracking-[0.3em] text-deep-marsala uppercase">Makeup Academy Professional Excellence</span>
+</div>
+<!-- Main Content -->
+<div class="space-y-8">
+<h2 class="font-display-lg text-display-lg text-deep-marsala italic font-normal" style="font-family: 'Playfair Display', serif;">Certificado de Finalización</h2>
+<div class="space-y-2">
+<p class="font-body-md text-body-md text-on-surface-variant">Este documento certifica con distinción que</p>
+<h3 class="font-headline-lg text-headline-lg text-primary border-b border-blush-canvas/30 pb-2 inline-block px-12">Isabella Montgomery</h3>
+</div>
+<div class="space-y-2">
+<p class="font-body-md text-body-md text-on-surface-variant">ha completado con éxito el programa académico de</p>
+<h4 class="font-title-md text-title-md text-deep-marsala font-bold tracking-tight">MAESTRÍA EN MAQUILLAJE EDITORIAL Y PASARELA</h4>
+</div>
+</div>
+<!-- Footer Details -->
+<div class="w-full flex justify-between items-end pt-12">
+<!-- Instructor Side -->
+<div class="text-left w-64">
+<div class="signature-font text-3xl text-primary mb-2">Elena V. Rossi</div>
+<div class="h-px bg-primary/30 mb-2"></div>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Elena Rossi - Instructora Senior</p>
+<p class="font-label-sm text-label-sm text-outline-variant">Directora Artística</p>
+</div>
+<!-- Seal -->
+<div class="relative group cursor-default">
+<div class="w-32 h-32 rounded-full border-4 border-double border-deep-marsala/40 flex items-center justify-center transform group-hover:rotate-12 transition-transform duration-700">
+<div class="w-24 h-24 rounded-full border border-deep-marsala flex flex-col items-center justify-center bg-surface-muted shadow-inner">
+<span class="material-symbols-outlined text-deep-marsala text-4xl" style="font-variation-settings: 'FILL' 1;">verified</span>
+<span class="text-[8px] font-bold text-deep-marsala tracking-widest mt-1">OFICIAL</span>
+</div>
+</div>
+<div class="absolute -top-4 -left-4">
+<svg class="w-40 h-40 fill-deep-marsala/5 animate-spin-slow" style="animation: spin 20s linear infinite;" viewbox="0 0 100 100">
+<path d="M 50, 50 m -37, 0 a 37,37 0 1,1 74,0 a 37,37 0 1,1 -74,0" fill="none" id="textPath"></path>
+<text class="text-[6px] tracking-[0.2em] uppercase font-bold">
+<textpath href="#textPath">Academic Authenticity Seal • Professional Certification •</textpath>
+</text>
+</svg>
+</div>
+</div>
+<!-- Date Side -->
+<div class="text-right w-64">
+<p class="font-title-md text-title-md text-primary mb-2">24 de Noviembre, 2024</p>
+<div class="h-px bg-primary/30 mb-2"></div>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Fecha de Expedición</p>
+<p class="font-label-sm text-label-sm text-outline-variant">ID: MA-2024-88419</p>
+</div>
+</div>
+</div>
+<!-- Corners -->
+<div class="absolute top-0 left-0 w-32 h-32 border-t-2 border-l-2 border-blush-canvas/60"></div>
+<div class="absolute bottom-0 right-0 w-32 h-32 border-b-2 border-r-2 border-blush-canvas/60"></div>
+</div>
+<!-- Decorative Info Section -->
+<section class="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-5xl no-print">
+<div class="p-6 bg-surface-muted rounded-2xl border border-blush-canvas/20">
+<span class="material-symbols-outlined text-apricot-glow mb-4">school</span>
+<h5 class="font-title-md text-title-md text-deep-marsala mb-2">Validación Global</h5>
+<p class="font-body-md text-body-md text-on-surface-variant">Este certificado cuenta con validez internacional en toda nuestra red de academias aliadas.</p>
+</div>
+<div class="p-6 bg-surface-muted rounded-2xl border border-blush-canvas/20">
+<span class="material-symbols-outlined text-apricot-glow mb-4">share</span>
+<h5 class="font-title-md text-title-md text-deep-marsala mb-2">Compartir Logro</h5>
+<p class="font-body-md text-body-md text-on-surface-variant">Añade este logro a tu perfil de LinkedIn o compártelo en tus redes profesionales.</p>
+</div>
+<div class="p-6 bg-surface-muted rounded-2xl border border-blush-canvas/20">
+<span class="material-symbols-outlined text-apricot-glow mb-4">workspace_premium</span>
+<h5 class="font-title-md text-title-md text-deep-marsala mb-2">Insignia Digital</h5>
+<p class="font-body-md text-body-md text-on-surface-variant">Obtén tu insignia digital interactiva para tu portafolio web personal.</p>
+</div>
+</section>
+</main>
+<footer class="w-full bg-surface-container-lowest border-t border-blush-canvas/20 no-print">
+<div class="max-w-container-max mx-auto px-gutter py-12 flex flex-col md:flex-row justify-between items-center">
+<span class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-deep-marsala">Makeup Academy</span>
+<div class="flex gap-8 my-6 md:my-0">
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary hover:underline transition-all" href="#">Privacidad</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary hover:underline transition-all" href="#">Términos de Uso</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary hover:underline transition-all" href="#">Contacto</a>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">© 2024 Makeup Academy. Todos los derechos reservados.</p>
+</div>
+</footer>
+<script>
+        // Micro-interaction for the seal animation
+        document.querySelector('.group').addEventListener('mouseover', function() {
+            this.querySelector('.material-symbols-outlined').style.transform = 'scale(1.1)';
+        });
+        document.querySelector('.group').addEventListener('mouseout', function() {
+            this.querySelector('.material-symbols-outlined').style.transform = 'scale(1)';
+        });
+    </script>
+</body></html>

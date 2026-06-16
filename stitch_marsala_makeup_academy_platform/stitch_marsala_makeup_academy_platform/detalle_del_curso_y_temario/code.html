@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+
+<html class="light" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-tertiary-fixed-variant": "#733518",
+                    "surface-container-low": "#f6f3f3",
+                    "on-primary": "#ffffff",
+                    "surface-dim": "#dcd9d9",
+                    "on-tertiary": "#ffffff",
+                    "background": "#fcf9f9",
+                    "surface-variant": "#e4e2e2",
+                    "surface-container": "#f0eded",
+                    "on-tertiary-fixed": "#370e00",
+                    "on-surface": "#1b1b1c",
+                    "tertiary": "#582005",
+                    "blush-canvas": "#F4ACAB",
+                    "primary-container": "#6a3a3c",
+                    "outline": "#847373",
+                    "primary": "#4f2427",
+                    "on-secondary-fixed": "#360e0f",
+                    "on-error-container": "#93000a",
+                    "on-secondary-fixed-variant": "#6b3838",
+                    "secondary-container": "#fdb4b3",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-muted": "#FDF9F8",
+                    "on-primary-fixed-variant": "#69393b",
+                    "surface-container-high": "#eae7e7",
+                    "on-primary-container": "#e7a6a7",
+                    "surface-container-highest": "#e4e2e2",
+                    "surface-bright": "#fcf9f9",
+                    "surface-tint": "#845052",
+                    "tertiary-container": "#743519",
+                    "inverse-on-surface": "#f3f0f0",
+                    "on-background": "#1b1b1c",
+                    "tertiary-fixed-dim": "#ffb598",
+                    "deep-marsala": "#6A3A3C",
+                    "surface": "#fcf9f9",
+                    "on-secondary-container": "#794343",
+                    "tertiary-fixed": "#ffdbce",
+                    "on-error": "#ffffff",
+                    "secondary": "#874f4f",
+                    "error": "#ba1a1a",
+                    "primary-fixed": "#ffdada",
+                    "on-secondary": "#ffffff",
+                    "secondary-fixed-dim": "#fdb4b3",
+                    "secondary-fixed": "#ffdad9",
+                    "apricot-glow": "#FFA580",
+                    "on-primary-fixed": "#340f12",
+                    "inverse-surface": "#303031",
+                    "on-surface-variant": "#514343",
+                    "error-container": "#ffdad6",
+                    "outline-variant": "#d6c2c2",
+                    "on-tertiary-container": "#f9a07c",
+                    "primary-fixed-dim": "#f9b5b7",
+                    "inverse-primary": "#f9b5b7"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "container-max": "1280px",
+                    "base": "8px",
+                    "margin-mobile": "16px",
+                    "margin-desktop": "40px",
+                    "gutter": "24px"
+            },
+            "fontFamily": {
+                    "body-md": ["Hanken Grotesk"],
+                    "label-sm": ["JetBrains Mono"],
+                    "title-md": ["Hanken Grotesk"],
+                    "headline-lg-mobile": ["Hanken Grotesk"],
+                    "body-lg": ["Hanken Grotesk"],
+                    "headline-lg": ["Hanken Grotesk"],
+                    "display-lg": ["Hanken Grotesk"],
+                    "label-md": ["JetBrains Mono"]
+            },
+            "fontSize": {
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.08em", "fontWeight": "500"}],
+                    "title-md": ["20px", {"lineHeight": "28px", "fontWeight": "500"}],
+                    "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "600"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "fontWeight": "600"}],
+                    "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "500"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #d6c2c2; border-radius: 10px; }
+        .sticky-card { position: sticky; top: 100px; }
+        .accordion-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
+        .accordion-active .accordion-content { max-height: 500px; }
+        .accordion-active .arrow-icon { transform: rotate(180deg); }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md selection:bg-blush-canvas/30">
+<!-- TopNavBar -->
+<header class="bg-surface/80 dark:bg-surface-dim/80 backdrop-blur-xl docked full-width top-0 sticky z-50 shadow-sm dark:shadow-none">
+<div class="flex justify-between items-center px-gutter w-full max-w-container-max mx-auto py-4">
+<div class="font-headline-lg text-headline-lg font-bold text-primary dark:text-primary-fixed-dim tracking-tight">
+                Makeup Academy
+            </div>
+<nav class="hidden md:flex gap-8 items-center">
+<a class="font-title-md text-title-md text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed-dim transition-colors" href="#">Cursos</a>
+<a class="font-title-md text-title-md text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed-dim transition-colors" href="#">Mis Clases</a>
+<div class="flex items-center gap-4 ml-4">
+<button class="material-symbols-outlined text-primary p-2 hover:bg-surface-container-low rounded-lg transition-all active:scale-95 duration-200">notifications</button>
+<button class="material-symbols-outlined text-primary p-2 hover:bg-surface-container-low rounded-lg transition-all active:scale-95 duration-200">account_circle</button>
+</div>
+</nav>
+<button class="md:hidden material-symbols-outlined">menu</button>
+</div>
+</header>
+<main class="max-w-container-max mx-auto px-gutter py-8 md:py-12">
+<!-- Hero Section: Video Trailer -->
+<section class="grid grid-cols-1 lg:grid-cols-3 gap-10">
+<div class="lg:col-span-2">
+<nav class="flex items-center gap-2 mb-6 text-on-surface-variant">
+<span class="font-label-sm text-label-sm">CURSOS</span>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+<span class="font-label-sm text-label-sm">EDITORIAL</span>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+<span class="font-label-sm text-label-sm text-deep-marsala">MAESTRÍA EN PIEL BLINDADA</span>
+</nav>
+<h1 class="font-display-lg text-display-lg text-deep-marsala mb-4">Maestría en Piel Blindada: Técnica Editorial</h1>
+<div class="flex flex-wrap items-center gap-4 mb-8">
+<span class="bg-blush-canvas text-primary px-3 py-1 rounded-full font-label-sm text-label-sm">AVANZADO</span>
+<div class="flex items-center gap-1 text-apricot-glow">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0.5;">star_half</span>
+<span class="text-on-surface-variant ml-1 font-label-md text-label-md">(1.240 reseñas)</span>
+</div>
+</div>
+<!-- Video Container -->
+<div class="relative aspect-video w-full rounded-xl overflow-hidden bg-surface-container-highest shadow-xl border border-blush-canvas/20">
+<div class="absolute inset-0 flex items-center justify-center bg-black/40 group cursor-pointer">
+<button class="w-20 h-20 bg-apricot-glow text-primary rounded-full flex items-center justify-center transition-transform hover:scale-110 active:scale-95">
+<span class="material-symbols-outlined text-4xl" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+</button>
+</div>
+<img alt="Trailer de Maestría en Piel Blindada" class="w-full h-full object-cover" data-alt="A cinematic, high-definition close-up shot of a professional makeup artist applying fine detail to a model's face. The lighting is dramatic and editorial, using warm golden hour tones and soft shadows. The overall aesthetic is luxurious and sophisticated, with a shallow depth of field that highlights the intricate skin texture and professional artistry tools in a high-end studio setting. The palette features rich marsala and soft apricot accents." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAfRZQvimNoawoeWkfmaTJqmxuH2rubV0Ajco9zQZprrZEvz30ZyQ69CorMemEuYOpREvtb95qaDYnVZkN6k85nIPI0nwT8a6qEZ2Sa_mr4Qjbb0VBHr93pim87-BaGtIKN1Jmq6L4XRpT9rbiJqtYqE3ygpDPVjqQaRRlLsqexVKLjMn3JqE1T339kzjNyLhLmCPCMijUuozYxvBppkcxDy7G-NwDeHEGPbx4mZzQuPxF6zIDeeZYYKtWFZu2A_oslIuxrQB3-vuI"/>
+</div>
+<!-- Course Description -->
+<div class="mt-12 space-y-6">
+<h2 class="font-headline-lg text-headline-lg text-deep-marsala">Sobre este curso</h2>
+<p class="text-body-lg font-body-lg text-on-surface-variant leading-relaxed">
+                        Domina el secreto de las pieles perfectas y duraderas para fotografía y pasarela. En este curso intensivo de 12 horas, aprenderás a trabajar diferentes texturas de piel, corregir imperfecciones sin perder la naturalidad y utilizar productos de alta gama para lograr un acabado "blindado" resistente a la humedad y al roce.
+                    </p>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-6 pt-6 border-t border-blush-canvas/20">
+<div>
+<p class="font-label-sm text-label-sm text-on-surface-variant uppercase mb-1">Duración</p>
+<p class="font-title-md text-title-md text-deep-marsala">12 Horas</p>
+</div>
+<div>
+<p class="font-label-sm text-label-sm text-on-surface-variant uppercase mb-1">Lecciones</p>
+<p class="font-title-md text-title-md text-deep-marsala">24 Clases</p>
+</div>
+<div>
+<p class="font-label-sm text-label-sm text-on-surface-variant uppercase mb-1">Acceso</p>
+<p class="font-title-md text-title-md text-deep-marsala">De por vida</p>
+</div>
+<div>
+<p class="font-label-sm text-label-sm text-on-surface-variant uppercase mb-1">Certificado</p>
+<p class="font-title-md text-title-md text-deep-marsala">Incluido</p>
+</div>
+</div>
+</div>
+<!-- Curriculum (Accordion) -->
+<div class="mt-16">
+<h2 class="font-headline-lg text-headline-lg text-deep-marsala mb-8">Temario del curso</h2>
+<div class="space-y-4">
+<!-- Module 1 -->
+<div class="accordion-item border border-blush-canvas/30 rounded-xl overflow-hidden bg-surface-muted" onclick="toggleAccordion(this)">
+<button class="w-full flex items-center justify-between p-6 text-left hover:bg-surface-container-low transition-colors">
+<div class="flex items-center gap-4">
+<span class="font-label-md text-label-md text-on-surface-variant bg-surface-container-high w-8 h-8 rounded-full flex items-center justify-center">01</span>
+<h3 class="font-title-md text-title-md text-deep-marsala">Fundamentos de la Piel Blindada</h3>
+</div>
+<span class="material-symbols-outlined arrow-icon transition-transform">expand_more</span>
+</button>
+<div class="accordion-content">
+<div class="p-6 pt-0 space-y-4 border-t border-blush-canvas/10">
+<div class="flex items-center justify-between group cursor-pointer hover:bg-white/50 p-2 rounded-lg transition-all">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">play_circle</span>
+<span class="font-body-md text-body-md">Preparación química y física</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant">15:20</span>
+</div>
+<div class="flex items-center justify-between group cursor-pointer hover:bg-white/50 p-2 rounded-lg transition-all">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">play_circle</span>
+<span class="font-body-md text-body-md">Primeros y fijadores de alto impacto</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant">22:45</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Module 2 -->
+<div class="accordion-item accordion-active border border-blush-canvas/30 rounded-xl overflow-hidden bg-surface-muted" onclick="toggleAccordion(this)">
+<button class="w-full flex items-center justify-between p-6 text-left hover:bg-surface-container-low transition-colors">
+<div class="flex items-center gap-4">
+<span class="font-label-md text-label-md text-on-surface-variant bg-surface-container-high w-8 h-8 rounded-full flex items-center justify-center">02</span>
+<h3 class="font-title-md text-title-md text-deep-marsala">Técnicas de Mezcla y Capas</h3>
+</div>
+<span class="material-symbols-outlined arrow-icon transition-transform">expand_more</span>
+</button>
+<div class="accordion-content">
+<div class="p-6 pt-0 space-y-4 border-t border-blush-canvas/10">
+<div class="flex items-center justify-between group cursor-pointer hover:bg-white/50 p-2 rounded-lg transition-all">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">play_circle</span>
+<span class="font-body-md text-body-md">Saturación de pigmento controlada</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant">18:10</span>
+</div>
+<div class="flex items-center justify-between group cursor-pointer hover:bg-white/50 p-2 rounded-lg transition-all">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">play_circle</span>
+<span class="font-body-md text-body-md">Sellado HD con polvos translúcidos</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant">30:05</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Module 3 -->
+<div class="accordion-item border border-blush-canvas/30 rounded-xl overflow-hidden bg-surface-muted" onclick="toggleAccordion(this)">
+<button class="w-full flex items-center justify-between p-6 text-left hover:bg-surface-container-low transition-colors">
+<div class="flex items-center gap-4">
+<span class="font-label-md text-label-md text-on-surface-variant bg-surface-container-high w-8 h-8 rounded-full flex items-center justify-center">03</span>
+<h3 class="font-title-md text-title-md text-deep-marsala">Iluminación y Contorno Editorial</h3>
+</div>
+<span class="material-symbols-outlined arrow-icon transition-transform">expand_more</span>
+</button>
+<div class="accordion-content">
+<div class="p-6 pt-0 space-y-4 border-t border-blush-canvas/10">
+<div class="flex items-center justify-between group cursor-pointer hover:bg-white/50 p-2 rounded-lg transition-all">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">play_circle</span>
+<span class="font-body-md text-body-md">Strobing avanzado</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant">14:50</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Instructor Profile -->
+<div class="mt-20 p-10 bg-surface-container-low rounded-3xl border border-blush-canvas/10">
+<h2 class="font-headline-lg text-headline-lg text-deep-marsala mb-10 text-center">Tu Instructora</h2>
+<div class="flex flex-col md:flex-row gap-10 items-center md:items-start text-center md:text-left">
+<div class="w-48 h-48 rounded-full overflow-hidden border-4 border-white shadow-xl flex-shrink-0">
+<img alt="Instructor Profile" class="w-full h-full object-cover" data-alt="A portrait of a confident, sophisticated female makeup artist in her late 30s with flawless makeup and elegant attire. She is in a high-end, minimalist professional studio with warm, soft background lighting that creates a prestigious educational atmosphere. The image is captured with a high-end professional camera, focusing on her warm expression. The color palette is composed of elegant marsala, cream, and apricot tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBX89K3dxB3ZZ-N4y1teqhssKOh7_CkSGK8aupsrV4eqL6tsxAZNyjP1rDrZmsrIBwa25WaCisXVkoj4-7k2gnLpEQFlC4YidqxZ9UtgO_C15WQbfMN00qHo1EgYEIVfwFnXPyVMH0hjCPdyNIfxhJ9eFrrzwHp-B_Mv7W0Z8P2OHG6toBLAy0duUDLoMkGkwob4mhDfSzGDYoR6idD0_f16oo57bQMJKseJLipRZOj9WPxx9Ek7V42834b5DeMjdgCww2vrHWz8Ow"/>
+</div>
+<div class="flex-1">
+<h3 class="font-headline-lg text-headline-lg text-deep-marsala mb-2">Valeria Marsal</h3>
+<p class="font-label-md text-label-md text-primary tracking-widest uppercase mb-4">Senior Artist &amp; Educator</p>
+<p class="text-body-lg font-body-lg text-on-surface-variant mb-6 leading-relaxed">
+                                Con más de 15 años de experiencia en la industria de la moda, Valeria ha trabajado para las portadas de Vogue, Harper's Bazaar y Elle. Su técnica de piel es reconocida internacionalmente por su durabilidad extrema y acabado natural.
+                            </p>
+<div class="flex gap-6 justify-center md:justify-start">
+<div class="text-center">
+<p class="font-display-lg text-[24px] text-deep-marsala font-bold">45k</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Alumnos</p>
+</div>
+<div class="w-[1px] h-12 bg-blush-canvas/30"></div>
+<div class="text-center">
+<p class="font-display-lg text-[24px] text-deep-marsala font-bold">12</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Cursos</p>
+</div>
+<div class="w-[1px] h-12 bg-blush-canvas/30"></div>
+<div class="text-center">
+<p class="font-display-lg text-[24px] text-deep-marsala font-bold">4.9</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Rating</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Reviews -->
+<div class="mt-20">
+<h2 class="font-headline-lg text-headline-lg text-deep-marsala mb-10">Reseñas de estudiantes</h2>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- Review 1 -->
+<div class="p-6 bg-surface rounded-2xl border border-blush-canvas/20 shadow-sm">
+<div class="flex items-center gap-4 mb-4">
+<div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">AM</div>
+<div>
+<p class="font-title-md text-title-md text-deep-marsala">Ana María López</p>
+<div class="flex text-apricot-glow">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+</div>
+</div>
+<p class="text-body-md font-body-md text-on-surface-variant">
+                                "Increíble curso. No sabía que podía lograr este acabado sin que la piel se viera pesada. Los materiales de apoyo son oro puro."
+                            </p>
+</div>
+<!-- Review 2 -->
+<div class="p-6 bg-surface rounded-2xl border border-blush-canvas/20 shadow-sm">
+<div class="flex items-center gap-4 mb-4">
+<div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">CG</div>
+<div>
+<p class="font-title-md text-title-md text-deep-marsala">Carla Gómez</p>
+<div class="flex text-apricot-glow">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 0;">star</span>
+</div>
+</div>
+</div>
+<p class="text-body-md font-body-md text-on-surface-variant">
+                                "La técnica es muy avanzada pero bien explicada. Definitivamente ha elevado mi trabajo editorial a otro nivel."
+                            </p>
+</div>
+</div>
+</div>
+</div>
+<!-- Sidebar Sticky CTA -->
+<aside class="lg:col-span-1">
+<div class="sticky-card bg-white p-8 rounded-3xl shadow-2xl shadow-primary/5 border border-blush-canvas/10">
+<div class="mb-8">
+<div class="flex items-baseline gap-2 mb-2">
+<span class="font-display-lg text-display-lg text-deep-marsala">$149.99</span>
+<span class="text-on-surface-variant line-through font-title-md text-title-md">$299.99</span>
+</div>
+<p class="text-error font-label-md text-label-md flex items-center gap-1">
+<span class="material-symbols-outlined text-[18px]">timer</span>
+                            50% DE DESCUENTO POR 24 HORAS
+                        </p>
+</div>
+<button class="w-full bg-apricot-glow text-primary font-title-md text-title-md font-bold py-5 rounded-2xl mb-6 shadow-lg shadow-apricot-glow/30 hover:scale-[1.02] active:scale-95 transition-all duration-200 uppercase tracking-wide">
+                        Comprar Curso
+                    </button>
+<button class="w-full bg-white border-2 border-primary text-primary font-title-md text-title-md font-bold py-5 rounded-2xl mb-8 hover:bg-surface-container-low active:scale-95 transition-all duration-200">
+                        Añadir al carrito
+                    </button>
+<div class="space-y-4">
+<p class="font-label-md text-label-md text-deep-marsala uppercase mb-2">Este curso incluye:</p>
+<ul class="space-y-3">
+<li class="flex items-center gap-3 text-on-surface-variant">
+<span class="material-symbols-outlined text-primary text-[20px]">videocam</span>
+<span class="font-body-md text-body-md">12 horas de video HD</span>
+</li>
+<li class="flex items-center gap-3 text-on-surface-variant">
+<span class="material-symbols-outlined text-primary text-[20px]">description</span>
+<span class="font-body-md text-body-md">Guía de productos en PDF</span>
+</li>
+<li class="flex items-center gap-3 text-on-surface-variant">
+<span class="material-symbols-outlined text-primary text-[20px]">assignment</span>
+<span class="font-body-md text-body-md">5 Proyectos prácticos</span>
+</li>
+<li class="flex items-center gap-3 text-on-surface-variant">
+<span class="material-symbols-outlined text-primary text-[20px]">workspace_premium</span>
+<span class="font-body-md text-body-md">Certificado de Finalización</span>
+</li>
+</ul>
+</div>
+<div class="mt-8 pt-8 border-t border-blush-canvas/20">
+<div class="flex items-center justify-center gap-4 text-on-surface-variant/60">
+<span class="material-symbols-outlined">payments</span>
+<span class="material-symbols-outlined">credit_card</span>
+<span class="material-symbols-outlined">account_balance_wallet</span>
+</div>
+</div>
+</div>
+</aside>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-surface-container-lowest dark:bg-surface-dim border-t border-blush-canvas/20 mt-20">
+<div class="max-w-container-max mx-auto px-gutter py-12 flex flex-col md:flex-row justify-between items-center gap-8">
+<div class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-deep-marsala dark:text-primary-fixed">
+                Makeup Academy
+            </div>
+<div class="flex flex-wrap justify-center gap-8">
+<a class="font-body-md text-body-md text-on-surface-variant dark:text-outline-variant hover:text-primary transition-all hover:underline" href="#">Privacidad</a>
+<a class="font-body-md text-body-md text-on-surface-variant dark:text-outline-variant hover:text-primary transition-all hover:underline" href="#">Términos de Uso</a>
+<a class="font-body-md text-body-md text-on-surface-variant dark:text-outline-variant hover:text-primary transition-all hover:underline" href="#">Contacto</a>
+<a class="font-body-md text-body-md text-on-surface-variant dark:text-outline-variant hover:text-primary transition-all hover:underline" href="#">Ayuda</a>
+</div>
+<div class="font-body-md text-body-md text-on-surface-variant dark:text-outline-variant">
+                © 2024 Makeup Academy. Todos los derechos reservados.
+            </div>
+</div>
+</footer>
+<script>
+        function toggleAccordion(element) {
+            // Find all accordion items
+            const allItems = document.querySelectorAll('.accordion-item');
+            
+            // Toggle active class on current element
+            const isActive = element.classList.contains('accordion-active');
+            
+            // Optional: Close others
+            // allItems.forEach(item => item.classList.remove('accordion-active'));
+            
+            if (isActive) {
+                element.classList.remove('accordion-active');
+            } else {
+                element.classList.add('accordion-active');
+            }
+        }
+    </script>
+</body></html>

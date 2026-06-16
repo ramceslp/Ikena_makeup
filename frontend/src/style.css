@@ -1,0 +1,143 @@
+@import "tailwindcss";
+
+/*
+  Design system: "Ethereal Academy" (Material Design 3) — ported from Stitch.
+  Source of truth: stitch_marsala_makeup_academy_platform/.../ethereal_academy/DESIGN.md
+  Tailwind v4 CSS-first theme. Token names match the Stitch-generated markup
+  so view migration is copy-paste compatible.
+
+  NOTE: brand-* tokens below are LEGACY. They keep the not-yet-migrated views
+  working during the migration. Remove them once every view uses MD3 tokens.
+*/
+
+@theme {
+  /* ---- Legacy brand tokens (remove after full migration) ---- */
+  --color-brand-primary: #6a3a3c;
+  --color-brand-secondary: #f4acab;
+  --color-brand-accent: #ffa580;
+  --color-brand-track: #e0e0e0;
+
+  /* ---- Surfaces ---- */
+  --color-surface: #fcf9f9;
+  --color-surface-dim: #dcd9d9;
+  --color-surface-bright: #fcf9f9;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f6f3f3;
+  --color-surface-container: #f0eded;
+  --color-surface-container-high: #eae7e7;
+  --color-surface-container-highest: #e4e2e2;
+  --color-surface-variant: #e4e2e2;
+  --color-surface-tint: #845052;
+  --color-surface-muted: #fdf9f8;
+  --color-on-surface: #1b1b1c;
+  --color-on-surface-variant: #514343;
+  --color-inverse-surface: #303031;
+  --color-inverse-on-surface: #f3f0f0;
+
+  /* ---- Background ---- */
+  --color-background: #fcf9f9;
+  --color-on-background: #1b1b1c;
+
+  /* ---- Outline ---- */
+  --color-outline: #847373;
+  --color-outline-variant: #d6c2c2;
+
+  /* ---- Primary ---- */
+  --color-primary: #4f2427;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #6a3a3c;
+  --color-on-primary-container: #e7a6a7;
+  --color-inverse-primary: #f9b5b7;
+  --color-primary-fixed: #ffdada;
+  --color-primary-fixed-dim: #f9b5b7;
+  --color-on-primary-fixed: #340f12;
+  --color-on-primary-fixed-variant: #69393b;
+
+  /* ---- Secondary ---- */
+  --color-secondary: #874f4f;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #fdb4b3;
+  --color-on-secondary-container: #794343;
+  --color-secondary-fixed: #ffdad9;
+  --color-secondary-fixed-dim: #fdb4b3;
+  --color-on-secondary-fixed: #360e0f;
+  --color-on-secondary-fixed-variant: #6b3838;
+
+  /* ---- Tertiary ---- */
+  --color-tertiary: #582005;
+  --color-on-tertiary: #ffffff;
+  --color-tertiary-container: #743519;
+  --color-on-tertiary-container: #f9a07c;
+  --color-tertiary-fixed: #ffdbce;
+  --color-tertiary-fixed-dim: #ffb598;
+  --color-on-tertiary-fixed: #370e00;
+  --color-on-tertiary-fixed-variant: #733518;
+
+  /* ---- Error ---- */
+  --color-error: #ba1a1a;
+  --color-on-error: #ffffff;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #93000a;
+
+  /* ---- Brand accents (named) ---- */
+  --color-deep-marsala: #6a3a3c;
+  --color-blush-canvas: #f4acab;
+  --color-apricot-glow: #ffa580;
+
+  /* ---- Typography: families ---- */
+  --font-display-lg: "Hanken Grotesk", sans-serif;
+  --font-headline-lg: "Hanken Grotesk", sans-serif;
+  --font-headline-lg-mobile: "Hanken Grotesk", sans-serif;
+  --font-title-md: "Hanken Grotesk", sans-serif;
+  --font-body-lg: "Hanken Grotesk", sans-serif;
+  --font-body-md: "Hanken Grotesk", sans-serif;
+  --font-label-md: "JetBrains Mono", monospace;
+  --font-label-sm: "JetBrains Mono", monospace;
+
+  /* ---- Typography: type scale (size + line-height + weight + tracking) ---- */
+  --text-display-lg: 48px;
+  --text-display-lg--line-height: 56px;
+  --text-display-lg--font-weight: 700;
+  --text-display-lg--letter-spacing: -0.02em;
+
+  --text-headline-lg: 32px;
+  --text-headline-lg--line-height: 40px;
+  --text-headline-lg--font-weight: 600;
+
+  --text-headline-lg-mobile: 28px;
+  --text-headline-lg-mobile--line-height: 36px;
+  --text-headline-lg-mobile--font-weight: 600;
+
+  --text-title-md: 20px;
+  --text-title-md--line-height: 28px;
+  --text-title-md--font-weight: 500;
+
+  --text-body-lg: 18px;
+  --text-body-lg--line-height: 28px;
+  --text-body-lg--font-weight: 400;
+
+  --text-body-md: 16px;
+  --text-body-md--line-height: 24px;
+  --text-body-md--font-weight: 400;
+
+  --text-label-md: 14px;
+  --text-label-md--line-height: 20px;
+  --text-label-md--font-weight: 500;
+  --text-label-md--letter-spacing: 0.05em;
+
+  --text-label-sm: 12px;
+  --text-label-sm--line-height: 16px;
+  --text-label-sm--font-weight: 500;
+  --text-label-sm--letter-spacing: 0.08em;
+
+  /* ---- Spacing (named) ---- */
+  --spacing-base: 8px;
+  --spacing-gutter: 24px;
+  --spacing-margin-mobile: 16px;
+  --spacing-margin-desktop: 40px;
+  --spacing-container-max: 1280px;
+
+  /* ---- Radius ---- */
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+}

@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+
+<html class="light" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            backdrop-filter: blur(12px);
+            background: rgba(255, 255, 255, 0.8);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #d6c2c2;
+            border-radius: 10px;
+        }
+        .tinted-shadow {
+            box-shadow: 0 10px 30px -10px rgba(106, 58, 60, 0.08);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-surface": "#1b1b1c",
+                      "primary": "#4f2427",
+                      "on-surface-variant": "#514343",
+                      "blush-canvas": "#F4ACAB",
+                      "surface-container-low": "#f6f3f3",
+                      "on-secondary": "#ffffff",
+                      "primary-fixed": "#ffdada",
+                      "surface-container-highest": "#e4e2e2",
+                      "apricot-glow": "#FFA580",
+                      "outline": "#847373",
+                      "surface-container-lowest": "#ffffff",
+                      "on-primary-fixed": "#340f12",
+                      "error-container": "#ffdad6",
+                      "on-primary-fixed-variant": "#69393b",
+                      "on-primary-container": "#e7a6a7",
+                      "inverse-surface": "#303031",
+                      "on-error": "#ffffff",
+                      "tertiary": "#582005",
+                      "secondary": "#874f4f",
+                      "primary-fixed-dim": "#f9b5b7",
+                      "on-tertiary": "#ffffff",
+                      "tertiary-container": "#743519",
+                      "background": "#fcf9f9",
+                      "surface-container-high": "#eae7e7",
+                      "surface-container": "#f0eded",
+                      "surface-bright": "#fcf9f9",
+                      "on-tertiary-container": "#f9a07c",
+                      "on-primary": "#ffffff",
+                      "error": "#ba1a1a",
+                      "on-background": "#1b1b1c",
+                      "on-secondary-container": "#794343",
+                      "primary-container": "#6a3a3c",
+                      "on-tertiary-fixed": "#370e00",
+                      "secondary-fixed": "#ffdad9",
+                      "secondary-fixed-dim": "#fdb4b3",
+                      "outline-variant": "#d6c2c2",
+                      "secondary-container": "#fdb4b3",
+                      "on-tertiary-fixed-variant": "#733518",
+                      "on-secondary-fixed-variant": "#6b3838",
+                      "inverse-primary": "#f9b5b7",
+                      "surface": "#fcf9f9",
+                      "tertiary-fixed": "#ffdbce",
+                      "surface-dim": "#dcd9d9",
+                      "tertiary-fixed-dim": "#ffb598",
+                      "on-error-container": "#93000a",
+                      "on-secondary-fixed": "#360e0f",
+                      "deep-marsala": "#6A3A3C",
+                      "inverse-on-surface": "#f3f0f0",
+                      "surface-tint": "#845052",
+                      "surface-muted": "#FDF9F8",
+                      "surface-variant": "#e4e2e2"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "base": "8px",
+                      "gutter": "24px",
+                      "margin-mobile": "16px",
+                      "container-max": "1280px",
+                      "margin-desktop": "40px"
+              },
+              "fontFamily": {
+                      "title-md": ["Hanken Grotesk"],
+                      "body-md": ["Hanken Grotesk"],
+                      "label-md": ["JetBrains Mono"],
+                      "headline-lg": ["Hanken Grotesk"],
+                      "body-lg": ["Hanken Grotesk"],
+                      "label-sm": ["JetBrains Mono"],
+                      "display-lg": ["Hanken Grotesk"],
+                      "headline-lg-mobile": ["Hanken Grotesk"]
+              },
+              "fontSize": {
+                      "title-md": ["20px", {"lineHeight": "28px", "fontWeight": "500"}],
+                      "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                      "headline-lg": ["32px", {"lineHeight": "40px", "fontWeight": "600"}],
+                      "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                      "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.08em", "fontWeight": "500"}],
+                      "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "600"}]
+              }
+            },
+          },
+        }
+    </script>
+</head>
+<body class="bg-background text-on-surface font-body-md selection:bg-blush-canvas/30 overflow-hidden">
+<div class="flex h-screen overflow-hidden">
+<!-- Sidebar Navigation -->
+<aside class="bg-surface-muted dark:bg-surface-container-low h-screen w-64 fixed left-0 top-0 z-40 flex flex-col h-full py-base px-4 border-r border-blush-canvas/30 shadow-md dark:shadow-none">
+<div class="mb-10 px-2 flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary-container">brush</span>
+</div>
+<div>
+<h1 class="font-title-md text-title-md font-semibold text-deep-marsala dark:text-primary-fixed">Panel Instructor</h1>
+<p class="font-label-md text-[10px] text-outline opacity-70">Gestión Académica</p>
+</div>
+</div>
+<nav class="flex-1 space-y-2">
+<!-- Dashboard Tab (Active) -->
+<a class="flex items-center gap-3 bg-primary-container/20 dark:bg-primary-container text-primary dark:text-on-primary-container rounded-xl p-3 hover:translate-x-1 duration-300 active:scale-98 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<!-- Mis Cursos Tab -->
+<a class="flex items-center gap-3 text-on-surface-variant dark:text-outline-variant p-3 hover:bg-surface-container-highest dark:hover:bg-surface-container transition-all hover:translate-x-1 duration-300 active:scale-98 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="video_library">video_library</span>
+<span class="font-label-md text-label-md">Mis Cursos</span>
+</a>
+<!-- Revisión de Tareas Tab -->
+<a class="flex items-center gap-3 text-on-surface-variant dark:text-outline-variant p-3 hover:bg-surface-container-highest dark:hover:bg-surface-container transition-all hover:translate-x-1 duration-300 active:scale-98 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="assignment_turned_in">assignment_turned_in</span>
+<span class="font-label-md text-label-md">Revisión de Tareas</span>
+</a>
+</nav>
+<div class="mt-auto space-y-4 pt-6 border-t border-blush-canvas/20">
+<button class="w-full bg-apricot-glow text-primary font-title-md py-3 rounded-xl tinted-shadow hover:scale-[1.02] active:scale-95 transition-all">
+                    Crear Nuevo Curso
+                </button>
+<div class="space-y-1">
+<a class="flex items-center gap-3 text-on-surface-variant dark:text-outline-variant p-3 hover:bg-surface-container-highest transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-label-md text-label-md">Configuración</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant dark:text-outline-variant p-3 hover:bg-error/10 hover:text-error transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span class="font-label-md text-label-md">Cerrar Sesión</span>
+</a>
+</div>
+</div>
+</aside>
+<!-- Main Canvas -->
+<main class="flex-1 ml-64 overflow-y-auto custom-scrollbar h-full bg-background p-margin-desktop">
+<!-- Header Section -->
+<header class="mb-12 flex justify-between items-end">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-primary tracking-tight">Hola, Instructor Marina</h2>
+<p class="text-on-surface-variant mt-1">Aquí tienes el resumen de hoy y las prácticas pendientes.</p>
+</div>
+<div class="flex gap-4 items-center">
+<div class="text-right mr-2">
+<p class="font-label-md text-label-md text-primary font-bold">12 Tareas Pendientes</p>
+<p class="text-xs text-outline tracking-wider uppercase">En las últimas 24h</p>
+</div>
+<img alt="Instructor Profile" class="w-12 h-12 rounded-full border-2 border-blush-canvas object-cover" data-alt="A professional close-up portrait of a sophisticated woman in her 30s with flawless skin and elegant makeup. She has soft studio lighting that highlights her features against a minimal beige background, embodying a high-end educator aesthetic with a warm and authoritative expression. The image quality is sharp and luxurious." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB8O5YzP8dweKD1xkNOLP8WF1Z6tNe9L1N0JhHQvXt3WnGfOB3eNkCm37BJy8CqY-VpQxi7f901CxB-aTkR7U1zxOUZDUTQRYBOxJ6DYDVW_zICUJS6-ttkaCMase6_O0FC34K1ufEvXaf3al23-UZSQbGC_Ij0TOB_KhKsNhj3UCQVNxrSond9_w0sjn_Bax-KGpgm8svF5rPp2FEGURmWbVY7f11bO2V1xs5bp_U9IBXmGnkLZricREpVGHJrjLr_ytGtK0qePng"/>
+</div>
+</header>
+<!-- Bento Grid Dashboard -->
+<div class="grid grid-cols-12 gap-gutter mb-12">
+<!-- Sales Metrics -->
+<div class="col-span-8 bg-surface-muted border border-blush-canvas/20 rounded-3xl p-8 tinted-shadow relative overflow-hidden group">
+<div class="flex justify-between items-start mb-8 relative z-10">
+<div>
+<h3 class="font-title-md text-title-md text-primary mb-1">Rendimiento de Ventas</h3>
+<p class="text-on-surface-variant text-sm">Ingresos mensuales y crecimiento de alumnas</p>
+</div>
+<div class="bg-white/50 px-4 py-2 rounded-full flex gap-4 text-sm font-label-md border border-blush-canvas/10">
+<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-apricot-glow"></span> Alumnas</span>
+<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-primary"></span> Ventas</span>
+</div>
+</div>
+<!-- Clean Mock Chart -->
+<div class="h-48 w-full flex items-end justify-between gap-2 px-2 relative z-10">
+<div class="w-full bg-primary/10 rounded-t-lg h-[40%] transition-all duration-500 group-hover:h-[60%]"></div>
+<div class="w-full bg-primary/10 rounded-t-lg h-[55%] transition-all duration-500 group-hover:h-[45%]"></div>
+<div class="w-full bg-primary/10 rounded-t-lg h-[30%] transition-all duration-500 group-hover:h-[70%]"></div>
+<div class="w-full bg-primary/10 rounded-t-lg h-[80%] transition-all duration-500 group-hover:h-[65%]"></div>
+<div class="w-full bg-primary/10 rounded-t-lg h-[45%] transition-all duration-500 group-hover:h-[85%]"></div>
+<div class="w-full bg-primary/10 rounded-t-lg h-[90%] transition-all duration-500 group-hover:h-[95%]"></div>
+<div class="w-full bg-primary/10 rounded-t-lg h-[60%] transition-all duration-500 group-hover:h-[50%]"></div>
+</div>
+<div class="flex justify-between mt-4 text-[10px] text-outline font-label-md px-2 uppercase tracking-widest relative z-10">
+<span>Lunes</span><span>Martes</span><span>Miércoles</span><span>Jueves</span><span>Viernes</span><span>Sábado</span><span>Domingo</span>
+</div>
+</div>
+<!-- Small Metric Cards -->
+<div class="col-span-4 flex flex-col gap-gutter">
+<div class="bg-surface-muted border border-blush-canvas/20 rounded-3xl p-6 flex flex-col justify-between h-full tinted-shadow">
+<span class="material-symbols-outlined text-apricot-glow text-3xl" data-icon="groups">groups</span>
+<div>
+<p class="text-on-surface-variant font-label-md text-xs uppercase tracking-widest">Alumnas Activas</p>
+<h4 class="font-display-lg text-[42px] text-primary">1,284</h4>
+</div>
+<div class="flex items-center text-xs text-green-600 gap-1 mt-2">
+<span class="material-symbols-outlined text-sm">trending_up</span>
+<span>+12% este mes</span>
+</div>
+</div>
+<div class="bg-primary-container text-on-primary rounded-3xl p-6 flex flex-col justify-between h-full shadow-lg">
+<span class="material-symbols-outlined text-apricot-glow text-3xl" data-icon="star">star</span>
+<div>
+<p class="text-blush-canvas font-label-md text-xs uppercase tracking-widest">Calificación Media</p>
+<h4 class="font-display-lg text-[42px] text-on-primary">4.9</h4>
+</div>
+<p class="text-xs text-blush-canvas/60">Basado en 850 reseñas</p>
+</div>
+</div>
+</div>
+<!-- Review Tasks Section -->
+<section class="mb-12">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-title-md text-title-md text-primary">Tareas por Revisar <span class="ml-2 px-3 py-1 bg-blush-canvas/20 text-primary text-xs rounded-full">12 pendientes</span></h3>
+<button class="text-primary hover:underline text-sm font-semibold flex items-center gap-1">
+                        Ver todas <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+<div class="grid grid-cols-4 gap-6">
+<!-- Task Item -->
+<div class="cursor-pointer group" onclick="openReviewModal()">
+<div class="aspect-square rounded-2xl overflow-hidden bg-surface-container-high border border-blush-canvas/20 relative">
+<img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" data-alt="A close-up of a glamorous makeup look featuring detailed eyeliner and shimmering eyeshadow on a professional model. High-contrast lighting highlights the textures of the makeup against a soft-focus background, captured in a clean, editorial beauty style consistent with professional academy portfolio shots." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCFaWl1TiT3ejerGd-26qbZvVmU5wZQckkFcN9hVLm_sEd_8AXd9f30fFrmWeB6fUVAC6p2Xz_PrRjWuNYWR7S3Z90K2FMxWGWoKXeo5bh34PN3Y5R0jZtGtiZvy7wFgHMSUrVBtYjh9kUqmbxv-Pl5QpH2uW8lF6kbX-Oum5wSrTyHiv6-SN6UoUYcpsYaJC21HhVLoQWXEuTnGPaX3Ll9IFPcRlgotb1iwpu6PABSqI2bdyfTepSoTTDwRl4lenZTCgKKwfMdBUI"/>
+<div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+<span class="bg-white/90 text-primary px-4 py-2 rounded-full text-sm font-bold shadow-xl">Revisar</span>
+</div>
+</div>
+<div class="mt-3">
+<p class="text-sm font-bold text-primary">Clara Montes</p>
+<p class="text-xs text-outline">Eyeliner Gráfico Avanzado</p>
+<div class="mt-2 flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-apricot-glow"></span>
+<span class="text-[10px] uppercase font-label-md text-outline">Hace 2 horas</span>
+</div>
+</div>
+</div>
+<!-- Task Item 2 -->
+<div class="cursor-pointer group">
+<div class="aspect-square rounded-2xl overflow-hidden bg-surface-container-high border border-blush-canvas/20 relative">
+<img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" data-alt="Close-up of a bride's face with delicate, natural wedding makeup. The photography is soft and ethereal, using high-key lighting to emphasize glowing skin and neutral tones. The aesthetic is sophisticated academic, showing mastery of subtle color blending and texture in professional bridal artistry." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCgiSl2LI2xd39jszNj4JGn3xlPg3TzUwaiQUgffxMKpT34rag2AxQRtajUEGYYt50l00Xr0L7sBgIHXm1UbeEAhKQZlxVseu2ai081cqKpjM_EheZE7NwJA4-Ccq4LnmzZ3I8wXSupIqJmK819BRrujVeWrKVDgFs6rEdaI01ybsTijCovgaiAOpyI5VrHdf3rHEpxbgnhbCWH2YjvcUXaDv3mdudWYKhbxSkM3gkgW78WlmZy_tIfMBMuys3HNVk-1SemoJY5MIc"/>
+<div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+<span class="bg-white/90 text-primary px-4 py-2 rounded-full text-sm font-bold shadow-xl">Revisar</span>
+</div>
+</div>
+<div class="mt-3">
+<p class="text-sm font-bold text-primary">Sofía Aranza</p>
+<p class="text-xs text-outline">Piel Blindada para Novias</p>
+<div class="mt-2 flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-apricot-glow"></span>
+<span class="text-[10px] uppercase font-label-md text-outline">Hace 4 horas</span>
+</div>
+</div>
+</div>
+<!-- Task Item 3 -->
+<div class="cursor-pointer group">
+<div class="aspect-square rounded-2xl overflow-hidden bg-surface-container-high border border-blush-canvas/20 relative">
+<img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" data-alt="Detailed macro shot of dramatic red lip makeup with high gloss and perfect definition. The lighting is focused and professional, creating a luxury cosmetic advertising look. The image represents a technical practice submission in a high-end makeup academy setting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBXAwQBBBL3Ts6_l7v-EqiEhtChpHQw4kneGNJqED8XB1-2SOF9PXU2AIAXuvYXDLcT1CpsdKasstPPukX3DOn2HM1G49g6_DGkp6G2S5LUIrdPx6vfgHMEAUy_CLOuRzcqvmGQ6JJ2ZBoh-K8v_w17wbFgxkUWPhApnBX_euPZa4EYwcW70hfmcQWwymufySsgAE0aZ0FZ3oHBt_TUOKN1kA--heCQERDLoPBxx1vgdQTfdvEDfpNsb41Pqnx3x0TZ1WTQkoW4Ugs"/>
+<div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+<span class="bg-white/90 text-primary px-4 py-2 rounded-full text-sm font-bold shadow-xl">Revisar</span>
+</div>
+</div>
+<div class="mt-3">
+<p class="text-sm font-bold text-primary">Lucía Rey</p>
+<p class="text-xs text-outline">Diseño de Labios Editorial</p>
+<div class="mt-2 flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-apricot-glow"></span>
+<span class="text-[10px] uppercase font-label-md text-outline">Hace 5 horas</span>
+</div>
+</div>
+</div>
+<!-- Task Item 4 -->
+<div class="cursor-pointer group">
+<div class="aspect-square rounded-2xl overflow-hidden bg-surface-container-high border border-blush-canvas/20 relative">
+<img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" data-alt="Professional makeup artistry showing a creative 'Avant-Garde' look with vibrant colors and geometric patterns on the face. Studio lighting is crisp and the background is a solid deep red to match the academy's primary palette. High-end editorial finish." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC1QxmECcXcgIjRjoCARFKb3RbOwPV17_sb69mPEwpiG_iQckF0j8UTQfmZ4vsomwA9eRR6Yggzv3RmBg1Ab4ZvQaCHDoHVe54_VJ35UR6sOqg544ATNiHgZqSIDyup25TvYN1K4dhW9PFiQfGnomjM-NXIwpWZtQOkV5OrkfUD5CLyRPoMWGT2Bq6TFSNXUqnuXLEZfhQFe4nu8p5jbQ7qKRIovpayMPaJa1U-ubb8qrIDlxPCGK9c6ULVxNW2A8nxiHPMWj1bpOI"/>
+<div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+<span class="bg-white/90 text-primary px-4 py-2 rounded-full text-sm font-bold shadow-xl">Revisar</span>
+</div>
+</div>
+<div class="mt-3">
+<p class="text-sm font-bold text-primary">Elena Vargas</p>
+<p class="text-xs text-outline">Morfología y Colorimetría</p>
+<div class="mt-2 flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-apricot-glow"></span>
+<span class="text-[10px] uppercase font-label-md text-outline">Ayer</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+</div>
+<!-- Task Review Overlay (Modal) -->
+<div class="fixed inset-0 z-50 hidden" id="reviewModal">
+<div class="absolute inset-0 bg-primary/40 backdrop-blur-md" onclick="closeReviewModal()"></div>
+<div class="absolute right-0 top-0 h-full w-[800px] bg-background shadow-2xl overflow-y-auto custom-scrollbar animate-slide-in p-margin-desktop">
+<button class="absolute top-6 left-6 w-10 h-10 rounded-full hover:bg-surface-container-high flex items-center justify-center transition-colors" onclick="closeReviewModal()">
+<span class="material-symbols-outlined">close</span>
+</button>
+<div class="max-w-2xl mx-auto pt-8">
+<div class="mb-10 text-center">
+<span class="text-xs font-label-md uppercase tracking-widest text-outline mb-2 block">Corrección de Práctica</span>
+<h2 class="font-headline-lg text-headline-lg text-primary">Clara Montes</h2>
+<p class="text-on-surface-variant italic">Módulo 4: Eyeliner Gráfico Avanzado</p>
+</div>
+<!-- Before & After Comparison -->
+<div class="grid grid-cols-2 gap-4 mb-10">
+<div class="space-y-3">
+<span class="text-[10px] font-label-md uppercase tracking-widest text-outline block text-center">Antes (Referencia)</span>
+<div class="aspect-[3/4] rounded-2xl overflow-hidden border border-blush-canvas/30 shadow-inner">
+<img class="w-full h-full object-cover" data-alt="A professional reference image of a model without makeup, with clear skin and natural features. Soft neutral studio lighting ensures every detail is visible for comparison. The atmosphere is academic and clean, serving as the baseline for a makeup student's practice session." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDxmnNB7VkEf9vtBbQO2ANb0wAZRJy7P4BdjlMCtx1Mrdr8Q0s3QrPZL3RqUgtxP9TcdMqVmQtg_gn-XBzQlXYQ4SBKWKKmEZf7SIk0T67K2_vtTbI-wVhk-1Xt3JJNe0xY9Dht_91nV50OVCx_UG1bezDTZrMx-xA1euPRvB6HKjrtAyqYitwVpLnQlmOPiB-Qc0NB-96P9P4QfMTPKuVP4pF34RDr_vPt1sHOc8yRcEvN8Eb5TWYgn42XS1XdwC8g-ZH2Nr3PzIY"/>
+</div>
+</div>
+<div class="space-y-3">
+<span class="text-[10px] font-label-md uppercase tracking-widest text-outline block text-center">Después (Práctica Alumna)</span>
+<div class="aspect-[3/4] rounded-2xl overflow-hidden border-2 border-apricot-glow shadow-xl">
+<img class="w-full h-full object-cover" data-alt="A student's high-quality makeup application on a model, featuring a sharp graphic eyeliner and professional blending. The lighting is high-end editorial, emphasizing the contrast and technique. The photo is taken from the same angle as the reference for accurate comparison." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAi4dk8ML2Liai5tmsPsz99tnbRM17IG4wbSPV6Myu9FxhtyueN2CFdkW6HGAHK_e0WXvmi-pB4rpFiTZdqJ99NHlWbM-dOj9Pu4Kc1oay393pswWyvgqD_0ladXyHoIsiSMyPHk0-curzxLuVIK2jhl7AZoM9lud1jJqW_BNWbyIYLdUoeyImI7a4lccQMxBKgAsy9fs1hHG_R_HPlpWypBD99DiM8wvMJvYGd-CWmQ6mAqbJw4-PnTIBU1PN9ojhHCg4w-ADADxw"/>
+</div>
+</div>
+</div>
+<!-- Feedback Area -->
+<div class="space-y-6">
+<div>
+<label class="font-label-md text-xs uppercase tracking-widest text-primary mb-3 block font-bold">Feedback del Instructor</label>
+<textarea class="w-full h-40 p-4 bg-surface-muted border-none focus:ring-1 focus:ring-primary rounded-2xl text-deep-marsala font-body-md placeholder:text-outline/50 tinted-shadow resize-none" placeholder="Escribe tus observaciones aquí..."></textarea>
+</div>
+<div class="flex gap-4">
+<button class="flex-1 py-4 px-6 border border-blush-canvas text-primary font-bold rounded-xl hover:bg-blush-canvas/10 transition-colors">
+                            Solicitar Corrección
+                        </button>
+<button class="flex-[2] py-4 px-6 bg-apricot-glow text-primary font-bold rounded-xl tinted-shadow hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2">
+<span>Aprobar y Enviar</span>
+<span class="material-symbols-outlined text-xl">send</span>
+</button>
+</div>
+</div>
+<!-- Student Notes -->
+<div class="mt-12 p-6 bg-surface-container-low rounded-2xl border border-blush-canvas/10">
+<h4 class="font-label-md text-xs uppercase tracking-widest text-primary mb-3 font-bold">Notas de la Alumna</h4>
+<p class="text-sm text-on-surface-variant leading-relaxed">
+                        "Me costó un poco mantener la simetría en el ojo izquierdo debido a la forma del párpado, utilicé el pincel de precisión #001 que sugeriste en el video. ¡Espero tu feedback!"
+                    </p>
+</div>
+</div>
+</div>
+</div>
+<script>
+        function openReviewModal() {
+            const modal = document.getElementById('reviewModal');
+            modal.classList.remove('hidden');
+            modal.querySelector('.animate-slide-in').animate([
+                { transform: 'translateX(100%)' },
+                { transform: 'translateX(0)' }
+            ], {
+                duration: 400,
+                easing: 'cubic-bezier(0.16, 1, 0.3, 1)'
+            });
+        }
+
+        function closeReviewModal() {
+            const modal = document.getElementById('reviewModal');
+            const panel = modal.querySelector('.animate-slide-in') || modal.children[1];
+            
+            panel.animate([
+                { transform: 'translateX(0)' },
+                { transform: 'translateX(100%)' }
+            ], {
+                duration: 300,
+                easing: 'ease-in'
+            }).onfinish = () => {
+                modal.classList.add('hidden');
+            };
+        }
+    </script>
+<style>
+        @keyframes slideIn {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+        }
+        .animate-slide-in {
+            animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+    </style>
+</body></html>

@@ -1,0 +1,191 @@
+<script setup>
+import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '../stores/auth.js'
+import AuthLayout from '../components/auth/AuthLayout.vue'
+import BaseInput from '../components/ui/BaseInput.vue'
+import GoogleButton from '../components/auth/GoogleButton.vue'
+
+const router = useRouter()
+const authStore = useAuthStore()
+
+const form = ref({
+  name: '',
+  email: '',
+  password: '',
+  password_confirmation: '',
+})
+const errors = ref({})
+const serverError = ref('')
+const loading = ref(false)
+const googleLoading = ref(false)
+
+const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+const googleEnabled = computed(() => !!googleClientId)
+
+function validate() {
+  errors.value = {}
+  if (!form.value.name) {
+    errors.value.name = 'El nombre es requerido'
+  }
+  if (!form.value.email) {
+    errors.value.email = 'El correo es requerido'
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.value.email)) {
+    errors.value.email = 'Ingresa un correo válido'
+  }
+  if (!form.value.password) {
+    errors.value.password = 'La contraseña es requerida'
+  } else if (form.value.password.length < 8) {
+    errors.value.password = 'La contraseña debe tener al menos 8 caracteres'
+  }
+  if (!form.value.password_confirmation) {
+    errors.value.password_confirmation = 'Confirma tu contraseña'
+  } else if (form.value.password !== form.value.password_confirmation) {
+    errors.value.password_confirmation = 'Las contraseñas no coinciden'
+  }
+  return Object.keys(errors.value).length === 0
+}
+
+async function handleSubmit() {
+  serverError.value = ''
+  if (!validate()) return
+
+  loading.value = true
+  try {
+    await authStore.register(form.value)
+    router.push('/')
+  } catch (err) {
+    const data = err.response?.data
+    if (data?.errors) {
+      errors.value = data.errors
+    } else {
+      serverError.value = data?.message || 'Error al crear la cuenta. Intenta de nuevo.'
+    }
+  } finally {
+    loading.value = false
+  }
+}
+
+function handleGoogleRegister() {
+  if (!googleEnabled.value) return
+
+  googleLoading.value = true
+  const script = document.createElement('script')
+  script.src = 'https://accounts.google.com/gsi/client'
+  script.async = true
+  document.head.appendChild(script)
+  script.onload = () => {
+    window.google.accounts.id.initialize({
+      client_id: googleClientId,
+      callback: async (response) => {
+        try {
+          await authStore.loginWithGoogle(response.credential)
+          router.push('/')
+        } catch (err) {
+          serverError.value = err.response?.data?.message || 'Error al registrarse con Google'
+        } finally {
+          googleLoading.value = false
+        }
+      },
+    })
+    window.google.accounts.id.prompt()
+  }
+  script.onerror = () => {
+    serverError.value = 'No se pudo cargar Google Sign-In'
+    googleLoading.value = false
+  }
+}
+</script>
+
+<template>
+  <AuthLayout>
+    <template #tagline>Empieza tu formación en makeup profesional</template>
+
+    <!-- Server error alert -->
+    <div
+      v-if="serverError"
+      role="alert"
+      class="mb-5 p-3 bg-error-container border border-error/30 rounded-xl font-body-md text-body-md text-on-error-container flex items-start gap-2"
+    >
+      <span class="material-symbols-outlined text-[18px] shrink-0 mt-0.5" aria-hidden="true">
+        error
+      </span>
+      {{ serverError }}
+    </div>
+
+    <!-- Register form -->
+    <form class="space-y-5" @submit.prevent="handleSubmit">
+      <BaseInput
+        v-model="form.name"
+        id="register-name"
+        type="text"
+        label="NOMBRE"
+        placeholder="Tu nombre"
+        autocomplete="name"
+        :error="errors.name"
+      />
+
+      <BaseInput
+        v-model="form.email"
+        id="register-email"
+        type="email"
+        label="CORREO ELECTRÓNICO"
+        placeholder="estudiante@academia.com"
+        autocomplete="email"
+        :error="errors.email"
+      />
+
+      <BaseInput
+        v-model="form.password"
+        id="register-password"
+        type="password"
+        label="CONTRASEÑA"
+        placeholder="Mínimo 8 caracteres"
+        autocomplete="new-password"
+        :revealable="true"
+        :error="errors.password"
+      />
+
+      <BaseInput
+        v-model="form.password_confirmation"
+        id="register-password-confirm"
+        type="password"
+        label="CONFIRMAR CONTRASEÑA"
+        placeholder="Repite tu contraseña"
+        autocomplete="new-password"
+        :revealable="true"
+        :error="errors.password_confirmation"
+      />
+
+      <!-- Submit button -->
+      <button
+        type="submit"
+        :disabled="loading"
+        class="w-full bg-apricot-glow text-deep-marsala font-bold py-3.5 rounded-xl shadow-lg shadow-apricot-glow/20 hover:scale-[1.02] active:scale-[0.98] transition-all font-title-md text-title-md flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+      >
+        <svg
+          v-if="loading"
+          class="animate-spin w-5 h-5 shrink-0"
+          fill="none"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        </svg>
+        {{ loading ? 'Creando cuenta...' : 'Crear cuenta' }}
+      </button>
+    </form>
+
+    <!-- Google button in oauth slot -->
+    <template #oauth>
+      <GoogleButton
+        :loading="googleLoading"
+        :disabled="!googleEnabled || googleLoading"
+        :title="!googleEnabled ? 'Configura VITE_GOOGLE_CLIENT_ID para activar Google Sign-In' : ''"
+        label="Continuar con Google"
+        @click="handleGoogleRegister"
+      />
+    </template>
+  </AuthLayout>
+</template>

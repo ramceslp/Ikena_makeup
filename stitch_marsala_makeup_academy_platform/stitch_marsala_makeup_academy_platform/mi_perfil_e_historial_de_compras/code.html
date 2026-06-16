@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+
+<html class="light" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@500&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@100..900&family=JetBrains+Mono:wght@100..900&display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        .deep-tinted-shadow {
+            box-shadow: 0 10px 30px -10px rgba(106, 58, 60, 0.08);
+        }
+        input:focus {
+            outline: none;
+            border-color: #4f2427 !important;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary-fixed-variant": "#733518",
+                        "surface-container-low": "#f6f3f3",
+                        "on-primary": "#ffffff",
+                        "surface-dim": "#dcd9d9",
+                        "on-tertiary": "#ffffff",
+                        "background": "#fcf9f9",
+                        "surface-variant": "#e4e2e2",
+                        "surface-container": "#f0eded",
+                        "on-tertiary-fixed": "#370e00",
+                        "on-surface": "#1b1b1c",
+                        "tertiary": "#582005",
+                        "blush-canvas": "#F4ACAB",
+                        "primary-container": "#6a3a3c",
+                        "outline": "#847373",
+                        "primary": "#4f2427",
+                        "on-secondary-fixed": "#360e0f",
+                        "on-error-container": "#93000a",
+                        "on-secondary-fixed-variant": "#6b3838",
+                        "secondary-container": "#fdb4b3",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-muted": "#FDF9F8",
+                        "on-primary-fixed-variant": "#69393b",
+                        "surface-container-high": "#eae7e7",
+                        "on-primary-container": "#e7a6a7",
+                        "surface-container-highest": "#e4e2e2",
+                        "surface-bright": "#fcf9f9",
+                        "surface-tint": "#845052",
+                        "tertiary-container": "#743519",
+                        "inverse-on-surface": "#f3f0f0",
+                        "on-background": "#1b1b1c",
+                        "tertiary-fixed-dim": "#ffb598",
+                        "deep-marsala": "#6A3A3C",
+                        "surface": "#fcf9f9",
+                        "on-secondary-container": "#794343",
+                        "tertiary-fixed": "#ffdbce",
+                        "on-error": "#ffffff",
+                        "secondary": "#874f4f",
+                        "error": "#ba1a1a",
+                        "primary-fixed": "#ffdada",
+                        "on-secondary": "#ffffff",
+                        "secondary-fixed-dim": "#fdb4b3",
+                        "secondary-fixed": "#ffdad9",
+                        "apricot-glow": "#FFA580",
+                        "on-primary-fixed": "#340f12",
+                        "inverse-surface": "#303031",
+                        "on-surface-variant": "#514343",
+                        "error-container": "#ffdad6",
+                        "outline-variant": "#d6c2c2",
+                        "on-tertiary-container": "#f9a07c",
+                        "primary-fixed-dim": "#f9b5b7",
+                        "inverse-primary": "#f9b5b7"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Hanken Grotesk"],
+                        "label-sm": ["JetBrains Mono"],
+                        "title-md": ["Hanken Grotesk"],
+                        "headline-lg-mobile": ["Hanken Grotesk"],
+                        "body-lg": ["Hanken Grotesk"],
+                        "headline-lg": ["Hanken Grotesk"],
+                        "display-lg": ["Hanken Grotesk"],
+                        "label-md": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.08em", "fontWeight": "500"}],
+                        "title-md": ["20px", {"lineHeight": "28px", "fontWeight": "500"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "fontWeight": "600"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "500"}]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-surface font-body-md text-on-surface">
+<!-- TopNavBar -->
+<header class="bg-surface/80 dark:bg-surface-dim/80 backdrop-blur-xl shadow-sm dark:shadow-none docked full-width top-0 sticky z-50">
+<nav class="flex justify-between items-center px-gutter w-full max-w-container-max mx-auto py-4">
+<div class="font-headline-lg text-headline-lg font-bold text-primary dark:text-primary-fixed-dim tracking-tight">
+                Makeup Academy
+            </div>
+<div class="hidden md:flex items-center gap-8">
+<a class="font-title-md text-title-md text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed-dim transition-colors" href="#">Cursos</a>
+<a class="font-title-md text-title-md text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed-dim transition-colors" href="#">Mis Clases</a>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 hover:bg-surface-container-low dark:hover:bg-surface-container-highest rounded-lg transition-all active:scale-95 duration-200">
+<span class="material-symbols-outlined text-primary">notifications</span>
+</button>
+<div class="flex items-center gap-2 border-b-2 border-apricot-glow pb-1">
+<img alt="Foto de perfil de alumna" class="w-10 h-10 rounded-full object-cover" data-alt="A professional high-fashion headshot of a young woman with impeccable makeup artistry, showcasing smooth skin and elegant eyeliner. She is set against a soft, neutral studio background with high-key lighting that emphasizes a clean and sophisticated academic aesthetic. The image is warm and inviting, using soft tones of blush and cream to align with a luxury beauty brand." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBmgnyaAyYDUnWaVB-ftwBtbpttCvLaJK7jrGHTzMYN2lv9YaaC_aeIUtQ43vk9cABF6Hjf0Nhp0Jrv4NFILSVBQnk4JHf2HEaTsIlyTlm-T_1hE3BRRdvDtfEi4XD126JsGh0qc9Duknc7AzMa_ZHrfQ5m-r1gogpWat4lZHC23HNEdid-W_BdhVyKx_jRX-C9pMqry62YknJtcaUq2cg9YMTOOF_6x0LG8wkrGSyRqRsy9egt62soy2rAC0tq8HtDUR4tFjipUdc"/>
+<span class="font-title-md text-title-md text-primary dark:text-primary-fixed-dim hidden sm:inline">Mi Perfil</span>
+</div>
+</div>
+</nav>
+</header>
+<main class="max-w-container-max mx-auto px-gutter py-12">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+<!-- Sidebar Navigation (Desktop) -->
+<aside class="lg:col-span-3 space-y-2">
+<div class="p-6 bg-surface-muted rounded-xl border border-blush-canvas/20 mb-6">
+<div class="text-center">
+<div class="relative inline-block group">
+<img alt="Avatar de alumna" class="w-24 h-24 rounded-full object-cover border-4 border-white shadow-md mx-auto" data-alt="Detailed close-up of a young woman's face with professional editorial makeup, featuring glowing skin and soft earth tones. The lighting is soft and diffused, creating a premium magazine feel. She is smiling gently at the camera, conveying confidence and artistic passion. The background is a minimalist, softly lit interior space in shades of white and blush." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCiWUGtY2WVArYIRUWEqvuJ2PVhwXYJDTiDb3B0kFENbTIAH5ub_mq-2m2xc-WY0X7p6Cfb7nPJOKslHj8kBshGuhXhXzusX6PyrK3Q1mPEFV4l8Wn0kmIvkSEWdZ_sxw-UCMNRYOJYWH21naNBnROhkKW-5oRgUpAjc0a1Qknb4j_TN_lnQAdZdjUoDQq8P_h5DdVQWcbk0GX4SrTTTh0fsi_eySulW5-pb_BFDGDOmWFbQEmwkMjOQasjYbnNHymqbJALiPmXof0"/>
+<button class="absolute bottom-0 right-0 bg-primary text-white p-1.5 rounded-full shadow-lg hover:bg-deep-marsala transition-all active:scale-90">
+<span class="material-symbols-outlined text-sm">edit</span>
+</button>
+</div>
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-deep-marsala mt-4">Elena Martínez</h2>
+<p class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest">Alumna Certificada</p>
+</div>
+</div>
+<nav class="space-y-1">
+<a class="flex items-center gap-3 bg-primary-container/20 text-primary rounded-xl p-3 font-title-md text-title-md" href="#personal">
+<span class="material-symbols-outlined">person</span> Datos Personales
+                    </a>
+<a class="flex items-center gap-3 text-on-surface-variant p-3 hover:bg-surface-container-highest rounded-xl transition-all font-title-md text-title-md" href="#history">
+<span class="material-symbols-outlined">receipt_long</span> Historial de Compras
+                    </a>
+<a class="flex items-center gap-3 text-on-surface-variant p-3 hover:bg-surface-container-highest rounded-xl transition-all font-title-md text-title-md" href="#certificates">
+<span class="material-symbols-outlined">workspace_premium</span> Mis Certificados
+                    </a>
+<a class="flex items-center gap-3 text-on-surface-variant p-3 hover:bg-surface-container-highest rounded-xl transition-all font-title-md text-title-md" href="#security">
+<span class="material-symbols-outlined">security</span> Seguridad
+                    </a>
+</nav>
+</aside>
+<!-- Main Content Area -->
+<div class="lg:col-span-9 space-y-12">
+<!-- Section: Personal Info -->
+<section class="bg-surface-muted p-8 rounded-2xl border border-blush-canvas/20 deep-tinted-shadow" id="personal">
+<div class="flex justify-between items-center mb-8">
+<h3 class="font-headline-lg text-headline-lg text-deep-marsala">Edición de Perfil</h3>
+<button class="bg-apricot-glow text-deep-marsala px-6 py-2 rounded-full font-title-md text-title-md shadow-sm hover:translate-y-[-2px] transition-all active:scale-95">
+                            Guardar Cambios
+                        </button>
+</div>
+<form class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface-variant ml-1">Nombre Completo</label>
+<input class="w-full bg-white border-blush-canvas/30 rounded-lg px-4 py-3 focus:ring-0 transition-all font-body-md text-body-md" type="text" value="Elena Martínez"/>
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface-variant ml-1">Correo Electrónico</label>
+<input class="w-full bg-white border-blush-canvas/30 rounded-lg px-4 py-3 focus:ring-0 transition-all font-body-md text-body-md" type="email" value="elena.mtz@makeupacademy.com"/>
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface-variant ml-1">Teléfono</label>
+<input class="w-full bg-white border-blush-canvas/30 rounded-lg px-4 py-3 focus:ring-0 transition-all font-body-md text-body-md" type="tel" value="+34 612 345 678"/>
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface-variant ml-1">País / Región</label>
+<select class="w-full bg-white border-blush-canvas/30 rounded-lg px-4 py-3 focus:ring-0 transition-all font-body-md text-body-md">
+<option>España</option>
+<option>México</option>
+<option>Colombia</option>
+<option>Argentina</option>
+</select>
+</div>
+<div class="md:col-span-2 space-y-2">
+<label class="font-label-md text-label-md text-on-surface-variant ml-1">Biografía Breve</label>
+<textarea class="w-full bg-white border-blush-canvas/30 rounded-lg px-4 py-3 focus:ring-0 transition-all font-body-md text-body-md" rows="3">Apasionada del maquillaje editorial y de novias. En constante aprendizaje para perfeccionar mi técnica de colorimetría.</textarea>
+</div>
+</form>
+</section>
+<!-- Section: Security / Password -->
+<section class="bg-surface-muted p-8 rounded-2xl border border-blush-canvas/20 deep-tinted-shadow" id="security">
+<h3 class="font-headline-lg text-headline-lg text-deep-marsala mb-6">Seguridad</h3>
+<div class="max-w-md space-y-6">
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface-variant ml-1">Contraseña Actual</label>
+<input class="w-full bg-white border-blush-canvas/30 rounded-lg px-4 py-3 focus:ring-0 transition-all font-body-md text-body-md" placeholder="••••••••••••" type="password"/>
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface-variant ml-1">Nueva Contraseña</label>
+<input class="w-full bg-white border-blush-canvas/30 rounded-lg px-4 py-3 focus:ring-0 transition-all font-body-md text-body-md" placeholder="Mínimo 8 caracteres" type="password"/>
+</div>
+<button class="bg-primary text-white px-8 py-3 rounded-full font-title-md text-title-md hover:bg-deep-marsala transition-all active:scale-95">
+                            Actualizar Contraseña
+                        </button>
+</div>
+</section>
+<!-- Section: Purchase History -->
+<section class="space-y-6" id="history">
+<div class="flex justify-between items-end">
+<h3 class="font-headline-lg text-headline-lg text-deep-marsala">Historial de Compras</h3>
+<p class="font-label-sm text-label-sm text-on-surface-variant">4 CURSOS ADQUIRIDOS</p>
+</div>
+<div class="space-y-4">
+<!-- Course Row 1 (100% complete) -->
+<div class="bg-surface-muted p-6 rounded-2xl border border-blush-canvas/10 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:border-blush-canvas/40 transition-colors">
+<div class="flex items-center gap-6">
+<div class="w-20 h-14 bg-surface-dim rounded-lg overflow-hidden flex-shrink-0">
+<img alt="Maquillaje de Novias" class="w-full h-full object-cover" data-alt="A macro shot of professional makeup brushes applying a soft champagne shimmer to an eyelid. The scene is bright and airy, with elegant soft-focus background elements including white flowers and pearl jewelry. The lighting is ethereal and high-key, reflecting a sophisticated bridal masterclass theme with warm, clean tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCYlXaBb21gM-BWcAZ73Dj6QoCAIgZUt-wLdMxrWZXtnvUZ-FK2F0zjzpHUwsgqMvoYlj2ADdp65P6gSbi3-FTSHeFa4vqIPwyjt3nmvC8K4-pvDW6-3c_USWNaBoU8wkZB0-avBq56NM70GarHh7re_f2RqGB9n2KdDKHcXDhRqxhzhmim0fDncleFGvPWF6kh_t-C3sNILhk_gwcC2i-mzpEhuZkeXCjYkOfFIzHkyzecgEyMUycullMWsYIhnHUkCgVmXPU6Dog"/>
+</div>
+<div>
+<h4 class="font-title-md text-title-md text-on-surface font-semibold">Máster en Maquillaje de Novias</h4>
+<p class="font-label-sm text-label-sm text-on-surface-variant">FECHA: 12 OCT 2023 • REF: #MA-9921</p>
+<div class="flex items-center gap-3 mt-1">
+<div class="w-32 bg-primary/10 h-1.5 rounded-full">
+<div class="bg-apricot-glow h-full rounded-full" style="width: 100%"></div>
+</div>
+<span class="font-label-sm text-label-sm text-primary">100% COMPLETADO</span>
+</div>
+</div>
+</div>
+<div class="flex gap-3">
+<button class="flex items-center justify-center gap-2 px-4 py-2 border border-blush-canvas rounded-full text-primary font-title-md text-title-md hover:bg-blush-canvas/10 transition-all">
+<span class="material-symbols-outlined">download</span> Factura
+                                </button>
+<button class="flex items-center justify-center gap-2 px-6 py-2 bg-apricot-glow rounded-full text-deep-marsala font-title-md text-title-md shadow-md hover:translate-y-[-2px] transition-all">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">workspace_premium</span> Descargar Certificado
+                                </button>
+</div>
+</div>
+<!-- Course Row 2 (Progress) -->
+<div class="bg-surface-muted p-6 rounded-2xl border border-blush-canvas/10 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:border-blush-canvas/40 transition-colors">
+<div class="flex items-center gap-6">
+<div class="w-20 h-14 bg-surface-dim rounded-lg overflow-hidden flex-shrink-0">
+<img alt="Colorimetría Avanzada" class="w-full h-full object-cover" data-alt="An artistic flat lay of a high-end makeup palette with vibrant, textured pigment colors in circular pans. The arrangement is precise and geometric against a pristine white surface. Soft shadows and clean directional lighting give the image a professional editorial quality, highlighting the rich textures and deep marsala and apricot tones of the brand." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAmbZ8hh_VNx2w52iBrUZkJ8k-4e4h4SLeIDTupSetzw1r1zaEVt2HEypTgcI5bisLwMxiNBly3riKU-RYUhtPrs_iQzVGhF9rmDVerBZQJSZEwSf304Tb2oszwklUnG-dcQ3dg-Pk0KFvICnFen7NzVAUNIvfZa7XJXxrStWTcg55etJLz9v8ZsGj7uoMI8stEQqiWixyL-sjonpG4EhhbBs3tXfeuQpNMhiY7X4cC_4n1bzheRNxrgauja6_OVZDEITKZNbcJNMs"/>
+</div>
+<div>
+<h4 class="font-title-md text-title-md text-on-surface font-semibold">Colorimetría Avanzada: Pieles y Tonos</h4>
+<p class="font-label-sm text-label-sm text-on-surface-variant">FECHA: 05 ENE 2024 • REF: #MA-1044</p>
+<div class="flex items-center gap-3 mt-1">
+<div class="w-32 bg-primary/10 h-1.5 rounded-full">
+<div class="bg-apricot-glow h-full rounded-full" style="width: 45%"></div>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant">45% COMPLETADO</span>
+</div>
+</div>
+</div>
+<div class="flex gap-3">
+<button class="flex items-center justify-center gap-2 px-4 py-2 border border-blush-canvas rounded-full text-primary font-title-md text-title-md hover:bg-blush-canvas/10 transition-all">
+<span class="material-symbols-outlined">download</span> Factura
+                                </button>
+<button class="flex items-center justify-center gap-2 px-6 py-2 bg-surface-container rounded-full text-outline-variant font-title-md text-title-md cursor-not-allowed" disabled="">
+<span class="material-symbols-outlined">lock</span> Certificado
+                                </button>
+</div>
+</div>
+<!-- Course Row 3 (100% complete) -->
+<div class="bg-surface-muted p-6 rounded-2xl border border-blush-canvas/10 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:border-blush-canvas/40 transition-colors">
+<div class="flex items-center gap-6">
+<div class="w-20 h-14 bg-surface-dim rounded-lg overflow-hidden flex-shrink-0">
+<img alt="Makeup Essentials" class="w-full h-full object-cover" data-alt="A minimalist arrangement of premium makeup products, including a sleek foundation bottle and high-quality brushes on a textured stone surface. The lighting is soft and artistic, creating a serene and authoritative atmosphere. The color palette is composed of neutrals, soft blushes, and deep browns, embodying the sophisticated academic and editorial aesthetic of a luxury academy." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC-0XMhB_HiFoNo1-bhLFI79EFO3eALh-zYxmzHlMTmCrpCIU3afGMN9LbY5JtZPT7GnF6coVhKtiaBpJ3kM2I4WhsZgUXgnWSP4oJZEFZUYle-9i34LjzhBPTGMt8p1xfUyZO_G2H-iVPAKzVdF7J6M9wz1FZnfUJHevWwPjwU5OTOwaL3W-t2b5Aq8uzY_wvFDj-8ARRrSZTOjdrCQdCHE6REiUVAQyizjBuD10DB4V12rlhj7GY4j36jeSPOxZPELn3DtzNJfqA"/>
+</div>
+<div>
+<h4 class="font-title-md text-title-md text-on-surface font-semibold">Fundamentos del Maquillaje Profesional</h4>
+<p class="font-label-sm text-label-sm text-on-surface-variant">FECHA: 20 AGO 2023 • REF: #MA-8720</p>
+<div class="flex items-center gap-3 mt-1">
+<div class="w-32 bg-primary/10 h-1.5 rounded-full">
+<div class="bg-apricot-glow h-full rounded-full" style="width: 100%"></div>
+</div>
+<span class="font-label-sm text-label-sm text-primary">100% COMPLETADO</span>
+</div>
+</div>
+</div>
+<div class="flex gap-3">
+<button class="flex items-center justify-center gap-2 px-4 py-2 border border-blush-canvas rounded-full text-primary font-title-md text-title-md hover:bg-blush-canvas/10 transition-all">
+<span class="material-symbols-outlined">download</span> Factura
+                                </button>
+<button class="flex items-center justify-center gap-2 px-6 py-2 bg-apricot-glow rounded-full text-deep-marsala font-title-md text-title-md shadow-md hover:translate-y-[-2px] transition-all">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">workspace_premium</span> Descargar Certificado
+                                </button>
+</div>
+</div>
+</div>
+</section>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="bg-surface-container-lowest dark:bg-surface-dim border-t border-blush-canvas/20 w-full bottom-0">
+<div class="max-w-container-max mx-auto px-gutter py-12 flex flex-col md:flex-row justify-between items-center gap-8">
+<div class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-deep-marsala dark:text-primary-fixed">
+                Makeup Academy
+            </div>
+<div class="flex flex-wrap justify-center gap-6">
+<a class="font-body-md text-body-md text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed-dim hover:underline transition-all opacity-80 hover:opacity-100" href="#">Privacidad</a>
+<a class="font-body-md text-body-md text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed-dim hover:underline transition-all opacity-80 hover:opacity-100" href="#">Términos de Uso</a>
+<a class="font-body-md text-body-md text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed-dim hover:underline transition-all opacity-80 hover:opacity-100" href="#">Contacto</a>
+<a class="font-body-md text-body-md text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed-dim hover:underline transition-all opacity-80 hover:opacity-100" href="#">Ayuda</a>
+</div>
+<div class="font-body-md text-body-md text-on-surface-variant dark:text-outline-variant">
+                © 2024 Makeup Academy. Todos los derechos reservados.
+            </div>
+</div>
+</footer>
+<script>
+        // Smooth scroll for internal links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    window.scrollTo({
+                        top: target.offsetTop - 100,
+                        behavior: 'smooth'
+                    });
+                    
+                    // Update active state
+                    document.querySelectorAll('aside nav a').forEach(nav => {
+                        nav.classList.remove('bg-primary-container/20', 'text-primary');
+                        nav.classList.add('text-on-surface-variant');
+                    });
+                    this.classList.add('bg-primary-container/20', 'text-primary');
+                    this.classList.remove('text-on-surface-variant');
+                }
+            });
+        });
+    </script>
+</body></html>

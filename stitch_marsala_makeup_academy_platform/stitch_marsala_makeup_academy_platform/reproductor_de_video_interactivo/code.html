@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+
+<html class="light" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-surface": "#1b1b1c",
+                        "primary": "#4f2427",
+                        "on-surface-variant": "#514343",
+                        "blush-canvas": "#F4ACAB",
+                        "surface-container-low": "#f6f3f3",
+                        "on-secondary": "#ffffff",
+                        "primary-fixed": "#ffdada",
+                        "surface-container-highest": "#e4e2e2",
+                        "apricot-glow": "#FFA580",
+                        "outline": "#847373",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-fixed": "#340f12",
+                        "error-container": "#ffdad6",
+                        "on-primary-fixed-variant": "#69393b",
+                        "on-primary-container": "#e7a6a7",
+                        "inverse-surface": "#303031",
+                        "on-error": "#ffffff",
+                        "tertiary": "#582005",
+                        "secondary": "#874f4f",
+                        "primary-fixed-dim": "#f9b5b7",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-container": "#743519",
+                        "background": "#fcf9f9",
+                        "surface-container-high": "#eae7e7",
+                        "surface-container": "#f0eded",
+                        "surface-bright": "#fcf9f9",
+                        "on-tertiary-container": "#f9a07c",
+                        "on-primary": "#ffffff",
+                        "error": "#ba1a1a",
+                        "on-background": "#1b1b1c",
+                        "on-secondary-container": "#794343",
+                        "primary-container": "#6a3a3c",
+                        "on-tertiary-fixed": "#370e00",
+                        "secondary-fixed": "#ffdad9",
+                        "secondary-fixed-dim": "#fdb4b3",
+                        "outline-variant": "#d6c2c2",
+                        "secondary-container": "#fdb4b3",
+                        "on-tertiary-fixed-variant": "#733518",
+                        "on-secondary-fixed-variant": "#6b3838",
+                        "inverse-primary": "#f9b5b7",
+                        "surface": "#fcf9f9",
+                        "tertiary-fixed": "#ffdbce",
+                        "surface-dim": "#dcd9d9",
+                        "tertiary-fixed-dim": "#ffb598",
+                        "on-error-container": "#93000a",
+                        "on-secondary-fixed": "#360e0f",
+                        "deep-marsala": "#6A3A3C",
+                        "inverse-on-surface": "#f3f0f0",
+                        "surface-tint": "#845052",
+                        "surface-muted": "#FDF9F8",
+                        "surface-variant": "#e4e2e2"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "base": "8px",
+                        "gutter": "24px",
+                        "margin-mobile": "16px",
+                        "container-max": "1280px",
+                        "margin-desktop": "40px"
+                    },
+                    "fontFamily": {
+                        "title-md": ["Hanken Grotesk"],
+                        "body-md": ["Hanken Grotesk"],
+                        "label-md": ["JetBrains Mono"],
+                        "headline-lg": ["Hanken Grotesk"],
+                        "body-lg": ["Hanken Grotesk"],
+                        "label-sm": ["JetBrains Mono"],
+                        "display-lg": ["Hanken Grotesk"],
+                        "headline-lg-mobile": ["Hanken Grotesk"]
+                    },
+                    "fontSize": {
+                        "title-md": ["20px", {"lineHeight": "28px", "fontWeight": "500"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.08em", "fontWeight": "500"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #F4ACAB; border-radius: 10px; }
+        .video-overlay { background: linear-gradient(0deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 50%); }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md overflow-x-hidden">
+<!-- Top Navigation (Shell) -->
+<header class="bg-surface/80 backdrop-blur-xl docked full-width top-0 sticky z-50 shadow-sm">
+<div class="flex justify-between items-center px-gutter w-full max-w-container-max mx-auto py-4">
+<div class="font-headline-lg text-headline-lg font-bold text-primary tracking-tight">Makeup Academy</div>
+<nav class="hidden md:flex items-center gap-8">
+<a class="font-title-md text-title-md text-on-surface-variant hover:text-primary transition-colors" href="#">Cursos</a>
+<a class="font-title-md text-title-md text-primary border-b-2 border-apricot-glow pb-1" href="#">Mis Clases</a>
+</nav>
+<div class="flex items-center gap-4">
+<button class="p-2 hover:bg-surface-container-low rounded-lg transition-all active:scale-95 duration-200">
+<span class="material-symbols-outlined text-primary">notifications</span>
+</button>
+<div class="flex items-center gap-2 cursor-pointer hover:bg-surface-container-low rounded-lg p-1 transition-all">
+<img alt="Foto de perfil de alumna" class="w-10 h-10 rounded-full object-cover" data-alt="A professional portrait of a young woman with elegant makeup, soft studio lighting, and a serene expression, captured in a high-key minimalist setting. Her skin is glowing, and her features are accentuated by sophisticated warm tones, reflecting the premium academic identity of the Makeup Academy brand." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDKo6CyjZAZmQ71BNV3zwzMocXnqnY6btrJv_fZRB-kqiQgAUuiT-aLa2LNRa884jmzklRzjaYfjxUbrtP8MZ9y4YKTx3pKbKVCN0gcC3pCa2Cysg96Wn3DWsP0au35FDzUpQwJjiVvxUFueitX0WQ4SX1nXfQpInFPK6mT_WG1xS-KdjKOK9tRD41uyNcZWkm2vgpgmgjziZP6rQWaj931A5H5Q0lAAqs6PQdaSKJqwJEPXBEJCAVGhDK5_1Z20y2byrOP1pLiP0U"/>
+<span class="material-symbols-outlined text-primary">account_circle</span>
+</div>
+</div>
+</div>
+</header>
+<main class="max-w-container-max mx-auto px-gutter py-8">
+<!-- Two Column Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+<!-- Left Column: Video Player & Tabs -->
+<div class="lg:col-span-8 space-y-gutter">
+<!-- Video Container -->
+<div class="relative group rounded-xl overflow-hidden bg-on-surface shadow-2xl aspect-video border border-blush-canvas/10">
+<!-- Progress Bar (Top) -->
+<div class="absolute top-0 left-0 w-full h-1 bg-primary/20 z-20">
+<div class="h-full bg-apricot-glow shadow-[0_0_8px_rgba(255,165,128,0.8)]" style="width: 65%;"></div>
+</div>
+<img alt="Clase de Maquillaje" class="w-full h-full object-cover opacity-90" data-alt="A high-definition video frame showcasing a professional makeup demonstration. An artist's hand is applying delicate eye shadow using a luxury brush on a model with flawless skin. The setting is a bright, minimalist studio with soft-focus professional lighting that emphasizes the sophisticated and educational atmosphere of the Makeup Academy." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDj2GdRAEPoy8Zs-mKKQLywIWfngBkOSLuI2feiga4KA89p4f86gMwbBWJB_ygcfo8OPbx9Tke4aBd2WpYDOnB_0Hy15WS3vyUR_xavGALfl053A29x1jKvo5ts3EVGDX-4N5YcO3Wil6dwbjWRuOl20CllBJ3YLYka7IdafldhIFBfP3MgSJDFWhm83MzYJtpJo7nZSU68Ww1Ah5UGkMmFnBQYbiwQr0uHnyhIxHl_n9zzndvnBALX3U8aquyBnw6Z54Ob0U6qaOw"/>
+<!-- Video Controls Overlay -->
+<div class="absolute inset-0 video-overlay flex flex-col justify-end p-gutter opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+<div class="flex items-center justify-between pointer-events-auto">
+<div class="flex items-center gap-4 text-white">
+<button class="hover:scale-110 transition-transform"><span class="material-symbols-outlined fill" style="font-variation-settings: 'FILL' 1;">play_arrow</span></button>
+<button class="hover:scale-110 transition-transform"><span class="material-symbols-outlined">skip_next</span></button>
+<button class="hover:scale-110 transition-transform"><span class="material-symbols-outlined">volume_up</span></button>
+<span class="font-label-md text-label-md">12:45 / 24:00</span>
+</div>
+<div class="flex items-center gap-4 text-white">
+<button class="hover:scale-110 transition-transform"><span class="material-symbols-outlined">settings</span></button>
+<button class="hover:scale-110 transition-transform"><span class="material-symbols-outlined">fullscreen</span></button>
+</div>
+</div>
+</div>
+<!-- Center Play Button -->
+<div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+<div class="w-20 h-20 bg-apricot-glow/90 rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+<span class="material-symbols-outlined text-white text-4xl" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+</div>
+</div>
+</div>
+<!-- Tabs Section -->
+<div class="bg-surface-muted rounded-xl p-base border border-blush-canvas/20 shadow-sm">
+<div class="flex gap-4 border-b border-blush-canvas/20 mb-6 px-4">
+<button class="font-title-md text-title-md pb-3 text-primary border-b-2 border-apricot-glow px-2 transition-all" id="btn-recursos" onclick="switchTab('recursos')">Recursos</button>
+<button class="font-title-md text-title-md pb-3 text-on-surface-variant hover:text-primary px-2 transition-all" id="btn-practica" onclick="switchTab('practica')">Práctica Obligatoria</button>
+</div>
+<div class="p-4 space-y-4" id="content-recursos">
+<h3 class="font-title-md text-title-md text-primary">Materiales de la Lección</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<a class="flex items-center gap-4 p-4 bg-white rounded-lg border border-blush-canvas/10 hover:shadow-md transition-shadow group" href="#">
+<div class="w-12 h-12 bg-blush-canvas/20 rounded flex items-center justify-center text-primary group-hover:bg-apricot-glow group-hover:text-white transition-colors">
+<span class="material-symbols-outlined">picture_as_pdf</span>
+</div>
+<div>
+<p class="font-title-md text-on-surface">Guía de Colorimetría.pdf</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">2.4 MB • PDF</p>
+</div>
+</a>
+<a class="flex items-center gap-4 p-4 bg-white rounded-lg border border-blush-canvas/10 hover:shadow-md transition-shadow group" href="#">
+<div class="w-12 h-12 bg-blush-canvas/20 rounded flex items-center justify-center text-primary group-hover:bg-apricot-glow group-hover:text-white transition-colors">
+<span class="material-symbols-outlined">list_alt</span>
+</div>
+<div>
+<p class="font-title-md text-on-surface">Lista de Productos.xlsx</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">150 KB • Excel</p>
+</div>
+</a>
+</div>
+</div>
+<div class="hidden p-4 space-y-6" id="content-practica">
+<div class="flex items-start gap-4">
+<span class="material-symbols-outlined text-apricot-glow text-3xl">info</span>
+<div>
+<h3 class="font-title-md text-title-md text-primary">Entrega de Práctica</h3>
+<p class="text-on-surface-variant mt-1">Para completar este módulo, sube una fotografía del rostro antes de aplicar la técnica y una fotografía con el resultado final.</p>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- Drag & Drop Before -->
+<div class="relative group">
+<p class="font-label-md text-label-md text-primary mb-2 uppercase tracking-wider">Foto del Antes</p>
+<div class="border-2 border-dashed border-blush-canvas rounded-xl p-8 flex flex-col items-center justify-center text-center bg-white hover:bg-blush-canvas/5 transition-colors cursor-pointer min-h-[200px]">
+<span class="material-symbols-outlined text-primary text-4xl mb-2 group-hover:scale-110 transition-transform">add_photo_alternate</span>
+<p class="font-body-md text-on-surface-variant">Arrastra aquí o <span class="text-primary font-semibold">selecciona</span></p>
+<p class="font-label-sm text-label-sm mt-1 opacity-60">JPG, PNG hasta 5MB</p>
+</div>
+</div>
+<!-- Drag & Drop After -->
+<div class="relative group">
+<p class="font-label-md text-label-md text-primary mb-2 uppercase tracking-wider">Foto del Después</p>
+<div class="border-2 border-dashed border-blush-canvas rounded-xl p-8 flex flex-col items-center justify-center text-center bg-white hover:bg-blush-canvas/5 transition-colors cursor-pointer min-h-[200px]">
+<span class="material-symbols-outlined text-primary text-4xl mb-2 group-hover:scale-110 transition-transform">add_a_photo</span>
+<p class="font-body-md text-on-surface-variant">Arrastra aquí o <span class="text-primary font-semibold">selecciona</span></p>
+<p class="font-label-sm text-label-sm mt-1 opacity-60">JPG, PNG hasta 5MB</p>
+</div>
+</div>
+</div>
+<div class="flex justify-end pt-4">
+<button class="bg-apricot-glow text-deep-marsala font-title-md px-8 py-3 rounded-xl shadow-lg hover:translate-y-[-2px] hover:shadow-xl active:scale-95 transition-all">
+                                Enviar para Revisión
+                            </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Sidebar Playlist -->
+<aside class="lg:col-span-4 bg-deep-marsala rounded-2xl h-[calc(100vh-160px)] sticky top-28 overflow-hidden flex flex-col shadow-2xl">
+<div class="p-6 border-b border-white/10">
+<h2 class="font-headline-lg text-headline-lg text-white">Contenido del Curso</h2>
+<div class="flex items-center gap-2 mt-2">
+<div class="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
+<div class="h-full bg-apricot-glow w-[65%]"></div>
+</div>
+<span class="font-label-sm text-label-sm text-apricot-glow">65% COMPLETADO</span>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto custom-scrollbar p-2">
+<!-- Section 1 -->
+<div class="mb-4">
+<button class="w-full flex items-center justify-between p-4 text-white/60 font-label-md text-label-md uppercase tracking-widest text-left">
+                            Sección 1: Preparación
+                            <span class="material-symbols-outlined text-sm">keyboard_arrow_down</span>
+</button>
+<div class="space-y-1 px-2">
+<div class="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10 text-white group cursor-pointer hover:bg-white/10 transition-all">
+<input checked="" class="w-5 h-5 rounded border-blush-canvas text-apricot-glow focus:ring-apricot-glow bg-transparent" type="checkbox"/>
+<div class="flex-1 min-w-0">
+<p class="font-title-md text-body-md truncate">Tipos de piel y preparación</p>
+<span class="font-label-sm text-label-sm opacity-60">08:24</span>
+</div>
+<span class="material-symbols-outlined opacity-0 group-hover:opacity-100 transition-opacity">play_circle</span>
+</div>
+<div class="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10 text-white group cursor-pointer hover:bg-white/10 transition-all">
+<input checked="" class="w-5 h-5 rounded border-blush-canvas text-apricot-glow focus:ring-apricot-glow bg-transparent" type="checkbox"/>
+<div class="flex-1 min-w-0">
+<p class="font-title-md text-body-md truncate">Teoría del color avanzada</p>
+<span class="font-label-sm text-label-sm opacity-60">12:15</span>
+</div>
+<span class="material-symbols-outlined opacity-0 group-hover:opacity-100 transition-opacity">play_circle</span>
+</div>
+</div>
+</div>
+<!-- Section 2 (Active) -->
+<div class="mb-4">
+<button class="w-full flex items-center justify-between p-4 text-white/60 font-label-md text-label-md uppercase tracking-widest text-left">
+                            Sección 2: Rostro Perfecto
+                            <span class="material-symbols-outlined text-sm">keyboard_arrow_down</span>
+</button>
+<div class="space-y-1 px-2">
+<div class="flex items-center gap-3 p-3 rounded-xl bg-apricot-glow text-deep-marsala group cursor-pointer transition-all shadow-lg scale-[1.02]">
+<input class="w-5 h-5 rounded border-deep-marsala text-deep-marsala focus:ring-deep-marsala bg-transparent" type="checkbox"/>
+<div class="flex-1 min-w-0">
+<p class="font-title-md text-body-md truncate font-bold">Base y Difuminado Pro</p>
+<span class="font-label-sm text-label-sm opacity-80">24:00 • En reproducción</span>
+</div>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">play_circle</span>
+</div>
+<div class="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10 text-white group cursor-pointer hover:bg-white/10 transition-all">
+<input class="w-5 h-5 rounded border-blush-canvas text-apricot-glow focus:ring-apricot-glow bg-transparent" type="checkbox"/>
+<div class="flex-1 min-w-0">
+<p class="font-title-md text-body-md truncate">Contorno y Highlighting</p>
+<span class="font-label-sm text-label-sm opacity-60">18:50</span>
+</div>
+<span class="material-symbols-outlined opacity-0 group-hover:opacity-100 transition-opacity">play_circle</span>
+</div>
+</div>
+</div>
+<!-- Section 3 -->
+<div class="mb-4">
+<button class="w-full flex items-center justify-between p-4 text-white/60 font-label-md text-label-md uppercase tracking-widest text-left">
+                            Sección 3: Ojos y Labios
+                            <span class="material-symbols-outlined text-sm">keyboard_arrow_right</span>
+</button>
+</div>
+</div>
+<!-- Instructor CTA in Sidebar -->
+<div class="p-6 bg-white/5 mt-auto">
+<div class="flex items-center gap-4">
+<img alt="Avatar del Instructor" class="w-12 h-12 rounded-full border-2 border-apricot-glow" data-alt="A portrait of a sophisticated middle-aged woman, a professional makeup artist and instructor. She is wearing a professional minimalist outfit in a modern, clean studio. Her makeup is refined and expertly applied, embodying the authoritative and elegant aesthetic of the Makeup Academy brand." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC3pK4VIkIJwvqdYoj13-rGY76i6oatulL6FaKlIl5AADZhHgtB0M8AdlrBwlxgFz1yvU9vnuvntMXMP8aPUANpu1xvYk9Pq9AvloduhwkqrsAVGU2kWlqzojeaBLa8G9O64C18-OLc3KpNI4ZPYY-DOq2CQ3Y0rZS8zgUVOP1xbYPiym-jhr3BR_A3yPANmcj4vUJSufp0jXduaONzkiCqw_gqFpBqn6xtrKEThOc7zvbbuRMqkYSj4N_87mkRSGzKwgv0KwaKLks"/>
+<div>
+<p class="text-white font-title-md text-body-md">Elena Valmont</p>
+<p class="text-white/60 font-label-sm text-label-sm">Instructor Senior</p>
+</div>
+</div>
+<button class="w-full mt-4 py-2 border border-white/20 rounded-lg text-white font-label-md text-label-md hover:bg-white/10 transition-colors">
+                        Preguntar al Tutor
+                    </button>
+</div>
+</aside>
+</div>
+</main>
+<!-- Footer (Shell) -->
+<footer class="bg-surface-container-lowest dark:bg-surface-dim border-t border-blush-canvas/20 w-full mt-20">
+<div class="max-w-container-max mx-auto px-gutter py-12 flex flex-col md:flex-row justify-between items-center gap-8">
+<div class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-deep-marsala">Makeup Academy</div>
+<div class="flex flex-wrap justify-center gap-8">
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary hover:underline transition-all" href="#">Privacidad</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary hover:underline transition-all" href="#">Términos de Uso</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary hover:underline transition-all" href="#">Contacto</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary hover:underline transition-all" href="#">Ayuda</a>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant opacity-80">© 2024 Makeup Academy. Todos los derechos reservados.</p>
+</div>
+</footer>
+<script>
+        function switchTab(tab) {
+            const btnRecursos = document.getElementById('btn-recursos');
+            const btnPractica = document.getElementById('btn-practica');
+            const contentRecursos = document.getElementById('content-recursos');
+            const contentPractica = document.getElementById('content-practica');
+
+            if (tab === 'recursos') {
+                btnRecursos.classList.add('text-primary', 'border-b-2', 'border-apricot-glow');
+                btnRecursos.classList.remove('text-on-surface-variant');
+                btnPractica.classList.add('text-on-surface-variant');
+                btnPractica.classList.remove('text-primary', 'border-b-2', 'border-apricot-glow');
+                contentRecursos.classList.remove('hidden');
+                contentPractica.classList.add('hidden');
+            } else {
+                btnPractica.classList.add('text-primary', 'border-b-2', 'border-apricot-glow');
+                btnPractica.classList.remove('text-on-surface-variant');
+                btnRecursos.classList.add('text-on-surface-variant');
+                btnRecursos.classList.remove('text-primary', 'border-b-2', 'border-apricot-glow');
+                contentPractica.classList.remove('hidden');
+                contentRecursos.classList.add('hidden');
+            }
+        }
+    </script>
+</body></html>
