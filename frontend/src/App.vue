@@ -5,10 +5,10 @@ import SiteFooter from './components/layout/SiteFooter.vue'
 
 <template>
   <div class="min-h-screen flex flex-col bg-background text-on-surface font-body-md">
-    <NavBar />
+    <NavBar class="no-print" />
     <main class="flex-grow">
       <router-view />
     </main>
-    <SiteFooter />
+    <SiteFooter class="no-print" />
   </div>
 </template>

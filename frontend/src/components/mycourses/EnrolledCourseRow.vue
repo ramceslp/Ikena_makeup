@@ -74,11 +74,21 @@ function handleContinue() {
     </div>
 
     <!-- Right: CTA -->
-    <div class="flex-shrink-0">
+    <div class="flex-shrink-0 flex items-center gap-3">
       <BaseButton variant="primary" size="sm" @click="handleContinue">
         <span class="material-symbols-outlined text-[18px]" aria-hidden="true">play_arrow</span>
         Continuar
       </BaseButton>
+
+      <!-- Certificate link: shown when course is 100% complete -->
+      <RouterLink
+        v-if="course.progress_percentage === 100"
+        :to="`/courses/${course.slug}/certificate`"
+        class="inline-flex items-center gap-1 border-2 border-primary text-primary hover:bg-primary hover:text-on-primary px-5 py-2 rounded-lg font-label-md text-label-md transition-all active:scale-95"
+      >
+        <span class="material-symbols-outlined text-[18px]" aria-hidden="true">workspace_premium</span>
+        Certificado
+      </RouterLink>
     </div>
   </div>
 </template>

@@ -128,15 +128,16 @@ Google GSI flow, redirect query, error mapping).
 
 ---
 
-## 7. Certificado de profesionalización → NEW view `Certificate.vue`
+## 7. Certificado de profesionalización → `Certificate.vue` ✅ DONE
 
-⚠️ Entirely new — no view, no route, no backend support.
+Full feature. Issuance rule: enrolled + 100% lessons completed + EVERY `is_practice` lesson
+has an `approved` submission. Persisted (`certificates` table, unique code + issued_at, idempotent).
 
 | Component | Status | Description |
 |---|---|---|
-| `certificate/CertificateCanvas` | 🔨 ⚠️ BACKEND | Printable certificate (student name, course, instructor, date, seal, decorative border). |
-| `certificate/CertificateControls` | 🔨 | Download / print / share actions. |
-| Route + issuance logic | 🔨 ⚠️ BACKEND | When/how a certificate is granted (course 100% complete?). Needs backend rule + endpoint. |
+| `certificate/CertificateCanvas` | ✅ | Printable certificate (student name, course, instructor, ES-long date, verification code, decorative marsala border). Prints (not `.no-print`). |
+| `certificate/CertificateControls` | ✅ | Imprimir / Guardar PDF (`window.print()`) + back link. Marked `.no-print`. |
+| Route + issuance logic | ✅ | `GET /api/courses/{slug}/certificate` (issue/idempotent, 403 with reason if not eligible) + public `GET /api/certificates/verify/{code}`. Route `/courses/:slug/certificate` (requiresAuth). Entry: "Certificado" link in MyCourses row at 100%. Global `@media print` hides nav/footer. |
 
 ---
 

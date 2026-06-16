@@ -27,6 +27,10 @@ export const useCoursesStore = defineStore('courses', {
     // Practice submissions
     submissionSubmitting: false,
     submissionError: null,
+    // Certificate
+    certificate: null,
+    certificateLoading: false,
+    certificateError: null,
   }),
 
   actions: {
@@ -185,6 +189,21 @@ export const useCoursesStore = defineStore('courses', {
         throw err
       } finally {
         this.submissionSubmitting = false
+      }
+    },
+
+    async fetchCertificate(slug) {
+      this.certificateLoading = true
+      this.certificateError = null
+      try {
+        const { data } = await api.get(`/courses/${slug}/certificate`)
+        this.certificate = data.data ?? data
+        return this.certificate
+      } catch (err) {
+        this.certificateError = err.response?.data?.message || 'No se pudo obtener el certificado'
+        throw err
+      } finally {
+        this.certificateLoading = false
       }
     },
 

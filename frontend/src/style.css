@@ -141,3 +141,8 @@
   --radius-lg: 0.5rem;
   --radius-xl: 0.75rem;
 }
+
+@media print {
+  .no-print { display: none !important; }
+  body { background: #ffffff; }
+}

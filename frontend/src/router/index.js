@@ -8,6 +8,7 @@ import Player from '../views/Player.vue'
 import Checkout from '../views/Checkout.vue'
 import PaymentCallback from '../views/PaymentCallback.vue'
 
+const Certificate = () => import('../views/Certificate.vue')
 const InstructorCourses = () => import('../views/InstructorCourses.vue')
 const InstructorCourseForm = () => import('../views/InstructorCourseForm.vue')
 const InstructorCourseEdit = () => import('../views/InstructorCourseEdit.vue')
@@ -66,6 +67,12 @@ const routes = [
     path: '/profile',
     name: 'Profile',
     component: Profile,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/courses/:slug/certificate',
+    name: 'Certificate',
+    component: Certificate,
     meta: { requiresAuth: true },
   },
   {

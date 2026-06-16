@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CertificateController;
 use App\Http\Controllers\Api\CheckoutController;
 use App\Http\Controllers\Api\CourseController;
 use App\Http\Controllers\Api\CourseReviewController;
@@ -23,6 +24,7 @@ Route::post('/auth/google', [AuthController::class, 'google']);
 Route::get('/courses', [CourseController::class, 'index']);
 Route::get('/courses/{slug}', [CourseController::class, 'show']);
 Route::get('/courses/{course:slug}/reviews', [CourseReviewController::class, 'index']);
+Route::get('/certificates/verify/{code}', [CertificateController::class, 'verify']);
 
 // Protected routes — require Sanctum Bearer token
 Route::middleware('auth:sanctum')->group(function () {
@@ -48,6 +50,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/courses/{course:slug}/reviews', [CourseReviewController::class, 'store']);
     Route::delete('/courses/{course:slug}/reviews', [CourseReviewController::class, 'destroy']);
+
+    Route::get('/courses/{course:slug}/certificate', [CertificateController::class, 'show']);
 
     // Instructor authoring routes
     Route::middleware('instructor')->prefix('instructor')->group(function () {

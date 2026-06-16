@@ -351,6 +351,87 @@ describe('courses store — reviews', () => {
   })
 })
 
+// ---------------------------------------------------------------------------
+// Certificate: fetchCertificate
+// ---------------------------------------------------------------------------
+
+describe('courses store — certificate', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+  })
+
+  const slug = 'makeup-avanzado'
+
+  const fakeCert = {
+    code: 'CERT-ABC-123',
+    issued_at: '2026-06-16T00:00:00Z',
+    student_name: 'María López',
+    course_title: 'Makeup Avanzado',
+    instructor_name: 'Ana García',
+  }
+
+  it('fetchCertificate: GETs /courses/{slug}/certificate and populates certificate', async () => {
+    api.get.mockResolvedValueOnce({ data: { data: fakeCert } })
+
+    const store = useCoursesStore()
+    const result = await store.fetchCertificate(slug)
+
+    expect(api.get).toHaveBeenCalledWith(`/courses/${slug}/certificate`)
+    expect(store.certificate).toEqual(fakeCert)
+    expect(result).toEqual(fakeCert)
+    expect(store.certificateLoading).toBe(false)
+    expect(store.certificateError).toBeNull()
+  })
+
+  it('fetchCertificate: handles response without nested data key', async () => {
+    api.get.mockResolvedValueOnce({ data: fakeCert })
+
+    const store = useCoursesStore()
+    await store.fetchCertificate(slug)
+
+    expect(store.certificate).toEqual(fakeCert)
+  })
+
+  it('fetchCertificate: on 403 sets certificateError and rethrows', async () => {
+    const err = {
+      response: { status: 403, data: { message: 'Debes tener todas las prácticas aprobadas.' } },
+    }
+    api.get.mockRejectedValueOnce(err)
+
+    const store = useCoursesStore()
+
+    await expect(store.fetchCertificate(slug)).rejects.toBeDefined()
+    expect(store.certificateError).toBe('Debes tener todas las prácticas aprobadas.')
+    expect(store.certificateLoading).toBe(false)
+    expect(store.certificate).toBeNull()
+  })
+
+  it('fetchCertificate: sets generic error when response has no message', async () => {
+    api.get.mockRejectedValueOnce(new Error('Network error'))
+
+    const store = useCoursesStore()
+
+    await expect(store.fetchCertificate(slug)).rejects.toBeDefined()
+    expect(store.certificateError).toBe('No se pudo obtener el certificado')
+    expect(store.certificateLoading).toBe(false)
+  })
+
+  it('fetchCertificate: certificateLoading toggles true → false on success', async () => {
+    let loadingDuringCall = false
+    api.get.mockImplementationOnce(async () => {
+      loadingDuringCall = true
+      return { data: { data: fakeCert } }
+    })
+
+    const store = useCoursesStore()
+    await store.fetchCertificate(slug)
+
+    expect(loadingDuringCall).toBe(true)
+    expect(store.certificateLoading).toBe(false)
+  })
+})
+
 describe('courses store — practice submissions', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
