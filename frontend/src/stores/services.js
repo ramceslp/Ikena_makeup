@@ -13,7 +13,7 @@ export const useServicesStore = defineStore('services', {
       sort: 'newest',
       page: 1,
       category: '',
-      availability: '',
+      availability_type: '',
     },
     currentService: null,
     loading: false,
@@ -60,6 +60,7 @@ export const useServicesStore = defineStore('services', {
     },
 
     async fetchCategories() {
+      if (this.categories.length > 0) return
       try {
         const { data } = await api.get('/categories')
         this.categories = data.data ?? data
@@ -106,6 +107,43 @@ export const useServicesStore = defineStore('services', {
     async reorderImages(id, order) {
       const response = await api.patch(`/admin/services/${id}/images/reorder`, { order })
       return response.data.data
+    },
+
+    async fetchAdminServices() {
+      this.loading = true
+      this.error = null
+      try {
+        const response = await api.get('/admin/services')
+        this.services = response.data.data
+        this.serviceMeta = response.data.meta
+      } catch (err) {
+        this.error = err.response?.data?.message || 'Error al cargar los servicios'
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async fetchAdminService(id) {
+      this.loading = true
+      this.error = null
+      try {
+        const response = await api.get(`/admin/services/${id}`)
+        this.currentService = response.data.data
+        return this.currentService
+      } catch (err) {
+        this.error = err.response?.data?.message || 'Error al cargar el servicio'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async createServiceWithImages(formData, files) {
+      const created = await this.createService(formData)
+      if (files && files.length > 0) {
+        await this.uploadImages(created.id, files)
+      }
+      return created
     },
   },
 })

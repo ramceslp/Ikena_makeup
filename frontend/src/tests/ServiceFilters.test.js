@@ -94,20 +94,24 @@ describe('ServiceFilters.vue — price range', () => {
     expect(inputs.length).toBeGreaterThanOrEqual(2)
   })
 
-  it('emits update:minPrice when min price input changes', async () => {
+  it('emits update:minPrice with the entered value when min price input changes', async () => {
     const wrapper = mountFilters()
     const minInput = wrapper.find('input[aria-label*="mín"]')
     await minInput.setValue('50')
     const emitted = wrapper.emitted('update:minPrice')
     expect(emitted).toBeTruthy()
+    // W-2: assert the actual emitted value, not just truthiness
+    expect(emitted[0][0]).toBe('50')
   })
 
-  it('emits update:maxPrice when max price input changes', async () => {
+  it('emits update:maxPrice with the entered value when max price input changes', async () => {
     const wrapper = mountFilters()
     const maxInput = wrapper.find('input[aria-label*="máx"]')
     await maxInput.setValue('200')
     const emitted = wrapper.emitted('update:maxPrice')
     expect(emitted).toBeTruthy()
+    // W-2: assert the actual emitted value, not just truthiness
+    expect(emitted[0][0]).toBe('200')
   })
 })
 
@@ -142,5 +146,16 @@ describe('ServiceFilters.vue — availability filter', () => {
       wrapper.find('option[value="immediate"]').exists() ||
       wrapper.find('input[value="immediate"]').exists()
     expect(hasAvailability).toBe(true)
+  })
+
+  // C-1 + W-2: availability_type model and emitted value
+  it('emits update:availabilityType with correct value when availability changes', async () => {
+    const wrapper = mountFilters()
+    const availabilitySelect = wrapper.find('[data-availability]')
+    expect(availabilitySelect.exists()).toBe(true)
+    await availabilitySelect.setValue('immediate')
+    const emitted = wrapper.emitted('update:availabilityType')
+    expect(emitted).toBeTruthy()
+    expect(emitted[0][0]).toBe('immediate')
   })
 })

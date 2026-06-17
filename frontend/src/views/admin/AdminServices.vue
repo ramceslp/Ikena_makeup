@@ -16,16 +16,7 @@ const deleting = ref(null)
 const deleteError = ref('')
 
 async function loadServices() {
-  try {
-    // Admin fetch: fetch all including unpublished via admin endpoint
-    const response = await import('../../services/api.js').then(({ default: api }) =>
-      api.get('/admin/services')
-    )
-    servicesStore.services = response.data.data
-    servicesStore.serviceMeta = response.data.meta
-  } catch (err) {
-    servicesStore.error = err.response?.data?.message || 'Error al cargar los servicios'
-  }
+  await servicesStore.fetchAdminServices()
 }
 
 async function handleDelete(id) {

@@ -83,4 +83,22 @@ describe('ServiceGallery.vue — renders images in sort_order', () => {
     // Should not crash — might render a placeholder
     expect(wrapper.exists()).toBe(true)
   })
+
+  // W-5: single-image case — main renders, no thumbnail strip, no prev/next chevrons
+  it('with exactly ONE image: renders main image, no thumbnails, no prev/next chevrons', () => {
+    const singleImage = [{ id: 1, url: 'https://example.com/only.jpg', sort_order: 0 }]
+    const wrapper = mountGallery(singleImage)
+
+    const mainImg = wrapper.find('[data-main-image]')
+    expect(mainImg.exists()).toBe(true)
+    expect(mainImg.attributes('src')).toBe('https://example.com/only.jpg')
+
+    // No thumbnail strip when only one image
+    const thumbs = wrapper.findAll('[data-thumbnail]')
+    expect(thumbs).toHaveLength(0)
+
+    // No navigation chevrons when only one image
+    expect(wrapper.find('[data-gallery-next]').exists()).toBe(false)
+    expect(wrapper.find('[data-gallery-prev]').exists()).toBe(false)
+  })
 })

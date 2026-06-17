@@ -1,11 +1,11 @@
 <script setup>
 // Two-way bound to the container's filter state. Purely presentational.
 const search = defineModel('search', { type: String, default: '' })
-const minPrice = defineModel('minPrice', { type: [String, Number], default: '' })
-const maxPrice = defineModel('maxPrice', { type: [String, Number], default: '' })
+const minPrice = defineModel('minPrice', { type: String, default: '' })
+const maxPrice = defineModel('maxPrice', { type: String, default: '' })
 const sort = defineModel('sort', { type: String, default: 'newest' })
 const category = defineModel('category', { type: String, default: '' })
-const availability = defineModel('availability', { type: String, default: '' })
+const availabilityType = defineModel('availabilityType', { type: String, default: '' })
 
 const props = defineProps({
   categories: { type: Array, default: () => [] },
@@ -39,25 +39,27 @@ const inputClass =
         <!-- Price range + sort + availability -->
         <div class="flex flex-wrap items-center gap-3">
           <input
-            v-model="minPrice"
+            :value="minPrice"
             type="number"
             min="0"
             placeholder="Precio mín"
             :class="[inputClass, 'w-32']"
             aria-label="Precio mínimo"
+            @input="minPrice = $event.target.value"
           />
           <input
-            v-model="maxPrice"
+            :value="maxPrice"
             type="number"
             min="0"
             placeholder="Precio máx"
             :class="[inputClass, 'w-32']"
             aria-label="Precio máximo"
+            @input="maxPrice = $event.target.value"
           />
 
           <!-- Availability -->
           <select
-            v-model="availability"
+            v-model="availabilityType"
             data-availability
             :class="[inputClass, 'bg-surface-container-low']"
             aria-label="Disponibilidad"

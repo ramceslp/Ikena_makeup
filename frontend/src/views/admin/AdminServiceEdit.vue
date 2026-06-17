@@ -20,12 +20,11 @@ async function loadData() {
   loading.value = true
   fetchError.value = ''
   try {
-    const api = (await import('../../services/api.js')).default
-    const [svcResponse] = await Promise.all([
-      api.get(`/admin/services/${serviceId.value}`),
+    await Promise.all([
+      servicesStore.fetchAdminService(serviceId.value),
       servicesStore.fetchCategories(),
     ])
-    service.value = svcResponse.data.data
+    service.value = servicesStore.currentService
     categories.value = servicesStore.categories
   } catch (err) {
     fetchError.value = err.response?.data?.message || 'Error al cargar el servicio'

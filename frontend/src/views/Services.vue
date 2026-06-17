@@ -11,7 +11,7 @@ const minPrice = ref('')
 const maxPrice = ref('')
 const sort = ref('newest')
 const category = ref('')
-const availability = ref('')
+const availabilityType = ref('')
 
 let debounceTimer = null
 
@@ -22,7 +22,7 @@ function buildFilters() {
     max_price: maxPrice.value,
     sort: sort.value,
     category: category.value,
-    availability: availability.value,
+    availability_type: availabilityType.value,
     page: 1,
   }
 }
@@ -37,7 +37,7 @@ watch(search, () => {
   debounceTimer = setTimeout(applyFilters, 400)
 })
 
-watch([minPrice, maxPrice, sort, category, availability], applyFilters)
+watch([minPrice, maxPrice, sort, category, availabilityType], applyFilters)
 
 function goToPage(page) {
   servicesStore.fetchServices({ ...buildFilters(), page })
@@ -69,7 +69,7 @@ onMounted(() => {
       v-model:max-price="maxPrice"
       v-model:sort="sort"
       v-model:category="category"
-      v-model:availability="availability"
+      v-model:availability-type="availabilityType"
       :categories="servicesStore.categories"
     />
 

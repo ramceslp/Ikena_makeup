@@ -64,14 +64,10 @@ describe('ServiceCard.vue', () => {
   })
 
   it('does not render category badge when category is null', () => {
-    // Use a title that doesn't contain the category name
     const wrapper = mountCard({ ...baseService, title: 'Maquillaje de Día', category: null })
-    // Category element should not exist
-    expect(wrapper.find('[aria-hidden="true"]').exists() && wrapper.text()).toBeTruthy()
-    // The sell icon (category indicator) should not appear when category is null
-    // We check that no element with sell icon exists alongside a category name
-    const categoryElements = wrapper.findAll('span').filter(s => s.text() === 'Social')
-    expect(categoryElements).toHaveLength(0)
+    // W-3: assert the category pill element is genuinely absent via stable selector
+    const categoryPills = wrapper.findAll('[data-category-pill]')
+    expect(categoryPills).toHaveLength(0)
   })
 
   it('renders thumbnail image with correct src and alt', () => {

@@ -76,11 +76,23 @@ describe('services store — fetchServices', () => {
     api.get.mockResolvedValueOnce({ data: { data: [], meta: {} } })
 
     const store = useServicesStore()
-    await store.fetchServices({ category: '', min_price: '', availability: null })
+    await store.fetchServices({ category: '', min_price: '', availability_type: null })
 
     const callArgs = api.get.mock.calls[0]
     expect(callArgs[1].params).not.toHaveProperty('category')
     expect(callArgs[1].params).not.toHaveProperty('min_price')
+    expect(callArgs[1].params).not.toHaveProperty('availability_type')
+  })
+
+  // C-1: availability_type must be sent as availability_type (backend reads ?availability_type=)
+  it('fetchServices sends availability_type (not availability) in request params', async () => {
+    api.get.mockResolvedValueOnce({ data: { data: [], meta: {} } })
+
+    const store = useServicesStore()
+    await store.fetchServices({ availability_type: 'immediate' })
+
+    const callArgs = api.get.mock.calls[0]
+    expect(callArgs[1].params).toHaveProperty('availability_type', 'immediate')
     expect(callArgs[1].params).not.toHaveProperty('availability')
   })
 
@@ -290,5 +302,82 @@ describe('services store — admin actions', () => {
       { order: [3, 1] },
     )
     expect(result).toEqual(fakeImages)
+  })
+
+  // C-2: two-step create — createService then uploadImages when files present
+  it('createServiceWithImages calls createService then uploadImages with new id and files', async () => {
+    const created = { id: 42, title: 'Test', slug: 'test' }
+    api.post.mockResolvedValueOnce({ data: { data: created } }) // createService
+    api.post.mockResolvedValueOnce({ data: { data: [] } })      // uploadImages
+
+    const store = useServicesStore()
+    const fd = new FormData()
+    fd.append('title', 'Test')
+    const file = new File(['img'], 'photo.jpg', { type: 'image/jpeg' })
+
+    const result = await store.createServiceWithImages(fd, [file])
+
+    // First call: POST /admin/services (no images in FormData)
+    const firstCall = api.post.mock.calls[0]
+    expect(firstCall[0]).toBe('/admin/services')
+    // Second call: POST /admin/services/42/images
+    const secondCall = api.post.mock.calls[1]
+    expect(secondCall[0]).toBe('/admin/services/42/images')
+    expect(result).toEqual(created)
+  })
+
+  it('createServiceWithImages skips uploadImages when no files provided', async () => {
+    const created = { id: 7, title: 'No Images', slug: 'no-images' }
+    api.post.mockResolvedValueOnce({ data: { data: created } })
+
+    const store = useServicesStore()
+    const fd = new FormData()
+    fd.append('title', 'No Images')
+
+    const result = await store.createServiceWithImages(fd, [])
+
+    expect(api.post).toHaveBeenCalledTimes(1)
+    expect(result).toEqual(created)
+  })
+
+  // C-3: fetchAdminServices — GET /admin/services, stores into state
+  it('fetchAdminServices GETs /admin/services and sets services + serviceMeta', async () => {
+    const fakeServices = [
+      { id: 1, title: 'Svc A', is_published: true },
+      { id: 2, title: 'Svc B', is_published: false },
+    ]
+    api.get.mockResolvedValueOnce({
+      data: { data: fakeServices, meta: { current_page: 1, last_page: 1, total: 2 } },
+    })
+
+    const store = useServicesStore()
+    await store.fetchAdminServices()
+
+    expect(api.get).toHaveBeenCalledWith('/admin/services')
+    expect(store.services).toEqual(fakeServices)
+    expect(store.serviceMeta.total).toBe(2)
+  })
+
+  // C-4: fetchAdminService — GET /admin/services/{id}, stores into currentService
+  it('fetchAdminService GETs /admin/services/{id} and sets currentService', async () => {
+    const fakeService = { id: 5, title: 'Svc Detail', is_published: true, images: [] }
+    api.get.mockResolvedValueOnce({ data: { data: fakeService } })
+
+    const store = useServicesStore()
+    await store.fetchAdminService(5)
+
+    expect(api.get).toHaveBeenCalledWith('/admin/services/5')
+    expect(store.currentService).toEqual(fakeService)
+  })
+
+  // S-1: fetchCategories cache guard
+  it('fetchCategories early-returns and skips API call if categories already loaded', async () => {
+    const store = useServicesStore()
+    store.categories = [{ id: 1, name: 'Social', slug: 'social' }]
+
+    await store.fetchCategories()
+
+    expect(api.get).not.toHaveBeenCalled()
+    expect(store.categories).toHaveLength(1)
   })
 })
