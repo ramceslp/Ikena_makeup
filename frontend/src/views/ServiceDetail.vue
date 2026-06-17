@@ -47,7 +47,7 @@ function onSlotSelected(slot) {
 
 function onBookingSuccess(result) {
   // BookingForm handles redirect; this can emit analytics / show a toast if needed
-  console.info('Booking created:', result)
+  void result
 }
 
 onMounted(async () => {

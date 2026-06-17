@@ -41,6 +41,9 @@ export const useBookingStore = defineStore('booking', {
       } catch (err) {
         const status = err.response?.status
         if (status === 409) {
+          // Re-fetch slots so the taken slot disappears from the picker,
+          // then set the error (fetchAvailableSlots clears bookingError internally)
+          await this.fetchAvailableSlots(payload.service_id)
           this.bookingError = 'Este horario ya no está disponible. Por favor elige otro.'
         } else if (status === 401) {
           this.bookingError = 'Debes iniciar sesión para realizar una reserva.'

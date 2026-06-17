@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useBookingStore } from '../../stores/booking.js'
 import { formatCurrency } from '../../utils/money.js'
 
@@ -16,9 +17,15 @@ const props = defineProps({
 
 const emit = defineEmits(['booking-success'])
 
+const router = useRouter()
+const route = useRoute()
 const bookingStore = useBookingStore()
 const whatsapp = ref('')
+const whatsappError = ref('')
 
+// CLIENT-SIDE PREVIEW only — formula: price (in dollars) × deposit_percentage = cents.
+// The backend DepositCalculator is the source of truth for the actual charged amount,
+// returned as `deposit_amount_cents` on the 201 response.
 const depositCents = computed(() => {
   if (!props.service) return 0
   const price = parseFloat(props.service.price) || 0
@@ -35,6 +42,13 @@ const isDisabled = computed(() => !props.selectedSlot || isLoading.value)
 async function submit() {
   if (isDisabled.value) return
 
+  // Client-side whatsapp validation
+  if (!whatsapp.value.trim()) {
+    whatsappError.value = 'El número de WhatsApp es obligatorio'
+    return
+  }
+  whatsappError.value = ''
+
   bookingStore.bookingError = null
 
   const result = await bookingStore.createBooking({
@@ -43,6 +57,12 @@ async function submit() {
     scheduled_time: props.selectedSlot.scheduled_time,
     whatsapp: whatsapp.value,
   })
+
+  if (result === null && bookingStore.bookingError?.includes('sesión')) {
+    // 401 — redirect to login with redirect-back query (mirrors router guard pattern)
+    router.push({ name: 'Login', query: { redirect: route.fullPath } })
+    return
+  }
 
   if (result) {
     emit('booking-success', result)
@@ -87,8 +107,13 @@ async function submit() {
         data-whatsapp-input
         placeholder="+593 09 9999 9999"
         maxlength="20"
+        required
         class="w-full rounded-xl border border-blush-canvas/30 bg-surface px-4 py-3 font-body-md text-body-md text-on-surface placeholder:text-outline focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+        :class="{ 'border-error': whatsappError }"
       />
+      <p v-if="whatsappError" class="font-label-sm text-label-sm text-error" role="alert">
+        {{ whatsappError }}
+      </p>
     </div>
 
     <!-- Deposit line -->

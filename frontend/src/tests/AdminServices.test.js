@@ -98,4 +98,23 @@ describe('AdminServices.vue — smoke tests (store-backed)', () => {
 
     expect(wrapper.text()).toContain('Borrador')
   })
+
+  it('each service row has a Horarios link/button targeting the slots route for that service', async () => {
+    api.get.mockResolvedValueOnce({
+      data: { data: fakeServices, meta: {} },
+    })
+
+    const wrapper = mountAdminServices()
+    await flushPromises()
+
+    const slotsLinks = wrapper.findAll('[data-slots-link]')
+    expect(slotsLinks).toHaveLength(fakeServices.length)
+
+    // Each link must target the correct service slots path
+    fakeServices.forEach((svc, i) => {
+      const link = slotsLinks[i]
+      const href = link.attributes('href') || link.attributes('to') || ''
+      expect(href).toContain(`/admin/services/${svc.id}/slots`)
+    })
+  })
 })

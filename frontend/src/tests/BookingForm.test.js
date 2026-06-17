@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
+import { createRouter, createMemoryHistory } from 'vue-router'
 
 vi.mock('../services/api.js', () => ({
   default: {
@@ -18,6 +19,16 @@ vi.mock('../services/api.js', () => ({
 import api from '../services/api.js'
 import BookingForm from '../components/booking/BookingForm.vue'
 import { useBookingStore } from '../stores/booking.js'
+
+// Router stub for redirect tests
+const testRouter = createRouter({
+  history: createMemoryHistory(),
+  routes: [
+    { path: '/login', name: 'Login', component: { template: '<div/>' } },
+    { path: '/services/:slug', name: 'ServiceDetail', component: { template: '<div/>' } },
+    { path: '/:pathMatch(.*)*', component: { template: '<div/>' } },
+  ],
+})
 
 const selectedSlot = {
   id: 1,
@@ -101,6 +112,8 @@ describe('BookingForm.vue — 409 inline error', () => {
   it('shows inline error after failed submission (409)', async () => {
     const error = { response: { status: 409, data: {} } }
     api.post.mockRejectedValueOnce(error)
+    // 409 branch re-fetches available slots
+    api.get.mockResolvedValueOnce({ data: { data: [] } })
 
     const wrapper = mountForm()
 
@@ -151,5 +164,64 @@ describe('BookingForm.vue — submission', () => {
     const wrapper = mountForm({ selectedSlot: null })
     const btn = wrapper.find('[data-submit-btn]')
     expect(btn.attributes('disabled')).toBeDefined()
+  })
+})
+
+describe('BookingForm.vue — 401 redirect to login', () => {
+  beforeEach(async () => {
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+    await testRouter.push('/services/maquillaje-social')
+    await testRouter.isReady()
+  })
+
+  it('redirects to Login with redirect query on 401 response', async () => {
+    const error = { response: { status: 401, data: {} } }
+    api.post.mockRejectedValueOnce(error)
+
+    const wrapper = mount(BookingForm, {
+      props: { selectedSlot, service: fakeService },
+      global: { plugins: [testRouter, createPinia()] },
+    })
+
+    const input = wrapper.find('[data-whatsapp-input]')
+    await input.setValue('+5930999')
+
+    const btn = wrapper.find('[data-submit-btn]')
+    await btn.trigger('click')
+    await flushPromises()
+
+    // After 401 the router must have navigated to /login
+    expect(testRouter.currentRoute.value.name).toBe('Login')
+    expect(testRouter.currentRoute.value.query.redirect).toBeTruthy()
+  })
+})
+
+describe('BookingForm.vue — whatsapp validation', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+  })
+
+  it('does not call createBooking when whatsapp is empty', async () => {
+    const wrapper = mountForm()
+
+    // Do NOT fill in whatsapp (leave it empty)
+    const btn = wrapper.find('[data-submit-btn]')
+    await btn.trigger('click')
+    await flushPromises()
+
+    // createBooking must NOT have been called
+    expect(api.post).not.toHaveBeenCalled()
+  })
+
+  it('shows validation message when whatsapp is empty and form is submitted', async () => {
+    const wrapper = mountForm()
+
+    const btn = wrapper.find('[data-submit-btn]')
+    await btn.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('WhatsApp')
   })
 })

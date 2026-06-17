@@ -111,6 +111,8 @@ describe('booking store — createBooking', () => {
   it('createBooking on 409 sets bookingError and keeps lastBookingResult null', async () => {
     const error = { response: { status: 409, data: { message: 'Slot already taken' } } }
     api.post.mockRejectedValueOnce(error)
+    // fetchAvailableSlots re-fetch after 409
+    api.get.mockResolvedValueOnce({ data: { data: [] } })
 
     const store = useBookingStore()
     const result = await store.createBooking({
@@ -123,6 +125,27 @@ describe('booking store — createBooking', () => {
     expect(store.bookingError).toBe('Este horario ya no está disponible. Por favor elige otro.')
     expect(store.lastBookingResult).toBeNull()
     expect(result).toBeNull()
+  })
+
+  it('createBooking on 409 re-fetches available slots for the service', async () => {
+    const error = { response: { status: 409, data: {} } }
+    api.post.mockRejectedValueOnce(error)
+    // Mock the re-fetch
+    const freshSlots = [{ id: 5, date_label: '2026-07-10', start_time: '11:00', capacity_remaining: 1 }]
+    api.get.mockResolvedValueOnce({ data: { data: freshSlots } })
+
+    const store = useBookingStore()
+    await store.createBooking({
+      service_id: 7,
+      scheduled_date: '2026-07-04',
+      scheduled_time: '10:00',
+      whatsapp: '+5930999',
+    })
+
+    // Must have called GET /services/7/available-slots after the 409
+    expect(api.get).toHaveBeenCalledWith('/services/7/available-slots')
+    // The fresh slots replace the stale list
+    expect(store.availableSlots).toEqual(freshSlots)
   })
 
   it('createBooking on 422 sets bookingError with server message', async () => {

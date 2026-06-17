@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from 'vue'
 import BaseBadge from '../ui/BaseBadge.vue'
 import { formatCurrency } from '../../utils/money.js'
 
@@ -6,7 +7,7 @@ const props = defineProps({
   order: { type: Object, required: true },
 })
 
-const isAppointment = !!(props.order.appointment && !props.order.course)
+const isAppointment = computed(() => !!(props.order.appointment && !props.order.course))
 
 const statusConfig = {
   // Course order statuses
@@ -19,11 +20,13 @@ const statusConfig = {
 }
 
 // For appointment rows the status comes from appointment.status, otherwise order.status
-const statusKey = isAppointment
-  ? (props.order.appointment.status ?? props.order.status)
-  : props.order.status
+const statusKey = computed(() =>
+  isAppointment.value
+    ? (props.order.appointment.status ?? props.order.status)
+    : props.order.status
+)
 
-const status = statusConfig[statusKey]
+const status = computed(() => statusConfig[statusKey.value])
 
 function formatDate(dateStr) {
   if (!dateStr) return ''
@@ -35,7 +38,7 @@ function formatDate(dateStr) {
 }
 
 // Course variant — keep original logic
-const dateStr = props.order.paid_at ?? props.order.created_at
+const dateStr = computed(() => props.order.paid_at ?? props.order.created_at)
 </script>
 
 <template>

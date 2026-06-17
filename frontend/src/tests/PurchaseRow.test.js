@@ -92,4 +92,17 @@ describe('PurchaseRow.vue — appointment variant', () => {
     expect(wrapper.text()).not.toContain('Maquillaje Social')
     expect(wrapper.text()).not.toContain('10:00')
   })
+
+  it('isAppointment is reactive — updates when order prop changes from course to appointment', async () => {
+    const wrapper = mount(PurchaseRow, { props: { order: baseOrder } })
+    // Initially shows course title
+    expect(wrapper.text()).toContain('Curso de Makeup Pro')
+
+    // Update to an appointment order
+    await wrapper.setProps({ order: appointmentOrder })
+
+    // Should now show appointment content
+    expect(wrapper.text()).toContain('Maquillaje Social')
+    expect(wrapper.text()).toContain('10:00')
+  })
 })
