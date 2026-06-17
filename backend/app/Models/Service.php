@@ -21,14 +21,16 @@ class Service extends Model
         'price',
         'duration_hours',
         'availability_type',
+        'deposit_percentage',
         'is_published',
     ];
 
     protected function casts(): array
     {
         return [
-            'price'        => 'decimal:2',
-            'is_published' => 'boolean',
+            'price'              => 'decimal:2',
+            'is_published'       => 'boolean',
+            'deposit_percentage' => 'integer',
         ];
     }
 
@@ -46,6 +48,16 @@ class Service extends Model
         return $this->belongsTo(Category::class);
     }
 
+    public function slots(): HasMany
+    {
+        return $this->hasMany(ServiceSlot::class);
+    }
+
+    public function appointments(): HasMany
+    {
+        return $this->hasMany(Appointment::class);
+    }
+
     // -------------------------------------------------------------------------
     // Scopes
     // -------------------------------------------------------------------------
@@ -58,6 +70,17 @@ class Service extends Model
     // -------------------------------------------------------------------------
     // Accessors
     // -------------------------------------------------------------------------
+
+    /**
+     * Returns the effective deposit percentage for this service.
+     * Falls back to the global config default when the column is null.
+     */
+    public function depositPercentage(): int
+    {
+        return $this->deposit_percentage ?? (int) config('booking.deposit.default_percentage');
+    }
+
+
 
     /**
      * Returns the absolute URL of the first image (ordered by sort_order),
