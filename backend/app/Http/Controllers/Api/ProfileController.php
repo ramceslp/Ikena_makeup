@@ -76,7 +76,7 @@ class ProfileController extends Controller
     {
         $orders = $request->user()
             ->orders()
-            ->with('course')
+            ->with('course', 'appointment.service')
             ->latest()
             ->paginate(15);
 
