@@ -50,6 +50,9 @@ const activeClass = 'text-primary border-b-2 border-apricot-glow'
           <RouterLink to="/" :class="linkClass" :exact-active-class="activeClass">
             Explorar
           </RouterLink>
+          <RouterLink to="/services" :class="linkClass" :active-class="activeClass">
+            Servicios
+          </RouterLink>
 
           <template v-if="isAuthenticated">
             <RouterLink to="/my-courses" :class="linkClass" :active-class="activeClass">
@@ -62,6 +65,14 @@ const activeClass = 'text-primary border-b-2 border-apricot-glow'
               :active-class="activeClass"
             >
               Panel instructor
+            </RouterLink>
+            <RouterLink
+              v-if="user?.role === 'admin'"
+              to="/admin/services"
+              :class="linkClass"
+              :active-class="activeClass"
+            >
+              Servicios admin
             </RouterLink>
 
             <!-- User avatar + logout -->
@@ -126,6 +137,13 @@ const activeClass = 'text-primary border-b-2 border-apricot-glow'
         >
           Explorar
         </RouterLink>
+        <RouterLink
+          to="/services"
+          @click="mobileOpen = false"
+          class="block py-2 font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors"
+        >
+          Servicios
+        </RouterLink>
 
         <template v-if="isAuthenticated">
           <RouterLink
@@ -142,6 +160,14 @@ const activeClass = 'text-primary border-b-2 border-apricot-glow'
             class="block py-2 font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors"
           >
             Panel instructor
+          </RouterLink>
+          <RouterLink
+            v-if="user?.role === 'admin'"
+            to="/admin/services"
+            @click="mobileOpen = false"
+            class="block py-2 font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors"
+          >
+            Servicios admin
           </RouterLink>
           <RouterLink to="/profile" @click="mobileOpen = false" class="flex items-center gap-2 py-2 hover:opacity-80 transition-opacity">
             <img v-if="user?.avatar" :src="user.avatar" :alt="user.name" class="w-9 h-9 rounded-full object-cover ring-2 ring-apricot-glow" />

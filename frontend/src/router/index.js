@@ -16,6 +16,15 @@ const InstructorDashboard = () => import('../views/InstructorDashboard.vue')
 const InstructorSubmissions = () => import('../views/InstructorSubmissions.vue')
 const Profile = () => import('../views/Profile.vue')
 
+// Services — public
+const Services = () => import('../views/Services.vue')
+const ServiceDetail = () => import('../views/ServiceDetail.vue')
+
+// Services — admin
+const AdminServices = () => import('../views/admin/AdminServices.vue')
+const AdminServiceCreate = () => import('../views/admin/AdminServiceCreate.vue')
+const AdminServiceEdit = () => import('../views/admin/AdminServiceEdit.vue')
+
 const routes = [
   {
     path: '/',
@@ -104,6 +113,38 @@ const routes = [
     name: 'InstructorCourseEdit',
     component: InstructorCourseEdit,
     meta: { requiresInstructor: true },
+  },
+
+  // ── Public: Services ──────────────────────────────────────────────────────
+  {
+    path: '/services',
+    name: 'Services',
+    component: Services,
+  },
+  {
+    path: '/services/:slug',
+    name: 'ServiceDetail',
+    component: ServiceDetail,
+  },
+
+  // ── Admin: Services ───────────────────────────────────────────────────────
+  {
+    path: '/admin/services',
+    name: 'AdminServices',
+    component: AdminServices,
+    meta: { requiresAdmin: true },
+  },
+  {
+    path: '/admin/services/new',
+    name: 'AdminServiceCreate',
+    component: AdminServiceCreate,
+    meta: { requiresAdmin: true },
+  },
+  {
+    path: '/admin/services/:id/edit',
+    name: 'AdminServiceEdit',
+    component: AdminServiceEdit,
+    meta: { requiresAdmin: true },
   },
 ]
 
