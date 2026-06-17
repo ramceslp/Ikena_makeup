@@ -32,6 +32,8 @@ class SlotAvailabilityResolver
     {
         $tz      = config('booking.timezone');
         $today   = Carbon::now($tz)->startOfDay();
+        // Exclusive upper bound: today + $windowDays days (not including the boundary day itself),
+        // giving exactly $windowDays calendar days of availability (e.g. today through today+59).
         $horizon = $today->copy()->addDays($windowDays);
 
         // Load all active (non-blocked) slots for this service
@@ -54,7 +56,8 @@ class SlotAvailabilityResolver
                 // One-off slot: include only if within window and not taken
                 $date = Carbon::instance($slot->specific_date)->startOfDay();
 
-                if ($date->lt($today) || $date->gt($horizon)) {
+                // lt($today): before today; gte($horizon): on or past the exclusive boundary.
+                if ($date->lt($today) || $date->gte($horizon)) {
                     continue;
                 }
 
@@ -80,7 +83,8 @@ class SlotAvailabilityResolver
                     $current = $today->copy();
                 }
 
-                while ($current->lte($horizon)) {
+                // lt($horizon): exclusive upper bound — exactly $windowDays days.
+                while ($current->lt($horizon)) {
                     $dateStr = $current->format('Y-m-d');
                     $key     = Appointment::makeSlotKey($service->id, $dateStr, $slot->start_time);
 

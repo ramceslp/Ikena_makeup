@@ -64,11 +64,19 @@ class Appointment extends Model
 
     /**
      * Build the slot_key string that uniquely identifies a booking slot.
-     * Format: "{service_id}|{date}|{time}"
+     * Format: "{service_id}|{date}|{HH:MM}"
+     *
+     * Time is normalized to H:i (HH:MM) so that MySQL TIME columns ('10:00:00')
+     * and SQLite TIME values ('10:00') produce the same key. Normalization
+     * happens here — callers must NOT truncate or pad the time themselves.
+     *
      * Set on appointment creation; nulled on cancellation to free the slot.
      */
     public static function makeSlotKey(int $serviceId, string $date, string $time): string
     {
+        // Normalize to HH:MM regardless of whether the DB driver returned HH:MM or HH:MM:SS.
+        $time = substr($time, 0, 5);
+
         return "{$serviceId}|{$date}|{$time}";
     }
 }

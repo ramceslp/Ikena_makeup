@@ -170,6 +170,26 @@ class ServiceSlotAdminTest extends TestCase
         ])->assertStatus(403);
     }
 
+    public function test_patch_with_both_day_of_week_and_specific_date_null_returns_422(): void
+    {
+        $service = $this->byAppointmentService();
+        $slot    = ServiceSlot::factory()->create([
+            'service_id'  => $service->id,
+            'day_of_week' => 1,
+        ]);
+
+        Sanctum::actingAs($this->admin());
+
+        // Sending both fields as null is a corrupt update — must be rejected.
+        $response = $this->patchJson("/api/admin/services/{$service->id}/slots/{$slot->id}", [
+            'day_of_week'   => null,
+            'specific_date' => null,
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['day_of_week']);
+    }
+
     // =========================================================================
     // DELETE /api/admin/services/{service}/slots/{slot}
     // =========================================================================

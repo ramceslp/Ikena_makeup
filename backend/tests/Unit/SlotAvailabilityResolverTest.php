@@ -104,6 +104,22 @@ class SlotAvailabilityResolverTest extends TestCase
     }
 
     // =========================================================================
+    // makeSlotKey time normalization — driver-agnostic unit test
+    // =========================================================================
+
+    public function test_make_slot_key_normalizes_hhmmss_to_hhmm(): void
+    {
+        // MySQL TIME columns return '10:00:00'; SQLite returns '10:00'.
+        // makeSlotKey must produce the same key regardless of which form arrives.
+        $keyFromShort = Appointment::makeSlotKey(1, '2026-07-01', '10:00');
+        $keyFromLong  = Appointment::makeSlotKey(1, '2026-07-01', '10:00:00');
+
+        $this->assertSame($keyFromShort, $keyFromLong,
+            'makeSlotKey must normalize HH:MM:SS and HH:MM to the same key (MySQL/SQLite parity).'
+        );
+    }
+
+    // =========================================================================
     // Booked (non-cancelled) slot excluded
     // =========================================================================
 
@@ -113,7 +129,7 @@ class SlotAvailabilityResolverTest extends TestCase
         $future  = Carbon::now($tz)->addDays(5)->format('Y-m-d');
         $service = Service::factory()->create(['availability_type' => 'by_appointment']);
 
-        ServiceSlot::factory()->create([
+        $slot = ServiceSlot::factory()->create([
             'service_id'    => $service->id,
             'day_of_week'   => null,
             'specific_date' => $future,
@@ -121,16 +137,28 @@ class SlotAvailabilityResolverTest extends TestCase
             'is_blocked'    => false,
         ]);
 
-        // Create a non-cancelled appointment occupying the slot
+        // Simulate MySQL behavior: read the persisted start_time back from the DB
+        // (SQLite returns '10:00', MySQL returns '10:00:00'). We exercise the
+        // MySQL form explicitly to ensure normalization is not driver-dependent.
+        $persistedTime = $slot->fresh()->start_time; // whatever the DB returns
+        $mysqlStyleTime = strlen($persistedTime) === 5
+            ? $persistedTime . ':00'   // convert '10:00' → '10:00:00' to simulate MySQL
+            : $persistedTime;          // already '10:00:00' on MySQL
+
+        // Create a non-cancelled appointment whose slot_key was built from the
+        // MySQL-style time string — this is the real-world production scenario.
         Appointment::factory()->create([
             'service_id'     => $service->id,
             'scheduled_date' => $future,
-            'scheduled_time' => '10:00',
-            'slot_key'       => Appointment::makeSlotKey($service->id, $future, '10:00'),
+            'scheduled_time' => $mysqlStyleTime,
+            'slot_key'       => Appointment::makeSlotKey($service->id, $future, $mysqlStyleTime),
             'status'         => 'pending',
         ]);
 
         $slots = $this->resolver->resolve($service, 60);
+
+        // The slot must be excluded even when the appointment slot_key was built
+        // from a HH:MM:SS time string (MySQL production form).
         $this->assertCount(0, $slots);
     }
 

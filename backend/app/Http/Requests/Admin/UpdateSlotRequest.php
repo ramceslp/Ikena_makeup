@@ -26,6 +26,10 @@ class UpdateSlotRequest extends FormRequest
     /**
      * If BOTH fields are explicitly provided in the request, enforce mutual exclusion.
      * Partial updates that only send one field are allowed without re-checking the other.
+     *
+     * Two invalid cases when both keys are present:
+     *   1. Both are non-null  → violates "only one may be set" rule.
+     *   2. Both are null      → would corrupt the slot (neither field set = invisible forever).
      */
     public function withValidator(Validator $validator): void
     {
@@ -42,6 +46,10 @@ class UpdateSlotRequest extends FormRequest
 
                 if ($dowSet && $dateSet) {
                     $v->errors()->add('day_of_week', 'Only one of day_of_week or specific_date may be set, not both.');
+                }
+
+                if (! $dowSet && ! $dateSet) {
+                    $v->errors()->add('day_of_week', 'Either day_of_week or specific_date is required.');
                 }
             }
         });
