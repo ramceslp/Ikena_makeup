@@ -69,7 +69,9 @@ class CheckoutController extends Controller
 
     /**
      * POST /api/payments/confirm
-     * Verifies the payment with the gateway and, if approved, creates the Enrollment.
+     * Verifies the payment with the gateway and, if approved:
+     *  - For course orders: creates the Enrollment.
+     *  - For appointment orders: transitions the linked appointment to paid/confirmed.
      */
     public function confirm(Request $request): JsonResponse
     {
@@ -92,16 +94,32 @@ class CheckoutController extends Controller
             return response()->json(['message' => 'This order does not belong to you.'], 403);
         }
 
-        $order->loadMissing('course');
-        $courseSlug = $order->course->slug;
+        // Determine order type
+        $isCourseOrder      = ! is_null($order->course_id);
+        $isAppointmentOrder = ! is_null($order->appointment_id);
 
-        // Idempotency — if already paid, return enrolled:true without re-charging.
+        if ($isCourseOrder) {
+            $order->loadMissing('course');
+            $courseSlug = $order->course->slug;
+        }
+
+        // Idempotency — if already paid, return the appropriate success payload without re-charging.
         if ($order->status === 'paid') {
+            if ($isCourseOrder) {
+                return response()->json([
+                    'data' => [
+                        'status'      => 'paid',
+                        'enrolled'    => true,
+                        'course_slug' => $courseSlug,
+                    ],
+                ]);
+            }
+
+            // Appointment order already paid
             return response()->json([
                 'data' => [
-                    'status'      => 'paid',
-                    'enrolled'    => true,
-                    'course_slug' => $courseSlug,
+                    'status'          => 'paid',
+                    'appointment_id'  => $order->appointment_id,
                 ],
             ]);
         }
@@ -118,19 +136,39 @@ class CheckoutController extends Controller
                 'meta'                   => $result->raw,
             ]);
 
-            // Create enrollment (idempotent — firstOrCreate prevents duplicates).
-            Enrollment::firstOrCreate(
-                ['user_id' => $order->user_id, 'course_id' => $order->course_id],
-                ['price_paid' => $order->amount_cents / 100]
-            );
+            if ($isCourseOrder) {
+                // Create enrollment (idempotent — firstOrCreate prevents duplicates).
+                Enrollment::firstOrCreate(
+                    ['user_id' => $order->user_id, 'course_id' => $order->course_id],
+                    ['price_paid' => $order->amount_cents / 100]
+                );
 
-            return response()->json([
-                'data' => [
-                    'status'      => 'paid',
-                    'enrolled'    => true,
-                    'course_slug' => $courseSlug,
-                ],
-            ]);
+                return response()->json([
+                    'data' => [
+                        'status'      => 'paid',
+                        'enrolled'    => true,
+                        'course_slug' => $courseSlug,
+                    ],
+                ]);
+            }
+
+            if ($isAppointmentOrder) {
+                // Transition the linked appointment to paid.
+                $order->loadMissing('appointment');
+
+                if ($order->appointment) {
+                    $order->appointment->update([
+                        'status' => 'paid',
+                    ]);
+                }
+
+                return response()->json([
+                    'data' => [
+                        'status'         => 'paid',
+                        'appointment_id' => $order->appointment_id,
+                    ],
+                ]);
+            }
         }
 
         // Payment was not approved — mark order failed.
@@ -139,11 +177,20 @@ class CheckoutController extends Controller
             'meta'   => $result->raw,
         ]);
 
+        if ($isCourseOrder) {
+            return response()->json([
+                'data' => [
+                    'status'      => 'failed',
+                    'enrolled'    => false,
+                    'course_slug' => $courseSlug,
+                ],
+            ]);
+        }
+
         return response()->json([
             'data' => [
-                'status'      => 'failed',
-                'enrolled'    => false,
-                'course_slug' => $courseSlug,
+                'status'         => 'failed',
+                'appointment_id' => $order->appointment_id,
             ],
         ]);
     }

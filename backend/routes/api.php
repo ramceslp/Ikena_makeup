@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\CheckoutController;
 use App\Http\Controllers\Api\CourseController;
 use App\Http\Controllers\Api\CourseReviewController;
 use App\Http\Controllers\Api\ServiceController;
+use App\Http\Controllers\Api\Admin\AppointmentController as AdminAppointmentController;
 use App\Http\Controllers\Api\Admin\ServiceController as AdminServiceController;
 use App\Http\Controllers\Api\Admin\ServiceSlotController as AdminServiceSlotController;
 use App\Http\Controllers\Api\Instructor\CourseController as InstructorCourseController;
@@ -87,6 +88,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/services/{service}/slots', [AdminServiceSlotController::class, 'store']);
         Route::patch('/services/{service}/slots/{slot}', [AdminServiceSlotController::class, 'update']);
         Route::delete('/services/{service}/slots/{slot}', [AdminServiceSlotController::class, 'destroy']);
+
+        // Appointment management
+        Route::get('/appointments', [AdminAppointmentController::class, 'index']);
+        Route::patch('/appointments/{appointment}/mark-paid', [AdminAppointmentController::class, 'markPaid']);
+        Route::patch('/appointments/{appointment}/cancel', [AdminAppointmentController::class, 'cancel']);
     });
 
     // Instructor authoring routes
