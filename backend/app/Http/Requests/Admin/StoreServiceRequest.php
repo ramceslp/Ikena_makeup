@@ -19,7 +19,7 @@ class StoreServiceRequest extends FormRequest
             'description'       => ['required', 'string'],
             'price'             => ['required', 'numeric', 'min:0'],
             'duration_hours'    => ['required', 'integer', 'min:0', 'max:255'],
-            'availability_type' => ['sometimes', Rule::in(['immediate', 'by_appointment'])],
+            'availability_type' => ['sometimes', 'nullable', Rule::in(['immediate', 'by_appointment'])],
             'category_id'       => ['nullable', 'integer', 'exists:categories,id'],
             'is_published'      => ['sometimes', 'boolean'],
         ];

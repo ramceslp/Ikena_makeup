@@ -118,6 +118,119 @@ class AdminServiceTest extends TestCase
         $this->deleteJson("/api/admin/services/{$service->id}")->assertStatus(403);
     }
 
+    // Auth matrix on GET /api/admin/services/{id} (show)
+
+    public function test_guest_cannot_access_admin_service_show_401(): void
+    {
+        $service = Service::factory()->create();
+        $this->getJson("/api/admin/services/{$service->id}")->assertStatus(401);
+    }
+
+    public function test_student_cannot_access_admin_service_show_403(): void
+    {
+        $service = Service::factory()->create();
+        Sanctum::actingAs($this->student());
+        $this->getJson("/api/admin/services/{$service->id}")->assertStatus(403);
+    }
+
+    public function test_instructor_cannot_access_admin_service_show_403(): void
+    {
+        $service = Service::factory()->create();
+        Sanctum::actingAs($this->instructor());
+        $this->getJson("/api/admin/services/{$service->id}")->assertStatus(403);
+    }
+
+    // Auth matrix on POST /api/admin/services/{id} (update)
+
+    public function test_guest_cannot_update_service_401(): void
+    {
+        $service = Service::factory()->create();
+        $this->postJson("/api/admin/services/{$service->id}", [])->assertStatus(401);
+    }
+
+    public function test_student_cannot_update_service_403(): void
+    {
+        $service = Service::factory()->create();
+        Sanctum::actingAs($this->student());
+        $this->postJson("/api/admin/services/{$service->id}", [])->assertStatus(403);
+    }
+
+    public function test_instructor_cannot_update_service_403(): void
+    {
+        $service = Service::factory()->create();
+        Sanctum::actingAs($this->instructor());
+        $this->postJson("/api/admin/services/{$service->id}", [])->assertStatus(403);
+    }
+
+    // Auth matrix on POST /api/admin/services/{id}/images (storeImages)
+
+    public function test_guest_cannot_upload_service_images_401(): void
+    {
+        $service = Service::factory()->create();
+        $this->postJson("/api/admin/services/{$service->id}/images", [])->assertStatus(401);
+    }
+
+    public function test_student_cannot_upload_service_images_403(): void
+    {
+        $service = Service::factory()->create();
+        Sanctum::actingAs($this->student());
+        $this->postJson("/api/admin/services/{$service->id}/images", [])->assertStatus(403);
+    }
+
+    public function test_instructor_cannot_upload_service_images_403(): void
+    {
+        $service = Service::factory()->create();
+        Sanctum::actingAs($this->instructor());
+        $this->postJson("/api/admin/services/{$service->id}/images", [])->assertStatus(403);
+    }
+
+    // Auth matrix on DELETE /api/admin/services/{id}/images/{image} (destroyImage)
+
+    public function test_guest_cannot_delete_service_image_401(): void
+    {
+        $service = Service::factory()->create();
+        $image   = ServiceImage::factory()->create(['service_id' => $service->id]);
+        $this->deleteJson("/api/admin/services/{$service->id}/images/{$image->id}")->assertStatus(401);
+    }
+
+    public function test_student_cannot_delete_service_image_403(): void
+    {
+        $service = Service::factory()->create();
+        $image   = ServiceImage::factory()->create(['service_id' => $service->id]);
+        Sanctum::actingAs($this->student());
+        $this->deleteJson("/api/admin/services/{$service->id}/images/{$image->id}")->assertStatus(403);
+    }
+
+    public function test_instructor_cannot_delete_service_image_403(): void
+    {
+        $service = Service::factory()->create();
+        $image   = ServiceImage::factory()->create(['service_id' => $service->id]);
+        Sanctum::actingAs($this->instructor());
+        $this->deleteJson("/api/admin/services/{$service->id}/images/{$image->id}")->assertStatus(403);
+    }
+
+    // Auth matrix on PATCH /api/admin/services/{id}/images/reorder (reorderImages)
+
+    public function test_guest_cannot_reorder_service_images_401(): void
+    {
+        $service = Service::factory()->create();
+        $this->patchJson("/api/admin/services/{$service->id}/images/reorder", ['order' => []])->assertStatus(401);
+    }
+
+    public function test_student_cannot_reorder_service_images_403(): void
+    {
+        $service = Service::factory()->create();
+        Sanctum::actingAs($this->student());
+        $this->patchJson("/api/admin/services/{$service->id}/images/reorder", ['order' => []])->assertStatus(403);
+    }
+
+    public function test_instructor_cannot_reorder_service_images_403(): void
+    {
+        $service = Service::factory()->create();
+        Sanctum::actingAs($this->instructor());
+        $this->patchJson("/api/admin/services/{$service->id}/images/reorder", ['order' => []])->assertStatus(403);
+    }
+
     // =========================================================================
     // Index — returns published AND unpublished
     // =========================================================================
@@ -404,10 +517,34 @@ class AdminServiceTest extends TestCase
 
         Sanctum::actingAs($this->admin());
 
-        // 6 MB = 6144 KB
+        // Use ->image() so it passes mime detection; ->size(6144) sets KB size to 6 MB,
+        // which must be rejected by the max:5120 KB rule rather than a mime failure.
         $this->postJson("/api/admin/services/{$service->id}/images", [
-            'images' => [UploadedFile::fake()->create('big.jpg', 6144, 'image/jpeg')],
+            'images' => [UploadedFile::fake()->image('big.jpg')->size(6144)],
         ])->assertStatus(422);
+    }
+
+    public function test_image_upload_total_exceeds_10_across_batches_returns_422(): void
+    {
+        Storage::fake('public');
+
+        // Service already has 8 images
+        $service = Service::factory()->create();
+        ServiceImage::factory()->count(8)->create(['service_id' => $service->id]);
+
+        Sanctum::actingAs($this->admin());
+
+        // Uploading 3 more would push total to 11 — must be rejected
+        $files = [
+            UploadedFile::fake()->image('new1.jpg'),
+            UploadedFile::fake()->image('new2.jpg'),
+            UploadedFile::fake()->image('new3.jpg'),
+        ];
+
+        $this->postJson("/api/admin/services/{$service->id}/images", [
+            'images' => $files,
+        ])->assertStatus(422)
+          ->assertJsonValidationErrors(['images']);
     }
 
     public function test_image_upload_more_than_10_files_returns_422(): void
@@ -473,22 +610,40 @@ class AdminServiceTest extends TestCase
 
     public function test_reorder_updates_sort_order_values(): void
     {
+        Storage::fake('public');
+
         $service = Service::factory()->create();
 
-        $img1 = ServiceImage::factory()->create(['service_id' => $service->id, 'sort_order' => 0]);
-        $img2 = ServiceImage::factory()->create(['service_id' => $service->id, 'sort_order' => 1]);
-        $img3 = ServiceImage::factory()->create(['service_id' => $service->id, 'sort_order' => 2]);
+        $img1 = ServiceImage::factory()->create(['service_id' => $service->id, 'sort_order' => 0, 'path' => 'services/a.jpg']);
+        $img2 = ServiceImage::factory()->create(['service_id' => $service->id, 'sort_order' => 1, 'path' => 'services/b.jpg']);
+        $img3 = ServiceImage::factory()->create(['service_id' => $service->id, 'sort_order' => 2, 'path' => 'services/c.jpg']);
 
         Sanctum::actingAs($this->admin());
 
         // Reorder: put img3 first, img1 second, img2 third
-        $this->patchJson("/api/admin/services/{$service->id}/images/reorder", [
+        $response = $this->patchJson("/api/admin/services/{$service->id}/images/reorder", [
             'order' => [$img3->id, $img1->id, $img2->id],
         ])->assertStatus(200);
 
+        // Verify DB state
         $this->assertDatabaseHas('service_images', ['id' => $img3->id, 'sort_order' => 0]);
         $this->assertDatabaseHas('service_images', ['id' => $img1->id, 'sort_order' => 1]);
         $this->assertDatabaseHas('service_images', ['id' => $img2->id, 'sort_order' => 2]);
+
+        // S-3: response must contain the updated ordered image list, not a plain string
+        $data = $response->json('data');
+        $this->assertIsArray($data);
+        $this->assertCount(3, $data);
+        // Returned order matches the requested reorder (img3 first, then img1, then img2)
+        $this->assertEquals($img3->id, $data[0]['id']);
+        $this->assertEquals(0, $data[0]['sort_order']);
+        $this->assertEquals($img1->id, $data[1]['id']);
+        $this->assertEquals(1, $data[1]['sort_order']);
+        $this->assertEquals($img2->id, $data[2]['id']);
+        $this->assertEquals(2, $data[2]['sort_order']);
+        // Each item must have url and sort_order keys
+        $this->assertArrayHasKey('url', $data[0]);
+        $this->assertArrayHasKey('sort_order', $data[0]);
     }
 
     public function test_reorder_validates_order_must_be_array(): void
@@ -499,6 +654,65 @@ class AdminServiceTest extends TestCase
 
         $this->patchJson("/api/admin/services/{$service->id}/images/reorder", [
             'order' => 'not-an-array',
+        ])->assertStatus(422);
+    }
+
+    // =========================================================================
+    // is_published visibility — admin sees it, public does not
+    // =========================================================================
+
+    public function test_admin_index_response_includes_is_published(): void
+    {
+        Service::factory()->published()->create();
+
+        Sanctum::actingAs($this->admin());
+
+        $response = $this->getJson('/api/admin/services')->assertStatus(200);
+
+        $item = $response->json('data.0');
+        $this->assertArrayHasKey('is_published', $item);
+        $this->assertTrue((bool) $item['is_published']);
+    }
+
+    public function test_admin_show_response_includes_is_published(): void
+    {
+        $service = Service::factory()->unpublished()->create();
+
+        Sanctum::actingAs($this->admin());
+
+        $response = $this->getJson("/api/admin/services/{$service->id}")->assertStatus(200);
+
+        $data = $response->json('data');
+        $this->assertArrayHasKey('is_published', $data);
+        $this->assertFalse((bool) $data['is_published']);
+    }
+
+    public function test_reorder_rejects_image_id_belonging_to_different_service(): void
+    {
+        $service1 = Service::factory()->create();
+        $service2 = Service::factory()->create();
+
+        $img1 = ServiceImage::factory()->create(['service_id' => $service1->id, 'sort_order' => 0]);
+        $imgOther = ServiceImage::factory()->create(['service_id' => $service2->id, 'sort_order' => 0]);
+
+        Sanctum::actingAs($this->admin());
+
+        // Passing an ID that belongs to service2 in service1's reorder must be rejected
+        $this->patchJson("/api/admin/services/{$service1->id}/images/reorder", [
+            'order' => [$img1->id, $imgOther->id],
+        ])->assertStatus(422);
+    }
+
+    public function test_reorder_rejects_nonexistent_image_id(): void
+    {
+        $service = Service::factory()->create();
+        $img = ServiceImage::factory()->create(['service_id' => $service->id, 'sort_order' => 0]);
+
+        Sanctum::actingAs($this->admin());
+
+        // Passing a nonexistent ID in the order array must be rejected
+        $this->patchJson("/api/admin/services/{$service->id}/images/reorder", [
+            'order' => [$img->id, 99999],
         ])->assertStatus(422);
     }
 }

@@ -117,6 +117,20 @@ class ServiceController extends Controller
             'images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ]);
 
+        // Enforce per-service 10-image cap across all batches
+        $existingCount  = $service->images()->count();
+        $incomingCount  = count($request->file('images') ?? []);
+
+        if ($existingCount + $incomingCount > 10) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'images' => [
+                    "A service may not have more than 10 images in total. "
+                    . "This service already has {$existingCount} image(s); "
+                    . "uploading {$incomingCount} more would exceed the limit.",
+                ],
+            ]);
+        }
+
         $maxSort = $service->images()->max('sort_order') ?? -1;
 
         $created = [];
@@ -168,13 +182,32 @@ class ServiceController extends Controller
             'order.*' => ['integer'],
         ]);
 
-        foreach ($request->input('order') as $position => $imageId) {
+        $serviceImageIds = $service->images()->pluck('id')->all();
+        $submittedIds    = $request->input('order', []);
+
+        // Reject any ID that does not belong to this service (covers foreign and nonexistent IDs)
+        foreach ($submittedIds as $imageId) {
+            if (! in_array((int) $imageId, $serviceImageIds, true)) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'order' => ["Image ID {$imageId} does not belong to this service."],
+                ]);
+            }
+        }
+
+        foreach ($submittedIds as $position => $imageId) {
             ServiceImage::where('id', $imageId)
                 ->where('service_id', $service->id)
                 ->update(['sort_order' => $position]);
         }
 
-        return response()->json(['data' => 'Reordered successfully.']);
+        // Return the updated ordered image list
+        $images = $service->images()->orderBy('sort_order')->get()->map(fn ($img) => [
+            'id'         => $img->id,
+            'url'        => $service->resolveImageUrl($img->path),
+            'sort_order' => $img->sort_order,
+        ])->values();
+
+        return response()->json(['data' => $images]);
     }
 
     // -------------------------------------------------------------------------
