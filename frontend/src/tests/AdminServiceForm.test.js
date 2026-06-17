@@ -145,6 +145,63 @@ describe('AdminServiceForm.vue — submit (create mode)', () => {
     const fd = emitted[0][0]
     expect(fd.get('title')).toBe('Test Service')
   })
+
+  it('emitted FormData does NOT contain images[] — files travel as second emit arg', async () => {
+    const wrapper = mountForm()
+
+    await wrapper.find('input[name="title"]').setValue('Test Service')
+    await wrapper.find('input[name="price"]').setValue('100')
+    await wrapper.find('input[name="duration_hours"]').setValue('1')
+    await wrapper.find('form').trigger('submit.prevent')
+
+    const emitted = wrapper.emitted('submit')
+    expect(emitted).toBeTruthy()
+    const fd = emitted[0][0]
+    // FormData must NOT contain images[] — images go as the second emit argument
+    expect(fd.has('images[]')).toBe(false)
+  })
+
+  it('emits selected files as second argument when files are chosen', async () => {
+    const wrapper = mountForm()
+
+    await wrapper.find('input[name="title"]').setValue('Test Service')
+    await wrapper.find('input[name="price"]').setValue('100')
+    await wrapper.find('input[name="duration_hours"]').setValue('1')
+
+    // Simulate file selection
+    const fakeFile = new File(['content'], 'photo.jpg', { type: 'image/jpeg' })
+    const fileInput = wrapper.find('input[type="file"]')
+    Object.defineProperty(fileInput.element, 'files', {
+      value: [fakeFile],
+      configurable: true,
+    })
+    await fileInput.trigger('change')
+
+    await wrapper.find('form').trigger('submit.prevent')
+
+    const emitted = wrapper.emitted('submit')
+    expect(emitted).toBeTruthy()
+    // Second argument should be the array of selected files
+    const files = emitted[0][1]
+    expect(Array.isArray(files)).toBe(true)
+    expect(files).toHaveLength(1)
+    expect(files[0].name).toBe('photo.jpg')
+  })
+
+  it('emits empty array as second arg when no files are chosen', async () => {
+    const wrapper = mountForm()
+
+    await wrapper.find('input[name="title"]').setValue('Test Service')
+    await wrapper.find('input[name="price"]').setValue('100')
+    await wrapper.find('input[name="duration_hours"]').setValue('1')
+    await wrapper.find('form').trigger('submit.prevent')
+
+    const emitted = wrapper.emitted('submit')
+    expect(emitted).toBeTruthy()
+    const files = emitted[0][1]
+    expect(Array.isArray(files)).toBe(true)
+    expect(files).toHaveLength(0)
+  })
 })
 
 // ---------------------------------------------------------------------------

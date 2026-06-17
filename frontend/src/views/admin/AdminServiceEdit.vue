@@ -33,12 +33,17 @@ async function loadData() {
   }
 }
 
-async function handleSubmit(formData) {
+async function handleSubmit(formData, files = []) {
   loading.value = true
   saveError.value = ''
   try {
     await servicesStore.updateService(serviceId.value, formData)
-    router.push('/admin/services')
+    if (files && files.length > 0) {
+      await servicesStore.uploadImages(serviceId.value, files)
+    }
+    // Refresh the service data so the image list reflects newly uploaded images.
+    await servicesStore.fetchAdminService(serviceId.value)
+    service.value = servicesStore.currentService
   } catch (err) {
     saveError.value = err.response?.data?.message || 'Error al guardar el servicio'
   } finally {

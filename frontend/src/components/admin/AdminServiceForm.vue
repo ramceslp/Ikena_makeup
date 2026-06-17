@@ -58,10 +58,10 @@ function handleSubmit() {
   fd.append('availability_type', availability_type.value)
   if (category_id.value) fd.append('category_id', category_id.value)
   fd.append('is_published', is_published.value ? '1' : '0')
-  for (const file of selectedFiles.value) {
-    fd.append('images[]', file)
-  }
-  emit('submit', fd)
+  // Files are passed as a separate second argument so the parent view
+  // can route them to the correct endpoint (POST /services/{id}/images).
+  // Do NOT append images[] here — the backend create endpoint ignores them.
+  emit('submit', fd, selectedFiles.value)
 }
 
 function handleDeleteImage(imageId) {

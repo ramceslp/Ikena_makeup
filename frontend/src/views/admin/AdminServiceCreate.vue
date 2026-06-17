@@ -16,11 +16,14 @@ async function loadCategories() {
   categories.value = servicesStore.categories
 }
 
-async function handleSubmit(formData) {
+async function handleSubmit(formData, files = []) {
   loading.value = true
   error.value = ''
   try {
-    await servicesStore.createService(formData)
+    // Two-step: create the service record first, then attach images to the new id.
+    // The backend POST /admin/services ignores images[] — they must go to
+    // POST /admin/services/{id}/images after the record exists.
+    await servicesStore.createServiceWithImages(formData, files)
     router.push('/admin/services')
   } catch (err) {
     error.value = err.response?.data?.message || 'Error al crear el servicio'
