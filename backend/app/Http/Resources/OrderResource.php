@@ -17,7 +17,9 @@ class OrderResource extends JsonResource
             'paid_at'      => $this->paid_at,
             'created_at'   => $this->created_at,
             // Course order: include `course` key (unchanged behavior)
-            $this->mergeWhen($this->relationLoaded('course') && $this->course !== null, [
+            // FIX 3 — second arg is a closure so the array is only evaluated when the
+            // condition is true, preventing N+1 lazy-load on unloaded relations.
+            $this->mergeWhen($this->relationLoaded('course') && $this->course !== null, fn () => [
                 'course' => [
                     'id'        => $this->course?->id,
                     'title'     => $this->course?->title,
@@ -26,7 +28,8 @@ class OrderResource extends JsonResource
                 ],
             ]),
             // Appointment order: include `appointment` key with service info
-            $this->mergeWhen($this->relationLoaded('appointment') && $this->appointment !== null, [
+            // FIX 3 — closure defers evaluation, avoiding lazy-load when not needed.
+            $this->mergeWhen($this->relationLoaded('appointment') && $this->appointment !== null, fn () => [
                 'appointment' => [
                     'service_title'       => $this->appointment?->service?->title,
                     'scheduled_date'      => $this->appointment?->scheduled_date?->format('Y-m-d'),

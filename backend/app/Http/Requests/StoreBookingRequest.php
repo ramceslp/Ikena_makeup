@@ -7,6 +7,18 @@ use App\Models\ServiceSlot;
 use Carbon\Carbon;
 use Illuminate\Foundation\Http\FormRequest;
 
+/**
+ * FIX 8 — Timezone contract:
+ *
+ * `scheduled_date` and `scheduled_time` MUST be expressed as America/Guayaquil
+ * local wall-clock time (UTC-5, no DST). This matches the timezone used when
+ * defining ServiceSlots and when computing slot availability windows in
+ * SlotAvailabilityResolver. Sending UTC or any other timezone offset will
+ * result in mismatched slot lookups and a 422 "slot not available" response.
+ *
+ * The server performs NO timezone conversion on these fields — it stores exactly
+ * what is sent and compares it directly against slot definitions.
+ */
 class StoreBookingRequest extends FormRequest
 {
     public function authorize(): bool

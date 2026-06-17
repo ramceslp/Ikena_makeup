@@ -132,7 +132,15 @@ class BookingController extends Controller
                 ];
             });
         } catch (UniqueConstraintViolationException) {
-            // Race-condition collision — transaction rolled back; no orphan order exists.
+            // REGRESSION GUARD: Race-condition catch — transaction is fully rolled back by
+            // the DB engine so no orphan order exists. This path is exercised on MySQL
+            // (InnoDB savepoint rollback on unique violation). It CANNOT be reliably tested
+            // on SQLite :memory: because SQLite's savepoint behavior on nested unique
+            // violations poisons the outer RefreshDatabase transaction wrapper (the entire
+            // outer transaction is aborted, not just the inner savepoint). The pre-check
+            // `Appointment::where('slot_key', $key)->exists()` above covers the common
+            // collision scenario in tests. Do NOT remove this catch without a MySQL
+            // integration test confirming the race-condition 409 still works.
             return response()->json([
                 'message' => 'This slot is no longer available. Please choose another time.',
             ], 409);

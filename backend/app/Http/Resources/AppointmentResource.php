@@ -23,6 +23,8 @@ class AppointmentResource extends JsonResource
             'status'              => $this->status,
             'payment_mode'        => $this->payment_mode,
             'deposit_amount_cents' => $this->deposit_amount_cents,
+            // FIX 5 — whatsapp field added for admin contact visibility
+            'whatsapp'            => $this->whatsapp,
             'order'               => $this->whenLoaded('order', fn () => [
                 'status'       => $this->order->status,
                 'amount_cents' => $this->order->amount_cents,

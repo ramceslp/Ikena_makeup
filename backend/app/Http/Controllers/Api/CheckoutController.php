@@ -98,6 +98,13 @@ class CheckoutController extends Controller
         $isCourseOrder      = ! is_null($order->course_id);
         $isAppointmentOrder = ! is_null($order->appointment_id);
 
+        // FIX 2 — guard: if the order is neither a course nor an appointment order
+        // (data inconsistency; XOR guard on Order model should prevent this in practice),
+        // return a clear error BEFORE any paid mutation to avoid a 500 and partial state.
+        if (! $isCourseOrder && ! $isAppointmentOrder) {
+            return response()->json(['message' => 'Invalid order state.'], 422);
+        }
+
         if ($isCourseOrder) {
             $order->loadMissing('course');
             $courseSlug = $order->course->slug;

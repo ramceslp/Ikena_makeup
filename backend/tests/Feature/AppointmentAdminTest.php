@@ -329,4 +329,133 @@ class AppointmentAdminTest extends TestCase
         $this->patchJson("/api/admin/appointments/{$appointment->id}/cancel")
              ->assertStatus(403);
     }
+
+    // -------------------------------------------------------------------------
+    // FIX 1 — markPaid is atomic: both appointment AND order must be 'paid'
+    // -------------------------------------------------------------------------
+
+    public function test_mark_paid_transitions_both_appointment_and_order_atomically(): void
+    {
+        $admin   = $this->makeAdmin();
+        $service = $this->makeService();
+        $user    = $this->makeUser();
+
+        [$appointment, $order] = $this->makeAppointmentWithOrder($service, $user);
+
+        // Pre-condition: both are pending
+        $this->assertEquals('pending', $appointment->status);
+        $this->assertEquals('pending', $order->status);
+
+        Sanctum::actingAs($admin);
+
+        $this->patchJson("/api/admin/appointments/{$appointment->id}/mark-paid")
+             ->assertStatus(200);
+
+        // Both must now be 'paid' — atomic update
+        $this->assertDatabaseHas('appointments', [
+            'id'     => $appointment->id,
+            'status' => 'paid',
+        ]);
+        $this->assertDatabaseHas('orders', [
+            'id'     => $order->id,
+            'status' => 'paid',
+        ]);
+    }
+
+    // -------------------------------------------------------------------------
+    // FIX 4 — cancel also transitions linked order to 'cancelled'
+    // -------------------------------------------------------------------------
+
+    public function test_cancel_also_cancels_linked_order_and_frees_slot(): void
+    {
+        $admin   = $this->makeAdmin();
+        $service = $this->makeService();
+        $user    = $this->makeUser();
+
+        [$appointment, $order] = $this->makeAppointmentWithOrder($service, $user);
+
+        // Confirm slot_key is set before cancel
+        $this->assertNotNull($appointment->slot_key);
+
+        Sanctum::actingAs($admin);
+
+        $this->patchJson("/api/admin/appointments/{$appointment->id}/cancel")
+             ->assertStatus(200);
+
+        // Appointment must be cancelled with slot freed
+        $this->assertDatabaseHas('appointments', [
+            'id'       => $appointment->id,
+            'status'   => 'cancelled',
+            'slot_key' => null,
+        ]);
+
+        // Linked order must also be cancelled
+        $this->assertDatabaseHas('orders', [
+            'id'     => $order->id,
+            'status' => 'cancelled',
+        ]);
+    }
+
+    // -------------------------------------------------------------------------
+    // FIX 5 — AppointmentResource includes whatsapp field
+    // -------------------------------------------------------------------------
+
+    public function test_admin_appointments_response_includes_whatsapp_field(): void
+    {
+        $admin   = $this->makeAdmin();
+        $service = $this->makeService();
+        $user    = $this->makeUser();
+
+        $this->makeAppointmentWithOrder($service, $user, '2026-07-04', '10:00');
+
+        Sanctum::actingAs($admin);
+
+        $response = $this->getJson('/api/admin/appointments');
+
+        $response->assertStatus(200);
+
+        $first = $response->json('data.0');
+        $this->assertArrayHasKey('whatsapp', $first, 'AppointmentResource must include whatsapp field');
+        $this->assertEquals('+593099912345', $first['whatsapp']);
+    }
+
+    // -------------------------------------------------------------------------
+    // FIX 6 — Admin filter params validation: invalid date_from → 422
+    // -------------------------------------------------------------------------
+
+    public function test_admin_appointments_returns_422_for_invalid_date_from_filter(): void
+    {
+        $admin = $this->makeAdmin();
+        Sanctum::actingAs($admin);
+
+        $this->getJson('/api/admin/appointments?date_from=not-a-date')
+             ->assertStatus(422);
+    }
+
+    public function test_admin_appointments_returns_422_for_invalid_date_to_filter(): void
+    {
+        $admin = $this->makeAdmin();
+        Sanctum::actingAs($admin);
+
+        $this->getJson('/api/admin/appointments?date_to=abc')
+             ->assertStatus(422);
+    }
+
+    public function test_admin_appointments_returns_422_for_invalid_status_filter(): void
+    {
+        $admin = $this->makeAdmin();
+        Sanctum::actingAs($admin);
+
+        $this->getJson('/api/admin/appointments?status=not_valid_status')
+             ->assertStatus(422);
+    }
+
+    public function test_admin_appointments_returns_422_for_invalid_service_id_filter(): void
+    {
+        $admin = $this->makeAdmin();
+        Sanctum::actingAs($admin);
+
+        $this->getJson('/api/admin/appointments?service_id=abc')
+             ->assertStatus(422);
+    }
 }
