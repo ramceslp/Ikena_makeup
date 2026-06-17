@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\CheckoutController;
 use App\Http\Controllers\Api\CourseController;
 use App\Http\Controllers\Api\CourseReviewController;
 use App\Http\Controllers\Api\ServiceController;
+use App\Http\Controllers\Api\Admin\ServiceController as AdminServiceController;
 use App\Http\Controllers\Api\Instructor\CourseController as InstructorCourseController;
 use App\Http\Controllers\Api\Instructor\DashboardController as InstructorDashboardController;
 use App\Http\Controllers\Api\Instructor\LessonController as InstructorLessonController;
@@ -63,6 +64,18 @@ Route::middleware('auth:sanctum')->group(function () {
     // Admin routes
     Route::middleware('admin')->prefix('admin')->group(function () {
         Route::get('/ping', fn () => response()->json(['message' => 'pong']));
+
+        // Services CRUD
+        Route::get('/services', [AdminServiceController::class, 'index']);
+        Route::post('/services', [AdminServiceController::class, 'store']);
+        Route::get('/services/{service}', [AdminServiceController::class, 'show']);
+        Route::post('/services/{service}', [AdminServiceController::class, 'update']);
+        Route::delete('/services/{service}', [AdminServiceController::class, 'destroy']);
+
+        // Service image management
+        Route::post('/services/{service}/images', [AdminServiceController::class, 'storeImages']);
+        Route::delete('/services/{service}/images/{image}', [AdminServiceController::class, 'destroyImage']);
+        Route::patch('/services/{service}/images/reorder', [AdminServiceController::class, 'reorderImages']);
     });
 
     // Instructor authoring routes

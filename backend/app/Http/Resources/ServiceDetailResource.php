@@ -9,7 +9,7 @@ class ServiceDetailResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        return [
+        return array_merge([
             'id'                => $this->id,
             'title'             => $this->title,
             'slug'              => $this->slug,
@@ -34,6 +34,6 @@ class ServiceDetailResource extends JsonResource
                     ]
                     : null;
             }),
-        ];
+        ], $request->user()?->isAdmin() ? ['is_published' => (bool) $this->is_published] : []);
     }
 }
