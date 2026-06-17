@@ -1,8 +1,24 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import ServiceGallery from '../components/service/ServiceGallery.vue'
+
+vi.mock('../services/api.js', () => ({
+  default: {
+    get: vi.fn(),
+    post: vi.fn(),
+    delete: vi.fn(),
+    patch: vi.fn(),
+    interceptors: {
+      request: { use: vi.fn() },
+      response: { use: vi.fn() },
+    },
+  },
+}))
+
+import api from '../services/api.js'
+import ServiceDetail from '../views/ServiceDetail.vue'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -100,5 +116,91 @@ describe('ServiceGallery.vue — renders images in sort_order', () => {
     // No navigation chevrons when only one image
     expect(wrapper.find('[data-gallery-next]').exists()).toBe(false)
     expect(wrapper.find('[data-gallery-prev]').exists()).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// ServiceDetail.vue — booking integration (Phase 13)
+// ---------------------------------------------------------------------------
+
+const router = createRouter({
+  history: createMemoryHistory(),
+  routes: [
+    { path: '/services/:slug', name: 'ServiceDetail', component: { template: '<div/>' } },
+    { path: '/:pathMatch(.*)*', component: { template: '<div/>' } },
+  ],
+})
+
+const byAppointmentService = {
+  id: 1,
+  title: 'Maquillaje Social',
+  slug: 'maquillaje-social',
+  price: '150.00',
+  deposit_percentage: 30,
+  availability_type: 'by_appointment',
+  description: 'Maquillaje profesional',
+  duration_hours: 2,
+  images: [],
+  category: null,
+  is_published: true,
+}
+
+const immediateService = {
+  id: 2,
+  title: 'Masterclass',
+  slug: 'masterclass',
+  price: '200.00',
+  deposit_percentage: 50,
+  availability_type: 'immediate',
+  description: 'Masterclass intensiva',
+  duration_hours: 4,
+  images: [],
+  category: null,
+  is_published: true,
+}
+
+function mountServiceDetail() {
+  return mount(ServiceDetail, {
+    global: {
+      plugins: [router, createPinia()],
+    },
+  })
+}
+
+describe('ServiceDetail.vue — booking section integration', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+  })
+
+  it('renders SlotPicker and BookingForm for by_appointment service', async () => {
+    api.get.mockResolvedValueOnce({ data: { data: byAppointmentService } })
+    // fetchAvailableSlots
+    api.get.mockResolvedValueOnce({ data: { data: [] } })
+
+    const wrapper = mountServiceDetail()
+    await flushPromises()
+
+    expect(wrapper.find('[data-booking-section]').exists()).toBe(true)
+    expect(wrapper.find('[data-slot-picker]').exists()).toBe(true)
+  })
+
+  it('does NOT render booking section for immediate service', async () => {
+    api.get.mockResolvedValueOnce({ data: { data: immediateService } })
+
+    const wrapper = mountServiceDetail()
+    await flushPromises()
+
+    expect(wrapper.find('[data-booking-section]').exists()).toBe(false)
+  })
+
+  it('no longer shows "próximamente" disabled button for by_appointment service', async () => {
+    api.get.mockResolvedValueOnce({ data: { data: byAppointmentService } })
+    api.get.mockResolvedValueOnce({ data: { data: [] } })
+
+    const wrapper = mountServiceDetail()
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('próximamente')
   })
 })

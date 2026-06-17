@@ -25,6 +25,10 @@ const AdminServices = () => import('../views/admin/AdminServices.vue')
 const AdminServiceCreate = () => import('../views/admin/AdminServiceCreate.vue')
 const AdminServiceEdit = () => import('../views/admin/AdminServiceEdit.vue')
 
+// Booking admin
+const AdminServiceSlots = () => import('../views/admin/AdminServiceSlots.vue')
+const AdminAppointments = () => import('../views/admin/AdminAppointments.vue')
+
 const routes = [
   {
     path: '/',
@@ -144,6 +148,20 @@ const routes = [
     path: '/admin/services/:id/edit',
     name: 'AdminServiceEdit',
     component: AdminServiceEdit,
+    meta: { requiresAdmin: true },
+  },
+
+  // ── Admin: Booking / Slots / Appointments ────────────────────────────────
+  {
+    path: '/admin/services/:id/slots',
+    name: 'AdminServiceSlots',
+    component: AdminServiceSlots,
+    meta: { requiresAdmin: true },
+  },
+  {
+    path: '/admin/appointments',
+    name: 'AdminAppointments',
+    component: AdminAppointments,
     meta: { requiresAdmin: true },
   },
 ]

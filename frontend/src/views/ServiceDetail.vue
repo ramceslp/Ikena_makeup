@@ -1,18 +1,31 @@
 <script setup>
-import { computed, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useServicesStore } from '../stores/services.js'
+import { useBookingStore } from '../stores/booking.js'
 import ServiceGallery from '../components/service/ServiceGallery.vue'
+import SlotPicker from '../components/booking/SlotPicker.vue'
+import BookingForm from '../components/booking/BookingForm.vue'
 import BaseBadge from '../components/ui/BaseBadge.vue'
 import BaseButton from '../components/ui/BaseButton.vue'
 
 const route = useRoute()
 const router = useRouter()
 const servicesStore = useServicesStore()
+const bookingStore = useBookingStore()
 
 const service = computed(() => servicesStore.currentService)
 const loading = computed(() => servicesStore.loading)
 const error = computed(() => servicesStore.error)
+
+const isBookable = computed(
+  () => service.value?.availability_type === 'by_appointment',
+)
+
+const availableSlots = computed(() => bookingStore.availableSlots)
+const slotsLoading = computed(() => bookingStore.isLoading)
+
+const selectedSlot = ref(null)
 
 function availabilityLabel(type) {
   if (type === 'immediate') return 'Disponibilidad inmediata'
@@ -26,9 +39,23 @@ function formatPrice(price) {
   return `$${num.toFixed(2)}`
 }
 
+function onSlotSelected(slot) {
+  selectedSlot.value = slot
+  // Clear previous booking error when user picks a new slot
+  bookingStore.bookingError = null
+}
+
+function onBookingSuccess(result) {
+  // BookingForm handles redirect; this can emit analytics / show a toast if needed
+  void result
+}
+
 onMounted(async () => {
   try {
     await servicesStore.fetchService(route.params.slug)
+    if (isBookable.value && service.value) {
+      await bookingStore.fetchAvailableSlots(service.value.id)
+    }
   } catch {
     // 404 redirect handled by error state
   }
@@ -91,14 +118,36 @@ onMounted(async () => {
           {{ service.description }}
         </div>
 
-        <!-- CTA placeholder (booking is Slice 2) -->
-        <div class="mt-auto">
-          <BaseButton variant="primary" size="lg" disabled class="w-full">
-            Reservar (próximamente)
+        <!-- Booking section: only for by_appointment services -->
+        <div v-if="isBookable" data-booking-section class="flex flex-col gap-6 mt-2">
+          <div>
+            <h2 class="font-title-md text-title-md text-on-surface mb-3">
+              Selecciona un horario
+            </h2>
+            <!-- Slot loading indicator -->
+            <div v-if="slotsLoading" class="flex items-center gap-2 py-4 text-on-surface-variant">
+              <span class="material-symbols-outlined animate-spin text-[18px]" aria-hidden="true">refresh</span>
+              <span class="font-body-sm text-body-sm">Cargando horarios…</span>
+            </div>
+            <!-- Slot picker -->
+            <div v-else data-slot-picker>
+              <SlotPicker :slots="availableSlots" @slot-selected="onSlotSelected" />
+            </div>
+          </div>
+
+          <!-- Booking form (always shown when bookable — disables submit until slot selected) -->
+          <BookingForm
+            :selected-slot="selectedSlot"
+            :service="service"
+            @booking-success="onBookingSuccess"
+          />
+        </div>
+
+        <!-- Non-bookable CTA (immediate type) -->
+        <div v-else class="mt-auto">
+          <BaseButton variant="primary" size="lg" class="w-full">
+            Contactar para más información
           </BaseButton>
-          <p class="font-label-sm text-label-sm text-outline text-center mt-2">
-            Sistema de reservas disponible próximamente
-          </p>
         </div>
       </div>
     </div>

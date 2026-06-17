@@ -132,6 +132,15 @@ onMounted(loadServices)
             <!-- Actions -->
             <td class="px-6 py-4 text-right">
               <div class="flex items-center justify-end gap-2">
+                <a
+                  :href="`/admin/services/${svc.id}/slots`"
+                  data-slots-link
+                  class="p-2 rounded-lg hover:bg-surface-container transition-colors text-on-surface-variant hover:text-primary"
+                  aria-label="Gestionar horarios"
+                  @click.prevent="router.push(`/admin/services/${svc.id}/slots`)"
+                >
+                  <span class="material-symbols-outlined text-[18px]" aria-hidden="true">schedule</span>
+                </a>
                 <button
                   type="button"
                   @click="router.push(`/admin/services/${svc.id}/edit`)"
