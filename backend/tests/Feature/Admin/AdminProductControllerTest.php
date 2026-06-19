@@ -345,7 +345,7 @@ class AdminProductControllerTest extends TestCase
 
         Sanctum::actingAs($this->admin());
 
-        $response = $this->patchJson("/api/admin/products/{$product->id}/images/reorder", [
+        $response = $this->postJson("/api/admin/products/{$product->id}/images/reorder", [
             'order' => [$img3->id, $img1->id, $img2->id],
         ])->assertStatus(200);
 
@@ -370,7 +370,7 @@ class AdminProductControllerTest extends TestCase
 
         Sanctum::actingAs($this->admin());
 
-        $this->patchJson("/api/admin/products/{$product1->id}/images/reorder", [
+        $this->postJson("/api/admin/products/{$product1->id}/images/reorder", [
             'order' => [$img1->id, $imgOther->id],
         ])->assertStatus(422);
     }
@@ -428,5 +428,91 @@ class AdminProductControllerTest extends TestCase
 
         $item = $response->json('data.0');
         $this->assertArrayHasKey('is_published', $item);
+    }
+
+    // =========================================================================
+    // Slug override (AM-3) — RED first, then covered by FIX 2 implementation
+    // =========================================================================
+
+    public function test_update_with_explicit_unique_slug_persists_as_provided(): void
+    {
+        $product = Product::factory()->create(['title' => 'Original Title', 'slug' => 'original-title']);
+
+        Sanctum::actingAs($this->admin());
+
+        $response = $this->postJson("/api/admin/products/{$product->id}", [
+            'slug' => 'my-custom-slug',
+        ])->assertStatus(200);
+
+        $this->assertEquals('my-custom-slug', $response->json('data.slug'));
+        $this->assertDatabaseHas('products', ['id' => $product->id, 'slug' => 'my-custom-slug']);
+    }
+
+    public function test_update_with_slug_colliding_with_another_product_returns_422(): void
+    {
+        Product::factory()->create(['slug' => 'taken-slug']);
+        $product = Product::factory()->create(['slug' => 'my-product']);
+
+        Sanctum::actingAs($this->admin());
+
+        $this->postJson("/api/admin/products/{$product->id}", [
+            'slug' => 'taken-slug',
+        ])->assertStatus(422)
+          ->assertJsonValidationErrors(['slug']);
+    }
+
+    // =========================================================================
+    // Auth boundaries — non-admin gets 403 on update / reorder / destroy image
+    // =========================================================================
+
+    public function test_student_cannot_update_product_403(): void
+    {
+        $product = Product::factory()->create();
+        Sanctum::actingAs($this->student());
+
+        $this->postJson("/api/admin/products/{$product->id}", [
+            'price' => 50.00,
+        ])->assertStatus(403);
+    }
+
+    public function test_student_cannot_reorder_product_images_403(): void
+    {
+        $product = Product::factory()->create();
+        Sanctum::actingAs($this->student());
+
+        $this->postJson("/api/admin/products/{$product->id}/images/reorder", [
+            'order' => [],
+        ])->assertStatus(403);
+    }
+
+    public function test_student_cannot_destroy_product_image_403(): void
+    {
+        $product = Product::factory()->create();
+        $image   = ProductImage::factory()->create(['product_id' => $product->id]);
+        Sanctum::actingAs($this->student());
+
+        $this->deleteJson("/api/admin/products/{$product->id}/images/{$image->id}")
+            ->assertStatus(403);
+    }
+
+    // =========================================================================
+    // Image cap boundary — 9 existing + 1 more = 10 (allowed, spec AM-1)
+    // =========================================================================
+
+    public function test_image_upload_exactly_10_total_is_accepted(): void
+    {
+        Storage::fake('public');
+
+        $product = Product::factory()->create();
+        ProductImage::factory()->count(9)->create(['product_id' => $product->id]);
+
+        Sanctum::actingAs($this->admin());
+
+        $response = $this->postJson("/api/admin/products/{$product->id}/images", [
+            'images' => [UploadedFile::fake()->image('tenth.jpg')],
+        ]);
+
+        $response->assertStatus(200);
+        $this->assertEquals(10, $product->images()->count());
     }
 }

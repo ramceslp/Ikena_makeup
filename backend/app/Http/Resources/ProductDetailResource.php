@@ -18,7 +18,7 @@ class ProductDetailResource extends JsonResource
             'stock_qty'   => (int) $this->stock_qty,
             'stock_state' => $this->stock_state,
             'thumbnail'   => $this->thumbnailUrl,
-            'images_count' => $this->images->count(),
+            'images_count' => $this->images_count ?? $this->images->count(),
             'images'      => $this->images->map(fn ($img) => [
                 'id'         => $img->id,
                 'url'        => $this->resource->resolveImageUrl($img->path),

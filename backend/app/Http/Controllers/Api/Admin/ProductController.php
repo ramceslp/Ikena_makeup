@@ -11,6 +11,7 @@ use App\Models\Product;
 use App\Models\ProductImage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -75,7 +76,10 @@ class ProductController extends Controller
     {
         $data = $request->validated();
 
-        if (isset($data['title']) && $data['title'] !== $product->title) {
+        if (! empty($data['slug'])) {
+            // Manual slug override (spec AM-3): use as-is; uniqueness already validated by UpdateProductRequest.
+            // No-op: slug is already present in $data and will be persisted as provided.
+        } elseif (isset($data['title']) && $data['title'] !== $product->title) {
             $data['slug'] = $this->uniqueSlug(Str::slug($data['title']), $product->id);
         }
 
@@ -190,11 +194,13 @@ class ProductController extends Controller
             }
         }
 
-        foreach ($submittedIds as $position => $imageId) {
-            ProductImage::where('id', $imageId)
-                ->where('product_id', $product->id)
-                ->update(['sort_order' => $position]);
-        }
+        DB::transaction(function () use ($submittedIds, $product) {
+            foreach ($submittedIds as $position => $imageId) {
+                ProductImage::where('id', $imageId)
+                    ->where('product_id', $product->id)
+                    ->update(['sort_order' => $position]);
+            }
+        });
 
         $images = $product->images()->orderBy('sort_order')->get()->map(fn ($img) => [
             'id'         => $img->id,
@@ -218,6 +224,7 @@ class ProductController extends Controller
     private function uniqueSlug(string $base, ?int $excludeId = null): string
     {
         $slug    = $base;
+        // Counter starts at 2 intentionally per spec AM-3: first collision yields "master-palette-2".
         $counter = 2;
 
         while (true) {

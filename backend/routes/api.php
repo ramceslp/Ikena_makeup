@@ -100,7 +100,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // Product image management
         Route::post('/products/{product}/images', [AdminProductController::class, 'storeImages']);
         Route::delete('/products/{product}/images/{image}', [AdminProductController::class, 'destroyImage']);
-        Route::patch('/products/{product}/images/reorder', [AdminProductController::class, 'reorderImages']);
+        Route::post('/products/{product}/images/reorder', [AdminProductController::class, 'reorderImages']);
 
         // Appointment management
         Route::get('/appointments', [AdminAppointmentController::class, 'index']);

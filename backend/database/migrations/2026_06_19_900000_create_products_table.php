@@ -21,8 +21,6 @@ return new class extends Migration
             $table->unsignedInteger('stock_qty')->default(0)->index();
             $table->boolean('is_published')->default(false)->index();
             $table->timestamps();
-
-            $table->index('category_id');
         });
     }
 

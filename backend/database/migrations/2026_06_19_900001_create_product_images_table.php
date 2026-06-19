@@ -14,7 +14,7 @@ return new class extends Migration
                   ->constrained()
                   ->cascadeOnDelete();
             $table->string('path');
-            $table->unsignedInteger('sort_order')->default(0);
+            $table->unsignedTinyInteger('sort_order')->default(0);
             $table->timestamps();
         });
     }
