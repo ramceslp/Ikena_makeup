@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { useProductsStore } from '../stores/products.js'
 import ServiceGallery from '../components/service/ServiceGallery.vue'
 import BaseBadge from '../components/ui/BaseBadge.vue'
@@ -14,20 +14,10 @@ const product = computed(() => productsStore.currentProduct)
 const loading = computed(() => productsStore.loading)
 const error = computed(() => productsStore.error)
 
-const isOutOfStock = computed(
-  () => product.value?.stock_qty === 0 || product.value?.stock_state === 'Agotado',
-)
-
 function formatPrice(price) {
   const num = parseFloat(price)
-  if (isNaN(num) || num === 0) return 'Gratis'
+  if (isNaN(num)) return '$0.00'
   return `$${num.toFixed(2)}`
-}
-
-function stockBadgeVariant(stockState) {
-  if (stockState === 'Agotado') return 'error'
-  if (stockState === 'Últimas unidades') return 'warning'
-  return 'success'
 }
 
 onMounted(async () => {
@@ -65,10 +55,10 @@ onMounted(async () => {
       <!-- Info -->
       <div class="flex flex-col gap-6">
         <!-- Back link -->
-        <a href="/products" data-back-to-catalog class="font-label-md text-label-md text-on-surface-variant hover:text-primary flex items-center gap-1 w-fit">
+        <RouterLink to="/products" data-back-to-catalog class="font-label-md text-label-md text-on-surface-variant hover:text-primary flex items-center gap-1 w-fit">
           <span class="material-symbols-outlined text-[18px]" aria-hidden="true">arrow_back</span>
           Volver al catálogo
-        </a>
+        </RouterLink>
 
         <!-- Category + stock badges -->
         <div class="flex flex-wrap gap-2">
@@ -109,21 +99,6 @@ onMounted(async () => {
           {{ product.description }}
         </div>
 
-        <!-- Add to cart section -->
-        <div class="mt-auto flex flex-col gap-3">
-          <button
-            data-add-to-cart
-            type="button"
-            :disabled="isOutOfStock || undefined"
-            class="w-full flex items-center justify-center gap-2 py-3 px-6 rounded-2xl font-label-lg text-label-lg transition-colors"
-            :class="isOutOfStock
-              ? 'bg-surface-container text-on-surface-variant cursor-not-allowed'
-              : 'bg-primary text-on-primary hover:bg-primary/90'"
-          >
-            <span class="material-symbols-outlined" aria-hidden="true">shopping_cart</span>
-            {{ isOutOfStock ? 'Producto agotado' : 'Agregar al carrito' }}
-          </button>
-        </div>
       </div>
     </div>
   </div>

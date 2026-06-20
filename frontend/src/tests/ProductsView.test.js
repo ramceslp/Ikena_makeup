@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
 import { createRouter, createMemoryHistory } from 'vue-router'
 
@@ -78,11 +78,37 @@ describe('Products.vue', () => {
     api.get.mockResolvedValueOnce({ data: { data: fakeProducts, meta: { current_page: 1, last_page: 1, total: 1 } } }) // products
 
     const wrapper = mountProducts()
-    // Wait for all pending promises to settle
-    await new Promise(resolve => setTimeout(resolve, 50))
-    await wrapper.vm.$nextTick()
+    await flushPromises()
 
     // After data loads, product title should appear
     expect(wrapper.text()).toContain('Master Palette')
+  })
+
+  it('debounces price filter changes and collapses rapid keystrokes into a single fetch', async () => {
+    vi.useFakeTimers()
+
+    // Reset: clear previous calls from mount
+    api.get.mockResolvedValue({ data: { data: [], meta: {} } })
+    const wrapper = mountProducts()
+    await flushPromises()
+    const callsAfterMount = api.get.mock.calls.length
+
+    // Simulate rapid price input changes (3 keystrokes in quick succession)
+    const minPriceInput = wrapper.find('input[aria-label="Precio mínimo"]')
+    await minPriceInput.setValue('10')
+    await minPriceInput.setValue('10')
+    await minPriceInput.setValue('100')
+
+    // No additional fetch should have fired yet (within debounce window)
+    expect(api.get.mock.calls.length).toBe(callsAfterMount)
+
+    // Advance past debounce delay (400ms)
+    vi.advanceTimersByTime(450)
+    await flushPromises()
+
+    // Exactly one additional fetch after debounce settles
+    expect(api.get.mock.calls.length).toBe(callsAfterMount + 1)
+
+    vi.useRealTimers()
   })
 })

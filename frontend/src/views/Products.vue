@@ -31,13 +31,18 @@ function applyFilters() {
   productsStore.fetchProducts(buildFilters())
 }
 
-// Search is debounced; other filters apply immediately
+// Search and price inputs are debounced; select filters apply immediately
 watch(search, () => {
   clearTimeout(debounceTimer)
   debounceTimer = setTimeout(applyFilters, 400)
 })
 
-watch([minPrice, maxPrice, sort, category, stockState], applyFilters)
+watch([minPrice, maxPrice], () => {
+  clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(applyFilters, 400)
+})
+
+watch([sort, category, stockState], applyFilters)
 
 function goToPage(page) {
   productsStore.fetchProducts({ ...buildFilters(), page })

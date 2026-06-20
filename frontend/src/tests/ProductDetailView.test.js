@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
 import { createRouter, createMemoryHistory } from 'vue-router'
 
@@ -60,31 +60,28 @@ describe('ProductDetail.vue', () => {
     // Promise that never resolves → loading stays true
     api.get.mockReturnValueOnce(new Promise(() => {}))
     const wrapper = await mountDetail()
-    // Should show some loading state
-    expect(wrapper.find('[data-loading]').exists() || wrapper.text().length > 0).toBe(true)
+    // The [data-loading] element must be present while the request is pending
+    expect(wrapper.find('[data-loading]').exists()).toBe(true)
   })
 
   it('shows product title after successful fetch', async () => {
     api.get.mockResolvedValueOnce({ data: { data: fakeProduct } })
     const wrapper = await mountDetail('master-palette')
-    await wrapper.vm.$nextTick()
-    await wrapper.vm.$nextTick()
+    await flushPromises()
     expect(wrapper.text()).toContain('Master Palette')
   })
 
   it('shows product price after successful fetch', async () => {
     api.get.mockResolvedValueOnce({ data: { data: fakeProduct } })
     const wrapper = await mountDetail('master-palette')
-    await wrapper.vm.$nextTick()
-    await wrapper.vm.$nextTick()
+    await flushPromises()
     expect(wrapper.text()).toContain('$120.00')
   })
 
   it('shows stock_state label', async () => {
     api.get.mockResolvedValueOnce({ data: { data: fakeProduct } })
     const wrapper = await mountDetail('master-palette')
-    await wrapper.vm.$nextTick()
-    await wrapper.vm.$nextTick()
+    await flushPromises()
     expect(wrapper.text()).toContain('En Stock')
   })
 
@@ -93,39 +90,32 @@ describe('ProductDetail.vue', () => {
       response: { data: { message: 'Producto no encontrado' } },
     })
     const wrapper = await mountDetail('no-existe')
-    await wrapper.vm.$nextTick()
-    await wrapper.vm.$nextTick()
+    await flushPromises()
     expect(wrapper.text()).toContain('Producto no encontrado')
   })
 
-  it('shows disabled add-to-cart state when product is out of stock', async () => {
+  it('shows "Agotado" stock badge when product is out of stock', async () => {
     const outOfStock = { ...fakeProduct, stock_qty: 0, stock_state: 'Agotado' }
     api.get.mockResolvedValueOnce({ data: { data: outOfStock } })
     const wrapper = await mountDetail('master-palette')
-    await wrapper.vm.$nextTick()
-    await wrapper.vm.$nextTick()
-    // Either a disabled button or text indicating out of stock
-    const disabledBtn = wrapper.find('[data-add-to-cart][disabled]')
-    const hasAgotadoText = wrapper.text().includes('Agotado')
-    expect(disabledBtn.exists() || hasAgotadoText).toBe(true)
+    await flushPromises()
+    expect(wrapper.find('[data-add-to-cart]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Agotado')
   })
 
   it('shows category name when present', async () => {
     api.get.mockResolvedValueOnce({ data: { data: fakeProduct } })
     const wrapper = await mountDetail('master-palette')
-    await wrapper.vm.$nextTick()
-    await wrapper.vm.$nextTick()
+    await flushPromises()
     expect(wrapper.text()).toContain('Paletas')
   })
 
-  it('shows a back link to /products', async () => {
+  it('shows a RouterLink back to /products', async () => {
     api.get.mockResolvedValueOnce({ data: { data: fakeProduct } })
     const wrapper = await mountDetail('master-palette')
-    await wrapper.vm.$nextTick()
-    await wrapper.vm.$nextTick()
-    // There should be a way to navigate back to catalog
-    const backLink = wrapper.find('a[href="/products"]') ||
-      wrapper.find('[data-back-to-catalog]')
+    await flushPromises()
+    const backLink = wrapper.find('[data-back-to-catalog]')
+    expect(backLink.exists()).toBe(true)
     expect(wrapper.html()).toContain('/products')
   })
 })

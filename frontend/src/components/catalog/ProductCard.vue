@@ -1,6 +1,5 @@
 <script setup>
 import { RouterLink } from 'vue-router'
-import BaseBadge from '../ui/BaseBadge.vue'
 import BaseButton from '../ui/BaseButton.vue'
 
 const props = defineProps({
@@ -10,27 +9,10 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['add-to-cart'])
-
 function formatPrice(price) {
   const num = parseFloat(price)
-  if (isNaN(num) || num === 0) return 'Gratis'
+  if (isNaN(num)) return '$0.00'
   return `$${num.toFixed(2)}`
-}
-
-function isOutOfStock(product) {
-  return product.stock_qty === 0 || product.stock_state === 'Agotado'
-}
-
-function stockBadgeVariant(stockState) {
-  if (stockState === 'Agotado') return 'error'
-  if (stockState === 'Últimas unidades') return 'warning'
-  return 'success'
-}
-
-function excerpt(text, length = 100) {
-  if (!text) return ''
-  return text.length > length ? text.slice(0, length) + '...' : text
 }
 </script>
 
@@ -91,7 +73,7 @@ function excerpt(text, length = 100) {
         </h3>
       </RouterLink>
       <p class="font-body-md text-body-md text-on-surface-variant mb-4 line-clamp-2 flex-grow">
-        {{ excerpt(product.description, 120) }}
+        {{ product.description }}
       </p>
 
       <!-- Footer: price + CTA -->
@@ -99,24 +81,9 @@ function excerpt(text, length = 100) {
         <span class="font-title-md text-title-md text-primary">
           {{ formatPrice(product.price) }}
         </span>
-        <div class="flex items-center gap-2">
-          <RouterLink :to="`/products/${product.slug}`">
-            <BaseButton variant="outline" size="sm">Ver Detalles</BaseButton>
-          </RouterLink>
-          <button
-            data-add-to-cart
-            type="button"
-            :disabled="isOutOfStock(product) || undefined"
-            class="p-2 rounded-xl transition-colors"
-            :class="isOutOfStock(product)
-              ? 'text-outline cursor-not-allowed opacity-50'
-              : 'text-primary hover:bg-primary/10'"
-            :title="isOutOfStock(product) ? 'Producto agotado' : 'Agregar al carrito'"
-            @click="!isOutOfStock(product) && emit('add-to-cart', product)"
-          >
-            <span class="material-symbols-outlined text-[20px]" aria-hidden="true">shopping_cart</span>
-          </button>
-        </div>
+        <RouterLink :to="`/products/${product.slug}`">
+          <BaseButton variant="outline" size="sm">Ver Detalles</BaseButton>
+        </RouterLink>
       </div>
     </div>
   </div>

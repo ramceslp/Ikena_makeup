@@ -92,25 +92,19 @@ describe('ProductCard.vue', () => {
     expect(wrapper.text()).toContain('Ver Detalles')
   })
 
-  it('truncates a long description', () => {
-    const longDesc = 'A'.repeat(200)
-    const wrapper = mountCard({ ...baseProduct, description: longDesc })
-    const text = wrapper.text()
-    expect(text.length).toBeLessThan(400)
-  })
-
-  it('shows Agotado button as disabled when stock_qty is 0', () => {
-    const wrapper = mountCard({ ...baseProduct, stock_qty: 0, stock_state: 'Agotado' })
-    // The add-to-cart button should be disabled for out-of-stock products
-    const btn = wrapper.find('[data-add-to-cart]')
-    expect(btn.exists()).toBe(true)
-    expect(btn.attributes('disabled')).toBeDefined()
-  })
-
-  it('shows add-to-cart button enabled when in stock', () => {
+  it('renders description text directly from backend data', () => {
     const wrapper = mountCard(baseProduct)
-    const btn = wrapper.find('[data-add-to-cart]')
-    expect(btn.exists()).toBe(true)
-    expect(btn.attributes('disabled')).toBeUndefined()
+    expect(wrapper.text()).toContain('Una paleta profesional de sombras.')
+  })
+
+  it('shows "Agotado" stock badge when stock_qty is 0', () => {
+    const wrapper = mountCard({ ...baseProduct, stock_qty: 0, stock_state: 'Agotado' })
+    expect(wrapper.find('[data-add-to-cart]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Agotado')
+  })
+
+  it('does not render an add-to-cart button', () => {
+    const wrapper = mountCard(baseProduct)
+    expect(wrapper.find('[data-add-to-cart]').exists()).toBe(false)
   })
 })

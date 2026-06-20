@@ -9,7 +9,7 @@ defineProps({
   meta: { type: [Object, null], default: null },
 })
 
-defineEmits(['retry', 'page-change', 'add-to-cart'])
+defineEmits(['retry', 'page-change'])
 </script>
 
 <template>
@@ -59,7 +59,6 @@ defineEmits(['retry', 'page-change', 'add-to-cart'])
           v-for="product in products"
           :key="product.id"
           :product="product"
-          @add-to-cart="$emit('add-to-cart', $event)"
         />
       </div>
 
