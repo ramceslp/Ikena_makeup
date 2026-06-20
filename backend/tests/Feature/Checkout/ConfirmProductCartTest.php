@@ -288,9 +288,7 @@ class ConfirmProductCartTest extends TestCase
         // After this side-effect runs, the DB::update WHERE status='pending' in the
         // controller affects 0 rows (claimed === 0) → stockReservation->release() must
         // NOT be called, so stock stays at $originalStock.
-        $gatewayStubCalled = false;
-
-        $stub = new class($orderId, $productId, $originalStock, $reservedQty, $gatewayStubCalled) implements PaymentGatewayInterface {
+        $stub = new class($orderId, $productId, $originalStock, $reservedQty) implements PaymentGatewayInterface {
             public bool $wasCalled = false;
 
             public function __construct(
@@ -298,7 +296,6 @@ class ConfirmProductCartTest extends TestCase
                 private int $productId,
                 private int $originalStock,
                 private int $reservedQty,
-                bool        $_ // placeholder — use $this->wasCalled instead
             ) {}
 
             public function createCheckout(\App\Models\Order $order): CheckoutSession
