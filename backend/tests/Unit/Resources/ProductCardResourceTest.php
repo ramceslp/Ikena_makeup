@@ -132,9 +132,8 @@ class ProductCardResourceTest extends TestCase
         $request  = Request::create('/');
         $resource = (new ProductCardResource($product))->toArray($request);
 
-        // mb_strimwidth adds '...' so the result has at most 153 bytes but the
-        // important assertion is that it is NOT the full 200-char string
-        $this->assertLessThanOrEqual(153, mb_strlen($resource['description']));
+        // mb_strimwidth width=150 includes the '...' marker; total is exactly 150 chars.
+        $this->assertSame(150, mb_strlen($resource['description']));
         $this->assertStringEndsWith('...', $resource['description']);
     }
 
