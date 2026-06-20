@@ -19,6 +19,7 @@ const Profile = () => import('../views/Profile.vue')
 // Products — public
 const Products = () => import('../views/Products.vue')
 const ProductDetail = () => import('../views/ProductDetail.vue')
+const CartView = () => import('../views/Cart.vue')
 
 // Services — public
 const Services = () => import('../views/Services.vue')
@@ -133,6 +134,11 @@ const routes = [
     path: '/products/:slug',
     name: 'ProductDetail',
     component: ProductDetail,
+  },
+  {
+    path: '/cart',
+    name: 'Cart',
+    component: CartView,
   },
 
   // ── Public: Services ──────────────────────────────────────────────────────

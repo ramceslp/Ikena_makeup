@@ -2,12 +2,15 @@
 import { ref, computed } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
+import { useCartStore } from '../stores/cart.js'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const cartStore = useCartStore()
 
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 const user = computed(() => authStore.user)
+const cartCount = computed(() => cartStore.count)
 const mobileOpen = ref(false)
 
 function toggleMobile() {
@@ -52,6 +55,9 @@ const activeClass = 'text-primary border-b-2 border-apricot-glow'
           </RouterLink>
           <RouterLink to="/services" :class="linkClass" :active-class="activeClass">
             Servicios
+          </RouterLink>
+          <RouterLink to="/products" :class="linkClass" :active-class="activeClass">
+            Productos
           </RouterLink>
 
           <template v-if="isAuthenticated">
@@ -121,6 +127,23 @@ const activeClass = 'text-primary border-b-2 border-apricot-glow'
             </RouterLink>
           </template>
         </div>
+
+        <!-- Cart icon + badge (always visible) -->
+        <RouterLink
+          to="/cart"
+          data-cart-link
+          class="relative p-2 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-colors"
+          aria-label="Ver carrito"
+        >
+          <span class="material-symbols-outlined text-[22px]" aria-hidden="true">shopping_bag</span>
+          <span
+            v-if="cartCount > 0"
+            data-cart-badge
+            class="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-apricot-glow text-deep-marsala text-[10px] font-bold flex items-center justify-center px-1 leading-none"
+          >
+            {{ cartCount }}
+          </span>
+        </RouterLink>
 
         <!-- Mobile hamburger -->
         <button

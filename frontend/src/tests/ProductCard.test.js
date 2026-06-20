@@ -1,7 +1,21 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createRouter, createMemoryHistory } from 'vue-router'
+import { setActivePinia, createPinia } from 'pinia'
 import ProductCard from '../components/catalog/ProductCard.vue'
+
+vi.mock('../services/api.js', () => ({
+  default: {
+    get: vi.fn(),
+    post: vi.fn(),
+    delete: vi.fn(),
+    patch: vi.fn(),
+    interceptors: {
+      request: { use: vi.fn() },
+      response: { use: vi.fn() },
+    },
+  },
+}))
 
 // ---------------------------------------------------------------------------
 // Minimal router — ProductCard uses RouterLink to product detail
@@ -11,10 +25,12 @@ const router = createRouter({
   routes: [{ path: '/:pathMatch(.*)*', component: { template: '<div/>' } }],
 })
 
+let pinia
+
 function mountCard(product) {
   return mount(ProductCard, {
     props: { product },
-    global: { plugins: [router] },
+    global: { plugins: [pinia, router] },
   })
 }
 
@@ -31,6 +47,16 @@ const baseProduct = {
 }
 
 describe('ProductCard.vue', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    pinia = createPinia()
+    setActivePinia(pinia)
+  })
+
+  afterEach(() => {
+    localStorage.clear()
+  })
+
   it('renders the product title', () => {
     const wrapper = mountCard(baseProduct)
     expect(wrapper.text()).toContain('Master Palette')
@@ -97,8 +123,23 @@ describe('ProductCard.vue', () => {
     expect(wrapper.text()).toContain('Una paleta profesional de sombras.')
   })
 
-  it('does not render an add-to-cart button', () => {
+  it('renders an add-to-cart button for in-stock products', () => {
     const wrapper = mountCard(baseProduct)
-    expect(wrapper.find('[data-add-to-cart]').exists()).toBe(false)
+    expect(wrapper.find('[data-add-to-cart]').exists()).toBe(true)
+  })
+
+  it('add-to-cart button is disabled for out-of-stock products', () => {
+    const wrapper = mountCard({ ...baseProduct, stock_qty: 0, stock_state: 'Agotado' })
+    const btn = wrapper.find('[data-add-to-cart]')
+    expect(btn.exists()).toBe(true)
+    expect(btn.attributes('disabled')).toBeDefined()
+  })
+
+  it('add-to-cart button adds item to cart on click', async () => {
+    const { useCartStore } = await import('../stores/cart.js')
+    const store = useCartStore()
+    const wrapper = mountCard(baseProduct)
+    await wrapper.find('[data-add-to-cart]').trigger('click')
+    expect(store.count).toBe(1)
   })
 })

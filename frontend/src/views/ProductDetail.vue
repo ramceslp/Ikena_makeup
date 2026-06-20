@@ -2,12 +2,14 @@
 import { computed, onMounted } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { useProductsStore } from '../stores/products.js'
+import { useCartStore } from '../stores/cart.js'
 import ServiceGallery from '../components/service/ServiceGallery.vue'
 import BaseBadge from '../components/ui/BaseBadge.vue'
 import BaseButton from '../components/ui/BaseButton.vue'
 
 const route = useRoute()
 const productsStore = useProductsStore()
+const cart = useCartStore()
 
 const product = computed(() => productsStore.currentProduct)
 const loading = computed(() => productsStore.loading)
@@ -17,6 +19,12 @@ function formatPrice(price) {
   const num = parseFloat(price)
   if (isNaN(num)) return '$0.00'
   return `$${num.toFixed(2)}`
+}
+
+function addToCart() {
+  if (product.value) {
+    cart.addItem(product.value)
+  }
 }
 
 onMounted(async () => {
@@ -96,6 +104,26 @@ onMounted(async () => {
         <!-- Description -->
         <div class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
           {{ product.description }}
+        </div>
+
+        <!-- Add to cart CTA -->
+        <div class="flex gap-3 mt-2">
+          <button
+            data-add-to-cart
+            :disabled="product.stock_state === 'Agotado'"
+            @click="addToCart"
+            class="flex-1 bg-apricot-glow text-deep-marsala px-6 py-4 rounded-xl font-label-md text-label-md hover:-translate-y-0.5 active:scale-95 transition-all shadow-lg shadow-apricot-glow/20 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            <span class="material-symbols-outlined text-[20px]" aria-hidden="true">add_shopping_cart</span>
+            {{ product.stock_state === 'Agotado' ? 'Sin stock' : 'Agregar al carrito' }}
+          </button>
+          <RouterLink
+            to="/cart"
+            class="px-6 py-4 rounded-xl border-2 border-primary text-primary font-label-md text-label-md hover:bg-primary hover:text-on-primary transition-all active:scale-95 flex items-center gap-2"
+          >
+            <span class="material-symbols-outlined text-[20px]" aria-hidden="true">shopping_bag</span>
+            Ver carrito
+          </RouterLink>
         </div>
 
       </div>
