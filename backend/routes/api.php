@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BookingController;
+use App\Http\Controllers\Api\CartCheckoutController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\CertificateController;
 use App\Http\Controllers\Api\CheckoutController;
@@ -63,6 +64,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/payments/confirm', [CheckoutController::class, 'confirm']);
 
     Route::post('/bookings', [BookingController::class, 'store']);
+
+    // Cart checkout — product_cart orders (requires auth:sanctum)
+    Route::post('/cart/checkout', [CartCheckoutController::class, 'store']);
 
     Route::get('/lessons/{lesson}', [LessonController::class, 'show']);
     Route::post('/lessons/{lesson}/complete', [LessonController::class, 'complete']);

@@ -1,0 +1,85 @@
+<?php
+
+namespace App\Console\Commands;
+
+use App\Models\Order;
+use App\Services\Commerce\StockReservation;
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
+
+/**
+ * stock:release-expired — Release stock held by expired pending product_cart orders.
+ *
+ * Algorithm (idempotent, concurrency-safe vs confirm()):
+ *
+ *  foreach (expired product_cart orders via cursor) {
+ *    claimed = DB::update WHERE id=? AND status='pending' SET status='canceled'
+ *    if claimed === 0: skip (confirm() already won — do NOT restore stock)
+ *    else: restore stock via StockReservation::release($order)
+ *  }
+ *
+ * Properties:
+ *  - Idempotent: re-running finds canceled/paid orders excluded by the scope.
+ *  - Concurrency-safe: the conditional UPDATE is the single arbitration point.
+ *    If confirm() transitions pending→paid first, our UPDATE affects 0 rows → skip.
+ *    Stock is only restored when this command successfully claims the transition.
+ *  - Uses cursor() to avoid loading all expired orders into memory at once.
+ */
+class ReleaseExpiredReservations extends Command
+{
+    protected $signature = 'stock:release-expired';
+    protected $description = 'Cancel expired pending product_cart reservations and restore their stock';
+
+    public function __construct(private readonly StockReservation $stockReservation)
+    {
+        parent::__construct();
+    }
+
+    public function handle(): int
+    {
+        $count = 0;
+
+        foreach (Order::expiredProductCarts()->cursor() as $order) {
+            // Wrap the claim + release in a transaction so a crash between the two
+            // steps cannot leave the order canceled with stock permanently held.
+            // The WHERE status='pending' arbiter inside the transaction remains the
+            // single concurrency arbitration point: if confirm() wins, claimed = 0
+            // and the transaction rolls back harmlessly without touching stock.
+            // Lock-acquisition order within this transaction:
+            //   1. orders  (the conditional UPDATE below)
+            //   2. products (via StockReservation::release, which UPDATEs each product row)
+            // CartCheckoutController acquires locks in the opposite order (products → orders).
+            // This command runs as a low-frequency scheduled cron so contention is minimal,
+            // but if InnoDB deadlocks ever appear, align the lock order with CartCheckoutController
+            // or rely on InnoDB deadlock detection (the losing transaction is rolled back and
+            // retried on the next scheduled sweep).
+            $released = DB::transaction(function () use ($order): bool {
+                // Attempt to atomically claim the transition pending → canceled.
+                // If confirm() already transitioned this order (pending → paid),
+                // affected rows = 0 → we skip stock restore entirely.
+                $claimed = DB::update(
+                    "UPDATE orders SET status = 'canceled' WHERE id = ? AND status = 'pending'",
+                    [$order->id]
+                );
+
+                if ($claimed === 0) {
+                    // confirm() won the race — order was already paid or otherwise handled.
+                    return false;
+                }
+
+                // We claimed the cancellation — restore the reserved stock.
+                $this->stockReservation->release($order);
+
+                return true;
+            });
+
+            if ($released) {
+                $count++;
+            }
+        }
+
+        $this->info("Released {$count} expired reservation(s).");
+
+        return self::SUCCESS;
+    }
+}

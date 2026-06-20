@@ -168,10 +168,11 @@ class OrdersMigrationRegressionTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
-    // (d) Order XOR guard — DomainException on both-null
+    // (d) Type-discriminated invariant — unknown type inferred as 'course'
+    //     requires course_id; null course_id + null appointment_id → DomainException
     // -------------------------------------------------------------------------
 
-    public function test_order_xor_guard_throws_on_both_null(): void
+    public function test_type_discriminated_invariant_throws_when_course_type_has_no_course_id(): void
     {
         $this->expectException(\DomainException::class);
 
@@ -190,10 +191,11 @@ class OrdersMigrationRegressionTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
-    // (e) Order XOR guard — DomainException on both-set
+    // (e) Type-discriminated invariant — course type rejects appointment_id set
+    //     (both course_id and appointment_id set is an illegal shape)
     // -------------------------------------------------------------------------
 
-    public function test_order_xor_guard_throws_on_both_set(): void
+    public function test_type_discriminated_invariant_throws_when_course_type_has_appointment_id(): void
     {
         $this->expectException(\DomainException::class);
 
