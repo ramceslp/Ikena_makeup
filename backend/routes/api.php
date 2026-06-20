@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\CertificateController;
 use App\Http\Controllers\Api\CheckoutController;
 use App\Http\Controllers\Api\CourseController;
 use App\Http\Controllers\Api\CourseReviewController;
+use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\Admin\AppointmentController as AdminAppointmentController;
 use App\Http\Controllers\Api\Admin\ProductController as AdminProductController;
@@ -35,6 +36,10 @@ Route::get('/courses/{slug}', [CourseController::class, 'show']);
 
 Route::get('/services', [ServiceController::class, 'index']);
 Route::get('/services/{slug}', [ServiceController::class, 'show']);
+
+// Public product catalog — no auth required
+Route::get('/products', [ProductController::class, 'index']);
+Route::get('/products/{slug}', [ProductController::class, 'show']);
 Route::get('/services/{serviceId}/available-slots', [BookingController::class, 'availableSlots']);
 Route::get('/courses/{course:slug}/reviews', [CourseReviewController::class, 'index']);
 Route::get('/certificates/verify/{code}', [CertificateController::class, 'verify']);
