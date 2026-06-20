@@ -178,6 +178,49 @@ describe('products store — fetchProduct', () => {
 })
 
 // ---------------------------------------------------------------------------
+// fetchAdminProduct (detail by id, admin endpoint)
+// ---------------------------------------------------------------------------
+
+describe('products store — fetchAdminProduct', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+  })
+
+  it('fetchAdminProduct GETs /admin/products/{id} and populates currentProduct', async () => {
+    const fakeAdminProduct = {
+      id: 9,
+      title: 'Borrador Privado',
+      slug: 'borrador-privado',
+      price: '30.00',
+      stock_qty: 4,
+      is_published: false,
+      images: [{ id: 1, url: 'http://example.com/a.jpg', sort_order: 0 }],
+    }
+    api.get.mockResolvedValueOnce({ data: { data: fakeAdminProduct } })
+
+    const store = useProductsStore()
+    const result = await store.fetchAdminProduct(9)
+
+    expect(api.get).toHaveBeenCalledWith('/admin/products/9')
+    expect(store.currentProduct).toEqual(fakeAdminProduct)
+    expect(result).toEqual(fakeAdminProduct)
+    expect(store.loading).toBe(false)
+  })
+
+  it('fetchAdminProduct sets error and rethrows on failure', async () => {
+    api.get.mockRejectedValueOnce({
+      response: { data: { message: 'No encontrado' } },
+    })
+
+    const store = useProductsStore()
+    await expect(store.fetchAdminProduct(404)).rejects.toBeDefined()
+    expect(store.error).toBe('No encontrado')
+    expect(store.loading).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // fetchCategories
 // ---------------------------------------------------------------------------
 
