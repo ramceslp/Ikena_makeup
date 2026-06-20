@@ -16,7 +16,7 @@ const deleting = ref(null)
 const deleteError = ref('')
 
 async function loadProducts() {
-  await productsStore.fetchProducts()
+  await productsStore.fetchAdminProducts()
 }
 
 function stockStateClass(state) {

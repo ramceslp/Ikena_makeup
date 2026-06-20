@@ -181,4 +181,104 @@ describe('AdminProductEdit.vue — load + update + image ops', () => {
 
     expect(router.currentRoute.value.path).toBe('/admin/products')
   })
+
+  it('does NOT call updateProduct a second time when submit fires while in-flight (double-submit guard)', async () => {
+    const wrapper = await mountEdit()
+    await flushPromises()
+
+    const store = useProductsStore()
+    let resolveFlight
+    const pendingPromise = new Promise((resolve) => { resolveFlight = resolve })
+    const updateSpy = vi.spyOn(store, 'updateProduct').mockReturnValue(pendingPromise)
+
+    // First submit — starts in-flight
+    await wrapper.find('form').trigger('submit.prevent')
+    // Second submit while first is still pending
+    await wrapper.find('form').trigger('submit.prevent')
+
+    resolveFlight({ id: 1 })
+    await flushPromises()
+
+    expect(updateSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it('does NOT call deleteImage a second time on rapid double-click of the same image delete button', async () => {
+    const wrapper = await mountEdit()
+    await flushPromises()
+
+    const store = useProductsStore()
+    let resolveDelete
+    const pendingDeletePromise = new Promise((resolve) => { resolveDelete = resolve })
+    const deleteImageSpy = vi.spyOn(store, 'deleteImage').mockReturnValue(pendingDeletePromise)
+
+    const deleteButtons = wrapper.findAll('[data-delete-image]')
+    // First click — in-flight
+    await deleteButtons[0].trigger('click')
+    // Second click on SAME button while first is pending
+    await deleteButtons[0].trigger('click')
+
+    resolveDelete()
+    await flushPromises()
+
+    expect(deleteImageSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows error and does NOT call updateProduct when existing images + new files exceed 10', async () => {
+    // Override fakeProduct with 10 images
+    const tenImages = Array.from({ length: 10 }, (_, i) => ({
+      id: 100 + i,
+      url: `http://example.com/${i}.jpg`,
+      sort_order: i,
+    }))
+    api.get.mockImplementation((url) => {
+      if (url === '/admin/products/1') {
+        return Promise.resolve({
+          data: { data: { ...fakeProduct, images: tenImages } },
+        })
+      }
+      if (url === '/categories') {
+        return Promise.resolve({ data: { data: [{ id: 3, name: 'Labiales' }] } })
+      }
+      return Promise.resolve({ data: { data: [] } })
+    })
+
+    const wrapper = await mountEdit()
+    await flushPromises()
+
+    const store = useProductsStore()
+    const updateSpy = vi.spyOn(store, 'updateProduct').mockResolvedValue({ id: 1 })
+
+    // Add 1 new file — total would be 10 + 1 = 11 > 10
+    const fakeFile = new File(['img'], 'extra.jpg', { type: 'image/jpeg' })
+    const fileInput = wrapper.find('input[type="file"]')
+    Object.defineProperty(fileInput.element, 'files', {
+      value: [fakeFile],
+      configurable: true,
+    })
+    await fileInput.trigger('change')
+
+    await wrapper.find('form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(updateSpy).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('No se permiten más de 10 imágenes por producto.')
+  })
+
+  it('includes description="" in FormData when the description input is cleared', async () => {
+    const wrapper = await mountEdit()
+    await flushPromises()
+
+    const store = useProductsStore()
+    const updateSpy = vi.spyOn(store, 'updateProduct').mockResolvedValue({ id: 1 })
+
+    // Clear the description field
+    await wrapper.find('textarea[name="description"]').setValue('')
+
+    await wrapper.find('form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(updateSpy).toHaveBeenCalledTimes(1)
+    const [, calledFormData] = updateSpy.mock.calls[0]
+    expect(calledFormData.get('description')).toBe('')
+  })
 })

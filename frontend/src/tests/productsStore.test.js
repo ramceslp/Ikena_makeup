@@ -124,6 +124,62 @@ describe('products store — fetchProducts', () => {
 })
 
 // ---------------------------------------------------------------------------
+// fetchAdminProducts (admin list endpoint)
+// ---------------------------------------------------------------------------
+
+describe('products store — fetchAdminProducts', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+  })
+
+  it('fetchAdminProducts GETs /admin/products and populates products + productMeta', async () => {
+    const fakeAdminList = [
+      { id: 1, title: 'Publicado', slug: 'publicado', is_published: true, price: '25.00' },
+      { id: 2, title: 'Borrador', slug: 'borrador', is_published: false, price: '30.00' },
+    ]
+    api.get.mockResolvedValueOnce({
+      data: {
+        data: fakeAdminList,
+        meta: { current_page: 1, last_page: 1, total: 2 },
+      },
+    })
+
+    const store = useProductsStore()
+    await store.fetchAdminProducts()
+
+    expect(api.get).toHaveBeenCalledWith('/admin/products', expect.anything())
+    expect(store.products).toEqual(fakeAdminList)
+    expect(store.productMeta.total).toBe(2)
+    expect(store.loading).toBe(false)
+    expect(store.error).toBeNull()
+  })
+
+  it('fetchAdminProducts does NOT mutate store.filters', async () => {
+    api.get.mockResolvedValueOnce({ data: { data: [], meta: {} } })
+
+    const store = useProductsStore()
+    const filtersBefore = JSON.stringify(store.filters)
+
+    await store.fetchAdminProducts({ search: 'test', page: 2 })
+
+    expect(JSON.stringify(store.filters)).toBe(filtersBefore)
+  })
+
+  it('fetchAdminProducts sets error on failure', async () => {
+    api.get.mockRejectedValueOnce({
+      response: { data: { message: 'No autorizado' } },
+    })
+
+    const store = useProductsStore()
+    await store.fetchAdminProducts()
+
+    expect(store.error).toBe('No autorizado')
+    expect(store.loading).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // fetchProduct (detail by slug)
 // ---------------------------------------------------------------------------
 

@@ -25,6 +25,7 @@ const form = ref({
 })
 const images = ref([])
 const files = ref([])
+const deletingImageId = ref(null)
 
 async function loadData() {
   loading.value = true
@@ -64,11 +65,16 @@ function buildFormData() {
   fd.append('stock_qty', form.value.stock_qty)
   fd.append('is_published', form.value.is_published ? '1' : '0')
   if (form.value.category_id) fd.append('category_id', form.value.category_id)
-  if (form.value.description) fd.append('description', form.value.description)
+  fd.append('description', form.value.description ?? '')
   return fd
 }
 
 async function handleSubmit() {
+  if (loading.value) return
+  if (images.value.length + files.value.length > 10) {
+    saveError.value = 'No se permiten más de 10 imágenes por producto.'
+    return
+  }
   loading.value = true
   saveError.value = ''
   try {
@@ -85,11 +91,15 @@ async function handleSubmit() {
 }
 
 async function handleDeleteImage(imageId) {
+  if (deletingImageId.value === imageId) return
+  deletingImageId.value = imageId
   try {
     await productsStore.deleteImage(productId.value, imageId)
     images.value = images.value.filter((img) => img.id !== imageId)
   } catch (err) {
     saveError.value = err.response?.data?.message || 'Error al eliminar la imagen'
+  } finally {
+    deletingImageId.value = null
   }
 }
 
@@ -206,6 +216,7 @@ onMounted(loadData)
                   type="button"
                   data-delete-image
                   @click="handleDeleteImage(img.id)"
+                  :disabled="deletingImageId === img.id"
                   class="absolute top-0.5 right-0.5 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                   aria-label="Eliminar imagen"
                 >

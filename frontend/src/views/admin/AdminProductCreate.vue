@@ -32,11 +32,12 @@ function buildFormData() {
   fd.append('stock_qty', form.value.stock_qty)
   fd.append('is_published', form.value.is_published ? '1' : '0')
   if (form.value.category_id) fd.append('category_id', form.value.category_id)
-  if (form.value.description) fd.append('description', form.value.description)
+  fd.append('description', form.value.description ?? '')
   return fd
 }
 
 async function handleSubmit() {
+  if (loading.value) return
   loading.value = true
   error.value = ''
   try {

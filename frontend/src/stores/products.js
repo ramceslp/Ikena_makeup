@@ -69,6 +69,27 @@ export const useProductsStore = defineStore('products', {
       }
     },
 
+    async fetchAdminProducts(filters = {}) {
+      this.loading = true
+      this.error = null
+      try {
+        // Build local params object — do NOT mutate this.filters
+        const params = {}
+        for (const [key, value] of Object.entries(filters)) {
+          if (value !== '' && value !== null && value !== undefined) {
+            params[key] = value
+          }
+        }
+        const response = await api.get('/admin/products', { params })
+        this.products = response.data.data
+        this.productMeta = response.data.meta
+      } catch (err) {
+        this.error = err.response?.data?.message || 'Error al cargar los productos'
+      } finally {
+        this.loading = false
+      }
+    },
+
     // Admin actions
 
     async fetchAdminProduct(id) {

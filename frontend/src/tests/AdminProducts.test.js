@@ -92,7 +92,7 @@ describe('AdminProducts.vue — list renders + basic interactions', () => {
     await router.push('/admin/products')
   })
 
-  it('calls fetchProducts (admin variant) on mount', async () => {
+  it('calls fetchAdminProducts (GET /admin/products) on mount', async () => {
     api.get.mockResolvedValueOnce({
       data: { data: fakeProducts, meta: { current_page: 1, last_page: 1, total: 3 } },
     })
@@ -100,8 +100,7 @@ describe('AdminProducts.vue — list renders + basic interactions', () => {
     const wrapper = mountAdminProducts(pinia)
     await flushPromises()
 
-    // The store calls GET /products for public; admin uses GET /admin/products
-    expect(api.get).toHaveBeenCalled()
+    expect(api.get).toHaveBeenCalledWith('/admin/products', expect.anything())
   })
 
   it('renders product titles after load', async () => {

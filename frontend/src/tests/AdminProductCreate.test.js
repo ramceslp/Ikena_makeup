@@ -165,6 +165,37 @@ describe('AdminProductCreate.vue — create form + createProductWithImages', () 
     expect(createProductSpy).not.toHaveBeenCalled()
   })
 
+  it('does NOT call createProductWithImages a second time when submit fires while in-flight', async () => {
+    api.get.mockResolvedValueOnce({ data: { data: [] } })
+
+    const wrapper = mount(AdminProductCreate, {
+      global: { plugins: [pinia, router] },
+    })
+    await flushPromises()
+
+    const store = useProductsStore()
+    let resolveFlight
+    const pendingPromise = new Promise((resolve) => { resolveFlight = resolve })
+    const createWithImagesSpy = vi
+      .spyOn(store, 'createProductWithImages')
+      .mockReturnValue(pendingPromise)
+
+    await wrapper.find('input[name="title"]').setValue('Doble Submit')
+    await wrapper.find('input[name="price"]').setValue('10.00')
+    await wrapper.find('input[name="stock_qty"]').setValue('1')
+
+    // First submit — starts the in-flight request
+    await wrapper.find('form').trigger('submit.prevent')
+    // Second submit while first is still pending
+    await wrapper.find('form').trigger('submit.prevent')
+
+    // Resolve the first (and only) call
+    resolveFlight({ id: 99 })
+    await flushPromises()
+
+    expect(createWithImagesSpy).toHaveBeenCalledTimes(1)
+  })
+
   it('redirects to /admin/products after successful create', async () => {
     api.get.mockResolvedValueOnce({ data: { data: [] } })
 
