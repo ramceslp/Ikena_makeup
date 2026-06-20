@@ -4,8 +4,15 @@ import { useCartStore } from '../../stores/cart.js'
 
 defineEmits(['checkout'])
 
+defineProps({
+  loading: { type: Boolean, default: false },
+})
+
 const cart = useCartStore()
 
+// DISPLAY estimate only — keep in sync with backend commerce.tax.iva_rate
+// (config key COMMERCE_IVA_RATE). The backend is authoritative for the
+// amount actually charged.
 const IVA_RATE = 0.15
 
 const subtotalCents = computed(() => Math.round(cart.subtotal * 100))
@@ -47,6 +54,7 @@ const totalDisplay = computed(() => `$${(totalCents.value / 100).toFixed(2)}`)
     <!-- CTA -->
     <button
       data-checkout-btn
+      :disabled="loading"
       @click="$emit('checkout')"
       class="w-full bg-apricot-glow text-deep-marsala font-label-md text-label-md py-4 rounded-xl hover:-translate-y-0.5 active:scale-95 transition-all shadow-lg shadow-apricot-glow/20 disabled:opacity-40 disabled:cursor-not-allowed"
     >

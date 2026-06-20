@@ -1,14 +1,12 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCartStore } from '../stores/cart.js'
-import { useAuthStore } from '../stores/auth.js'
 import CartItemRow from '../components/cart/CartItemRow.vue'
 import CartSummary from '../components/cart/CartSummary.vue'
 
 const router = useRouter()
 const cart = useCartStore()
-const auth = useAuthStore()
 
 // ── State ────────────────────────────────────────────────────────────────────
 const checkoutLoading = ref(false)
@@ -19,7 +17,6 @@ const PAYPHONE_CSS = 'https://cdn.payphonetodoesposible.com/box/v2.0/payphone-pa
 const PAYPHONE_JS  = 'https://cdn.payphonetodoesposible.com/box/v2.0/payphone-payment-box.js'
 const boxReady = ref(false)
 const boxConfig = ref(null)
-const orderId = ref(null)
 
 function injectPayPhoneAssets() {
   return new Promise((resolve, reject) => {
@@ -59,6 +56,9 @@ function waitForConstructor(timeout = 8000) {
 
 // ── Checkout handler ──────────────────────────────────────────────────────────
 async function handleCheckout() {
+  // Re-entrancy guard — block double-submit while a checkout is in flight
+  if (checkoutLoading.value) return
+
   checkoutError.value = ''
   checkoutLoading.value = true
 
@@ -66,7 +66,6 @@ async function handleCheckout() {
     const data = await cart.checkout()
     // data = { order_id, provider, config }
     const config = data.data ?? data
-    orderId.value = config.order_id
     boxConfig.value = config.config
 
     await injectPayPhoneAssets()
@@ -76,14 +75,20 @@ async function handleCheckout() {
       import.meta.env.VITE_PAYMENT_CALLBACK_URL ||
       (window.location.origin + '/payment/callback')
 
-    boxReady.value = true
-
     // Render the payment widget on next tick (after DOM updates)
     await new Promise((resolve) => setTimeout(resolve, 0))
     new window.PPaymentButtonBox({
       ...boxConfig.value,
       responseUrl,
     }).render('pp-cart-button')
+
+    // Clear the cart ONLY after the widget has rendered successfully.
+    // Doing it earlier would leave the user with an empty cart if asset
+    // injection or widget rendering fails, preventing any retry.
+    cart.clear()
+    // Signal the widget as ready (template checks boxReady before cart.isEmpty,
+    // so the widget panel stays visible even though the cart is now empty).
+    boxReady.value = true
   } catch (err) {
     const status = err.response?.status
 
@@ -93,8 +98,18 @@ async function handleCheckout() {
     }
 
     if (status === 409) {
-      checkoutError.value =
-        'Uno o más productos ya no tienen suficiente stock disponible. Actualiza tu carrito e intenta de nuevo.'
+      const productId = err.response?.data?.product_id
+      const item = cart.items.find((i) => i.product_id === productId)
+      const name = item?.title ?? String(productId)
+      checkoutError.value = `Sin stock suficiente: "${name}". Ajusta la cantidad o quitalo del carrito.`
+      return
+    }
+
+    if (status === 422) {
+      const productId = err.response?.data?.product_id
+      const item = cart.items.find((i) => i.product_id === productId)
+      const name = item?.title ?? String(productId)
+      checkoutError.value = `"${name}" ya no está disponible. Quítalo del carrito para continuar.`
       return
     }
 
@@ -114,25 +129,10 @@ async function handleCheckout() {
       Mi Carrito
     </h1>
 
-    <!-- Empty state -->
-    <div v-if="cart.isEmpty" data-empty-cart class="flex flex-col items-center justify-center py-24 gap-6 text-center">
-      <span class="material-symbols-outlined text-7xl text-on-surface-variant/40" aria-hidden="true">
-        shopping_bag
-      </span>
-      <p class="font-body-lg text-body-lg text-on-surface-variant">
-        Tu carrito está vacío
-      </p>
-      <RouterLink
-        to="/products"
-        data-browse-link
-        class="bg-apricot-glow text-deep-marsala px-6 py-3 rounded-xl font-label-md text-label-md hover:-translate-y-0.5 transition-all active:scale-95 shadow-lg shadow-apricot-glow/20"
-      >
-        Explorar productos
-      </RouterLink>
-    </div>
-
-    <!-- PayPhone widget (appears after successful checkout initiation) -->
-    <div v-else-if="boxReady" class="max-w-2xl mx-auto">
+    <!-- PayPhone widget (appears after successful checkout initiation).
+         Checked BEFORE empty-cart so the widget stays visible after
+         cart.clear() is called at the end of the success path. -->
+    <div v-if="boxReady" class="max-w-2xl mx-auto">
       <div class="mb-6">
         <button
           @click="boxReady = false; boxConfig = null"
@@ -148,6 +148,23 @@ async function handleCheckout() {
       <div class="bg-white rounded-2xl border border-blush-canvas/30 p-6">
         <div id="pp-cart-button" />
       </div>
+    </div>
+
+    <!-- Empty state (shown when cart has no items AND widget is not active) -->
+    <div v-else-if="cart.isEmpty" data-empty-cart class="flex flex-col items-center justify-center py-24 gap-6 text-center">
+      <span class="material-symbols-outlined text-7xl text-on-surface-variant/40" aria-hidden="true">
+        shopping_bag
+      </span>
+      <p class="font-body-lg text-body-lg text-on-surface-variant">
+        Tu carrito está vacío
+      </p>
+      <RouterLink
+        to="/products"
+        data-browse-link
+        class="bg-apricot-glow text-deep-marsala px-6 py-3 rounded-xl font-label-md text-label-md hover:-translate-y-0.5 transition-all active:scale-95 shadow-lg shadow-apricot-glow/20"
+      >
+        Explorar productos
+      </RouterLink>
     </div>
 
     <!-- Cart with items -->
@@ -196,7 +213,7 @@ async function handleCheckout() {
 
       <!-- Summary sidebar -->
       <div class="lg:col-span-1">
-        <CartSummary @checkout="handleCheckout" />
+        <CartSummary :loading="checkoutLoading" @checkout="handleCheckout" />
       </div>
     </div>
   </div>

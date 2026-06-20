@@ -3,11 +3,27 @@ import api from '../services/api.js'
 
 const STORAGE_KEY = 'ikena_cart'
 
+function isValidItem(item) {
+  if (!item || typeof item !== 'object') return false
+  const price = parseFloat(item.price)
+  const qty = Number(item.quantity)
+  const pid = item.product_id
+  return (
+    pid != null &&
+    Number.isFinite(price) &&
+    Number.isFinite(qty) &&
+    qty > 0
+  )
+}
+
 function loadFromStorage() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return []
-    return JSON.parse(raw)
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    // Drop malformed items so the subtotal getter can never produce NaN.
+    return parsed.filter(isValidItem)
   } catch {
     return []
   }
@@ -39,8 +55,10 @@ export const useCartStore = defineStore('cart', {
     },
 
     addItem(product) {
-      // Blocked when out of stock
-      if (product.stock_state === 'Agotado') return
+      // Blocked when out of stock — use numeric stock_qty so the guard works even
+      // on hydrated items (stock_state is not persisted to localStorage).
+      const qty = Number(product.stock_qty)
+      if (!Number.isFinite(qty) || qty <= 0) return
 
       const existing = this.items.find((i) => i.product_id === product.id)
       if (existing) {
@@ -81,8 +99,10 @@ export const useCartStore = defineStore('cart', {
       const payload = {
         items: this.items.map((i) => ({ product_id: i.product_id, quantity: i.quantity })),
       }
+      // NOTE: cart.clear() is intentionally NOT called here.
+      // The view (Cart.vue) calls clear() only AFTER the PayPhone widget renders
+      // successfully. This preserves the cart if asset injection or rendering fails.
       const response = await api.post('/cart/checkout', payload)
-      this.clear()
       return response.data
     },
   },

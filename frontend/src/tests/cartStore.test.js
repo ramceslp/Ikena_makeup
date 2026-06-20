@@ -96,9 +96,18 @@ describe('cart store — addItem', () => {
     expect(store.items[0].stock_qty).toBe(10)
   })
 
-  it('does NOT add a product with stock_state Agotado', () => {
+  it('does NOT add a product with stock_qty of 0 (out of stock)', () => {
     const store = useCartStore()
     store.addItem(outOfStockProduct)
+    expect(store.items).toHaveLength(0)
+  })
+
+  it('does NOT add a product with non-finite stock_qty (hydrated item guard)', () => {
+    const store = useCartStore()
+    // stock_state is not persisted; only stock_qty matters
+    store.addItem({ ...outOfStockProduct, stock_qty: undefined, stock_state: undefined })
+    store.addItem({ ...outOfStockProduct, stock_qty: null, stock_state: undefined })
+    store.addItem({ ...outOfStockProduct, stock_qty: NaN, stock_state: undefined })
     expect(store.items).toHaveLength(0)
   })
 
@@ -359,6 +368,66 @@ describe('cart store — localStorage persistence', () => {
 })
 
 // ---------------------------------------------------------------------------
+// localStorage hydration — malformed items (N1)
+// ---------------------------------------------------------------------------
+
+describe('cart store — malformed localStorage items', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    vi.clearAllMocks()
+  })
+
+  afterEach(() => {
+    localStorage.clear()
+  })
+
+  it('drops items with NaN price so subtotal never becomes NaN', () => {
+    const badItems = [
+      { product_id: 1, title: 'Bad', price: 'not-a-number', quantity: 1, stock_qty: 5 },
+      { product_id: 2, title: 'Good', price: '50.00', quantity: 1, stock_qty: 5 },
+    ]
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(badItems))
+
+    setActivePinia(createPinia())
+    const store = useCartStore()
+
+    expect(store.items).toHaveLength(1)
+    expect(store.items[0].product_id).toBe(2)
+    expect(store.subtotal).not.toBeNaN()
+  })
+
+  it('drops items with missing product_id', () => {
+    const badItems = [
+      { title: 'No ID', price: '10.00', quantity: 1, stock_qty: 5 },
+    ]
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(badItems))
+
+    setActivePinia(createPinia())
+    const store = useCartStore()
+    expect(store.items).toHaveLength(0)
+  })
+
+  it('drops items with zero or negative quantity', () => {
+    const badItems = [
+      { product_id: 1, title: 'Zero qty', price: '10.00', quantity: 0, stock_qty: 5 },
+    ]
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(badItems))
+
+    setActivePinia(createPinia())
+    const store = useCartStore()
+    expect(store.items).toHaveLength(0)
+  })
+
+  it('returns empty array when stored value is not an array', () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ product_id: 1 }))
+
+    setActivePinia(createPinia())
+    const store = useCartStore()
+    expect(store.items).toHaveLength(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // checkout action
 // ---------------------------------------------------------------------------
 
@@ -395,7 +464,9 @@ describe('cart store — checkout', () => {
     expect(result).toEqual(fakeResponse)
   })
 
-  it('clears the cart after a successful checkout', async () => {
+  it('does NOT clear the cart after a successful checkout (view is responsible)', async () => {
+    // FIX 1: cart.clear() was moved to Cart.vue and is called only after the
+    // PayPhone widget renders. The store action just POSTs and returns data.
     const store = useCartStore()
     store.addItem(fakeProduct)
 
@@ -404,7 +475,7 @@ describe('cart store — checkout', () => {
     })
 
     await store.checkout()
-    expect(store.items).toHaveLength(0)
+    expect(store.items).toHaveLength(1) // cart preserved until widget renders
   })
 
   it('does NOT clear the cart when checkout fails', async () => {

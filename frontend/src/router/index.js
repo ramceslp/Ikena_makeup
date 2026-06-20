@@ -136,6 +136,9 @@ const routes = [
     component: ProductDetail,
   },
   {
+    // Intentionally NO requiresAuth: guest carts are allowed.
+    // The 401 returned by the checkout endpoint handles auth enforcement,
+    // so adding requiresAuth here would break the guest-cart flow.
     path: '/cart',
     name: 'Cart',
     component: CartView,

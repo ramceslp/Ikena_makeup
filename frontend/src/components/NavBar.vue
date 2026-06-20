@@ -175,6 +175,24 @@ const activeClass = 'text-primary border-b-2 border-apricot-glow'
         >
           Servicios
         </RouterLink>
+        <RouterLink
+          to="/products"
+          @click="mobileOpen = false"
+          class="block py-2 font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors"
+        >
+          Productos
+        </RouterLink>
+        <RouterLink
+          to="/cart"
+          @click="mobileOpen = false"
+          class="block py-2 font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors"
+        >
+          Carrito
+          <span
+            v-if="cartCount > 0"
+            class="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] rounded-full bg-apricot-glow text-deep-marsala text-[10px] font-bold px-1 leading-none"
+          >{{ cartCount }}</span>
+        </RouterLink>
 
         <template v-if="isAuthenticated">
           <RouterLink
