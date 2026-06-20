@@ -190,6 +190,7 @@ const activeClass = 'text-primary border-b-2 border-apricot-glow'
           Carrito
           <span
             v-if="cartCount > 0"
+            data-cart-badge
             class="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] rounded-full bg-apricot-glow text-deep-marsala text-[10px] font-bold px-1 leading-none"
           >{{ cartCount }}</span>
         </RouterLink>

@@ -100,7 +100,7 @@ async function handleCheckout() {
     if (status === 409) {
       const productId = err.response?.data?.product_id
       const item = cart.items.find((i) => i.product_id === productId)
-      const name = item?.title ?? String(productId)
+      const name = item?.title ?? (productId != null ? String(productId) : 'un producto')
       checkoutError.value = `Sin stock suficiente: "${name}". Ajusta la cantidad o quitalo del carrito.`
       return
     }
@@ -108,7 +108,7 @@ async function handleCheckout() {
     if (status === 422) {
       const productId = err.response?.data?.product_id
       const item = cart.items.find((i) => i.product_id === productId)
-      const name = item?.title ?? String(productId)
+      const name = item?.title ?? (productId != null ? String(productId) : 'un producto')
       checkoutError.value = `"${name}" ya no está disponible. Quítalo del carrito para continuar.`
       return
     }

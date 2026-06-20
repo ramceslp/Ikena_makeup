@@ -20,7 +20,6 @@ vi.mock('../services/api.js', () => ({
 import api from '../services/api.js'
 import Cart from '../views/Cart.vue'
 import { useCartStore } from '../stores/cart.js'
-import { useAuthStore } from '../stores/auth.js'
 
 const router = createRouter({
   history: createMemoryHistory(),
@@ -201,6 +200,10 @@ describe('Cart.vue — checkout flow', () => {
   afterEach(() => {
     localStorage.clear()
     teardownPayPhone()
+    // Restore any spies (FAILURE test) and fake timers (SUCCESS test) even if
+    // an assertion threw before the test body could clean up.
+    vi.restoreAllMocks()
+    vi.useRealTimers()
   })
 
   it('redirects to login when checkout returns 401 (unauthenticated)', async () => {
@@ -305,9 +308,14 @@ describe('Cart.vue — checkout flow', () => {
 
   it('SUCCESS: clears cart and shows widget after PayPhone renders', async () => {
     // Pre-set window.PPaymentButtonBox as a proper constructor function so
-    // waitForConstructor resolves on the first interval tick.
-    // The script tag stub makes injectPayPhoneAssets go to the "already loaded"
-    // branch and resolve immediately, avoiding network I/O.
+    // waitForConstructor resolves on the first interval tick. The script tag
+    // stub makes injectPayPhoneAssets take the "already loaded" branch.
+    // NOTE: this path is driven with REAL timers on purpose. The inlined
+    // waitForConstructor uses setInterval + Date.now(), and fake timers do not
+    // interleave cleanly with the awaited promise chain (api.post →
+    // injectPayPhoneAssets → waitForConstructor → setTimeout(0) render), so the
+    // small real-clock wait below is the reliable approach. It is deterministic
+    // in practice (~150ms) and does not depend on external I/O.
     stubPayPhoneSuccess()
 
     const store = useCartStore()
@@ -324,25 +332,20 @@ describe('Cart.vue — checkout flow', () => {
     const checkoutBtn = wrapper.find('[data-checkout-btn]')
     await checkoutBtn.trigger('click')
 
-    // Phase 1: let the api.post() promise microtask resolve
+    // Phase 1: let the api.post() + injectPayPhoneAssets microtasks resolve.
     await flushPromises()
-    // Phase 2: injectPayPhoneAssets resolves via the "already present" branch
-    // (synchronous resolve), waitForConstructor starts its setInterval (100ms).
-    // We yield 110ms of real time so the first interval tick fires.
-    await new Promise((r) => setTimeout(r, 110))
-    // Phase 3: waitForConstructor resolves, then setTimeout(0) fires for render.
-    // Flush remaining microtasks + the zero-delay timer callback.
-    await new Promise((r) => setTimeout(r, 10))
+    // Phase 2: yield real time so the waitForConstructor 100ms interval fires,
+    // then the setTimeout(0) render callback runs.
+    await new Promise((r) => setTimeout(r, 120))
     await flushPromises()
 
-    // Flush Vue's reactivity: two ticks — one for cart.clear() (isEmpty → re-render)
-    // and one for boxReady = true (switches the v-else-if to show the widget panel).
+    // Flush Vue reactivity: cart.clear() (isEmpty) + boxReady = true (widget panel).
     await nextTick()
     await nextTick()
 
     // Cart must be cleared after successful widget render
     expect(store.items).toHaveLength(0)
-    // PayPhone widget container must be visible (boxReady = true shows the widget section)
+    // PayPhone widget container must be visible (boxReady = true shows the widget)
     expect(wrapper.find('#pp-cart-button').exists()).toBe(true)
   })
 
@@ -383,8 +386,7 @@ describe('Cart.vue — checkout flow', () => {
     expect(store.items).toHaveLength(1)
     // Error must be surfaced
     expect(wrapper.find('[data-checkout-error]').exists()).toBe(true)
-
-    vi.restoreAllMocks()
+    // spy restored in afterEach
   })
 
   it('blocks double-submit: second click while loading is a no-op', async () => {
