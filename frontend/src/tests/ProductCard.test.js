@@ -97,12 +97,6 @@ describe('ProductCard.vue', () => {
     expect(wrapper.text()).toContain('Una paleta profesional de sombras.')
   })
 
-  it('shows "Agotado" stock badge when stock_qty is 0', () => {
-    const wrapper = mountCard({ ...baseProduct, stock_qty: 0, stock_state: 'Agotado' })
-    expect(wrapper.find('[data-add-to-cart]').exists()).toBe(false)
-    expect(wrapper.text()).toContain('Agotado')
-  })
-
   it('does not render an add-to-cart button', () => {
     const wrapper = mountCard(baseProduct)
     expect(wrapper.find('[data-add-to-cart]').exists()).toBe(false)

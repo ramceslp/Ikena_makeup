@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
 import { createRouter, createMemoryHistory } from 'vue-router'
@@ -38,6 +38,11 @@ describe('Products.vue', () => {
     vi.clearAllMocks()
     // Default: return empty list
     api.get.mockResolvedValue({ data: { data: [], meta: {} } })
+  })
+
+  afterEach(() => {
+    // Never leak fake timers into the next test, even if an assertion throws.
+    vi.useRealTimers()
   })
 
   it('renders the page heading in Spanish', async () => {
@@ -85,7 +90,10 @@ describe('Products.vue', () => {
   })
 
   it('debounces price filter changes and collapses rapid keystrokes into a single fetch', async () => {
-    vi.useFakeTimers()
+    // Only fake the debounce timers; keep setImmediate/microtasks real so
+    // flushPromises() still resolves (vitest fakes setImmediate by default,
+    // which flushPromises relies on).
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
 
     // Reset: clear previous calls from mount
     api.get.mockResolvedValue({ data: { data: [], meta: {} } })
@@ -108,7 +116,6 @@ describe('Products.vue', () => {
 
     // Exactly one additional fetch after debounce settles
     expect(api.get.mock.calls.length).toBe(callsAfterMount + 1)
-
-    vi.useRealTimers()
+    // real timers restored by afterEach
   })
 })

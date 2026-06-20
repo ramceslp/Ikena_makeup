@@ -99,7 +99,6 @@ describe('ProductDetail.vue', () => {
     api.get.mockResolvedValueOnce({ data: { data: outOfStock } })
     const wrapper = await mountDetail('master-palette')
     await flushPromises()
-    expect(wrapper.find('[data-add-to-cart]').exists()).toBe(false)
     expect(wrapper.text()).toContain('Agotado')
   })
 

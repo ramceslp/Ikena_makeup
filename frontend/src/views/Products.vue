@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useProductsStore } from '../stores/products.js'
 import ProductFilters from '../components/catalog/ProductFilters.vue'
 import ProductCatalog from '../components/catalog/ProductCatalog.vue'
@@ -51,6 +51,10 @@ function goToPage(page) {
 onMounted(() => {
   productsStore.fetchCategories()
   productsStore.fetchProducts()
+})
+
+onBeforeUnmount(() => {
+  clearTimeout(debounceTimer)
 })
 </script>
 

@@ -1,13 +1,12 @@
 <script setup>
 import { computed, onMounted } from 'vue'
-import { useRoute, useRouter, RouterLink } from 'vue-router'
+import { useRoute, RouterLink } from 'vue-router'
 import { useProductsStore } from '../stores/products.js'
 import ServiceGallery from '../components/service/ServiceGallery.vue'
 import BaseBadge from '../components/ui/BaseBadge.vue'
 import BaseButton from '../components/ui/BaseButton.vue'
 
 const route = useRoute()
-const router = useRouter()
 const productsStore = useProductsStore()
 
 const product = computed(() => productsStore.currentProduct)
