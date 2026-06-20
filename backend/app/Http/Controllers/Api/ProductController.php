@@ -29,13 +29,16 @@ class ProductController extends Controller
             ->with(['category', 'images'])
             ->withCount('images');
 
-        // Search filter — title or description
+        // Search filter — title or description.
         // Escape LIKE special characters so user input is treated as literals.
+        // An explicit ESCAPE clause is emitted so behaviour is identical on
+        // SQLite (:memory: test driver) and MySQL (including NO_BACKSLASH_ESCAPES mode).
         if ($search = $request->query('search')) {
             $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $search);
-            $query->where(function ($q) use ($escaped) {
-                $q->where('title', 'like', "%{$escaped}%")
-                  ->orWhere('description', 'like', "%{$escaped}%");
+            $param   = "%{$escaped}%";
+            $query->where(function ($q) use ($param) {
+                $q->whereRaw("title LIKE ? ESCAPE '\\'", [$param])
+                  ->orWhereRaw("description LIKE ? ESCAPE '\\'", [$param]);
             });
         }
 
