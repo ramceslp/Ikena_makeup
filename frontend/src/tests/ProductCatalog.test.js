@@ -1,7 +1,21 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createRouter, createMemoryHistory } from 'vue-router'
+import { setActivePinia, createPinia } from 'pinia'
 import ProductCatalog from '../components/catalog/ProductCatalog.vue'
+
+vi.mock('../services/api.js', () => ({
+  default: {
+    get: vi.fn(),
+    post: vi.fn(),
+    delete: vi.fn(),
+    patch: vi.fn(),
+    interceptors: {
+      request: { use: vi.fn() },
+      response: { use: vi.fn() },
+    },
+  },
+}))
 
 // ---------------------------------------------------------------------------
 // Minimal router — ProductCatalog renders ProductCard which uses RouterLink
@@ -11,10 +25,12 @@ const router = createRouter({
   routes: [{ path: '/:pathMatch(.*)*', component: { template: '<div/>' } }],
 })
 
+let pinia
+
 function mountCatalog(props = {}) {
   return mount(ProductCatalog, {
     props,
-    global: { plugins: [router] },
+    global: { plugins: [pinia, router] },
   })
 }
 
@@ -42,6 +58,16 @@ const fakeProducts = [
 ]
 
 describe('ProductCatalog.vue', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    pinia = createPinia()
+    setActivePinia(pinia)
+  })
+
+  afterEach(() => {
+    localStorage.clear()
+  })
+
   it('renders product cards when products are provided', () => {
     const wrapper = mountCatalog({ products: fakeProducts })
     expect(wrapper.text()).toContain('Master Palette')

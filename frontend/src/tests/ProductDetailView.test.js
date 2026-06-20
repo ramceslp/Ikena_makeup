@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
 import { createRouter, createMemoryHistory } from 'vue-router'
@@ -23,15 +23,18 @@ const router = createRouter({
   history: createMemoryHistory(),
   routes: [
     { path: '/products/:slug', name: 'ProductDetail', component: ProductDetail },
+    { path: '/cart', name: 'Cart', component: { template: '<div/>' } },
     { path: '/:pathMatch(.*)*', component: { template: '<div/>' } },
   ],
 })
+
+let pinia
 
 async function mountDetail(slug = 'master-palette') {
   await router.push(`/products/${slug}`)
   await router.isReady()
   return mount(ProductDetail, {
-    global: { plugins: [router] },
+    global: { plugins: [pinia, router] },
   })
 }
 
@@ -52,8 +55,14 @@ const fakeProduct = {
 
 describe('ProductDetail.vue', () => {
   beforeEach(() => {
-    setActivePinia(createPinia())
+    localStorage.clear()
+    pinia = createPinia()
+    setActivePinia(pinia)
     vi.clearAllMocks()
+  })
+
+  afterEach(() => {
+    localStorage.clear()
   })
 
   it('shows a loading indicator while fetching', async () => {
@@ -116,5 +125,35 @@ describe('ProductDetail.vue', () => {
     const backLink = wrapper.find('[data-back-to-catalog]')
     expect(backLink.exists()).toBe(true)
     expect(wrapper.html()).toContain('/products')
+  })
+
+  it('renders an add-to-cart button when product is in stock', async () => {
+    api.get.mockResolvedValueOnce({ data: { data: fakeProduct } })
+    const wrapper = await mountDetail('master-palette')
+    await flushPromises()
+    expect(wrapper.find('[data-add-to-cart]').exists()).toBe(true)
+  })
+
+  it('add-to-cart button is disabled when product is Agotado', async () => {
+    const outOfStock = { ...fakeProduct, stock_qty: 0, stock_state: 'Agotado' }
+    api.get.mockResolvedValueOnce({ data: { data: outOfStock } })
+    const wrapper = await mountDetail('master-palette')
+    await flushPromises()
+    const btn = wrapper.find('[data-add-to-cart]')
+    expect(btn.exists()).toBe(true)
+    expect(btn.attributes('disabled')).toBeDefined()
+  })
+
+  it('add-to-cart button adds product to cart store', async () => {
+    const { useCartStore } = await import('../stores/cart.js')
+    const store = useCartStore()
+
+    api.get.mockResolvedValueOnce({ data: { data: fakeProduct } })
+    const wrapper = await mountDetail('master-palette')
+    await flushPromises()
+
+    await wrapper.find('[data-add-to-cart]').trigger('click')
+    expect(store.count).toBe(1)
+    expect(store.items[0].title).toBe('Master Palette')
   })
 })

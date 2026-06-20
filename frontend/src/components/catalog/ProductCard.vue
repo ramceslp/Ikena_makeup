@@ -1,6 +1,7 @@
 <script setup>
 import { RouterLink } from 'vue-router'
 import BaseButton from '../ui/BaseButton.vue'
+import { useCartStore } from '../../stores/cart.js'
 
 const props = defineProps({
   product: {
@@ -9,10 +10,16 @@ const props = defineProps({
   },
 })
 
+const cart = useCartStore()
+
 function formatPrice(price) {
   const num = parseFloat(price)
   if (isNaN(num)) return '$0.00'
   return `$${num.toFixed(2)}`
+}
+
+function addToCart() {
+  cart.addItem(props.product)
 }
 </script>
 
@@ -76,14 +83,25 @@ function formatPrice(price) {
         {{ product.description }}
       </p>
 
-      <!-- Footer: price + CTA -->
+      <!-- Footer: price + CTAs -->
       <div class="mt-auto border-t border-blush-canvas/20 pt-4 flex items-center justify-between gap-2">
         <span class="font-title-md text-title-md text-primary">
           {{ formatPrice(product.price) }}
         </span>
-        <RouterLink :to="`/products/${product.slug}`">
-          <BaseButton variant="outline" size="sm">Ver Detalles</BaseButton>
-        </RouterLink>
+        <div class="flex items-center gap-2">
+          <RouterLink :to="`/products/${product.slug}`">
+            <BaseButton variant="outline" size="sm">Ver Detalles</BaseButton>
+          </RouterLink>
+          <button
+            data-add-to-cart
+            :disabled="product.stock_state === 'Agotado'"
+            @click="addToCart"
+            class="px-3 py-2 rounded-lg bg-apricot-glow text-deep-marsala font-label-md text-label-md hover:-translate-y-0.5 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            :aria-label="`Agregar ${product.title} al carrito`"
+          >
+            <span class="material-symbols-outlined text-[18px]" aria-hidden="true">add_shopping_cart</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
