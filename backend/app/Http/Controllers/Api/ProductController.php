@@ -30,15 +30,19 @@ class ProductController extends Controller
             ->withCount('images');
 
         // Search filter — title or description.
-        // Escape LIKE special characters so user input is treated as literals.
-        // An explicit ESCAPE clause is emitted so behaviour is identical on
-        // SQLite (:memory: test driver) and MySQL (including NO_BACKSLASH_ESCAPES mode).
+        // Escape LIKE metacharacters using '!' as the ESCAPE char.
+        // '!' has no special meaning in MySQL or SQLite string literals, so the
+        // emitted `ESCAPE '!'` clause is parsed identically on both engines.
+        // Backslash is NOT portable: MySQL escapes it inside string literals,
+        // SQLite does not — '\\' renders as an unterminated literal on MySQL strict mode.
         if ($search = $request->query('search')) {
-            $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $search);
+            // '!' must be escaped first so a literal '!' in input becomes '!!'
+            // before the '%' and '_' replacements run.
+            $escaped = str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $search);
             $param   = "%{$escaped}%";
             $query->where(function ($q) use ($param) {
-                $q->whereRaw("title LIKE ? ESCAPE '\\'", [$param])
-                  ->orWhereRaw("description LIKE ? ESCAPE '\\'", [$param]);
+                $q->whereRaw("title LIKE ? ESCAPE '!'", [$param])
+                  ->orWhereRaw("description LIKE ? ESCAPE '!'", [$param]);
             });
         }
 
