@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\CourseController;
 use App\Http\Controllers\Api\CourseReviewController;
 use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\Admin\AppointmentController as AdminAppointmentController;
+use App\Http\Controllers\Api\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\Api\Admin\ServiceController as AdminServiceController;
 use App\Http\Controllers\Api\Admin\ServiceSlotController as AdminServiceSlotController;
 use App\Http\Controllers\Api\Instructor\CourseController as InstructorCourseController;
@@ -88,6 +89,18 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/services/{service}/slots', [AdminServiceSlotController::class, 'store']);
         Route::patch('/services/{service}/slots/{slot}', [AdminServiceSlotController::class, 'update']);
         Route::delete('/services/{service}/slots/{slot}', [AdminServiceSlotController::class, 'destroy']);
+
+        // Products CRUD
+        Route::get('/products', [AdminProductController::class, 'index']);
+        Route::post('/products', [AdminProductController::class, 'store']);
+        Route::get('/products/{product}', [AdminProductController::class, 'show']);
+        Route::post('/products/{product}', [AdminProductController::class, 'update']);
+        Route::delete('/products/{product}', [AdminProductController::class, 'destroy']);
+
+        // Product image management
+        Route::post('/products/{product}/images', [AdminProductController::class, 'storeImages']);
+        Route::delete('/products/{product}/images/{image}', [AdminProductController::class, 'destroyImage']);
+        Route::post('/products/{product}/images/reorder', [AdminProductController::class, 'reorderImages']);
 
         // Appointment management
         Route::get('/appointments', [AdminAppointmentController::class, 'index']);
