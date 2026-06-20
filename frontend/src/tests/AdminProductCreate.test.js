@@ -231,6 +231,32 @@ describe('AdminProductCreate.vue — create form + createProductWithImages', () 
     expect(wrapper.text()).toContain('No se permiten más de 10 imágenes por producto.')
   })
 
+  it('sends category_id="" in FormData when no category is selected', async () => {
+    api.get.mockResolvedValueOnce({ data: { data: [] } })
+
+    const wrapper = mount(AdminProductCreate, {
+      global: { plugins: [pinia, router] },
+    })
+    await flushPromises()
+
+    const store = useProductsStore()
+    const createWithImagesSpy = vi
+      .spyOn(store, 'createProductWithImages')
+      .mockResolvedValue({ id: 51 })
+
+    await wrapper.find('input[name="title"]').setValue('Sin Categoría')
+    await wrapper.find('input[name="price"]').setValue('10.00')
+    await wrapper.find('input[name="stock_qty"]').setValue('5')
+    // Leave the category select at its default "Sin categoría" ('') option
+
+    await wrapper.find('form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(createWithImagesSpy).toHaveBeenCalledTimes(1)
+    const [calledFormData] = createWithImagesSpy.mock.calls[0]
+    expect(calledFormData.get('category_id')).toBe('')
+  })
+
   it('redirects to /admin/products after successful create', async () => {
     api.get.mockResolvedValueOnce({ data: { data: [] } })
 
