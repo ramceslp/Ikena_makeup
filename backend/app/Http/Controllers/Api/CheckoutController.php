@@ -258,6 +258,8 @@ class CheckoutController extends Controller
         if ($result->approved) {
             // Guard the paid transition atomically (confirm-vs-release arbitration).
             // If the release command already canceled this order, affected rows = 0.
+            // meta is json_encoded explicitly here because raw DB::update bypasses
+            // Eloquent's 'meta' => 'array' cast (the Eloquent update paths pass the raw array).
             $claimed = DB::update(
                 "UPDATE orders SET status = 'paid', paid_at = ?, gateway_transaction_id = ?, meta = ? WHERE id = ? AND status = 'pending'",
                 [now(), $result->gatewayId, json_encode($result->raw), $order->id]
@@ -296,6 +298,8 @@ class CheckoutController extends Controller
         // Payment declined — guard the failed transition atomically (mirrors the paid path above).
         // If the release command already canceled this order, affected rows = 0 → do NOT
         // restore stock a second time (release command already restored it).
+        // meta is json_encoded explicitly here because raw DB::update bypasses
+        // Eloquent's 'meta' => 'array' cast (the Eloquent update paths pass the raw array).
         $claimed = DB::update(
             "UPDATE orders SET status = 'failed', meta = ? WHERE id = ? AND status = 'pending'",
             [json_encode($result->raw), $order->id]

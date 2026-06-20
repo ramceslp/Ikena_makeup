@@ -45,6 +45,14 @@ class ReleaseExpiredReservations extends Command
             // The WHERE status='pending' arbiter inside the transaction remains the
             // single concurrency arbitration point: if confirm() wins, claimed = 0
             // and the transaction rolls back harmlessly without touching stock.
+            // Lock-acquisition order within this transaction:
+            //   1. orders  (the conditional UPDATE below)
+            //   2. products (via StockReservation::release, which UPDATEs each product row)
+            // CartCheckoutController acquires locks in the opposite order (products → orders).
+            // This command runs as a low-frequency scheduled cron so contention is minimal,
+            // but if InnoDB deadlocks ever appear, align the lock order with CartCheckoutController
+            // or rely on InnoDB deadlock detection (the losing transaction is rolled back and
+            // retried on the next scheduled sweep).
             $released = DB::transaction(function () use ($order): bool {
                 // Attempt to atomically claim the transition pending → canceled.
                 // If confirm() already transitioned this order (pending → paid),
