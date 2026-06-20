@@ -470,6 +470,30 @@ class PublicProductControllerTest extends TestCase
         $this->assertNotContains($withoutPercent->id, $ids, 'Product without "%" must not appear in results.');
     }
 
+    public function test_underscore_is_treated_as_literal(): void
+    {
+        // Seed a product whose title contains a literal underscore and one that does not.
+        // If '_' were treated as the single-char wildcard both would match; with correct
+        // ESCAPE '!' only the underscore product must be returned.
+        $withUnderscore = Product::factory()->published()->create([
+            'title'       => 'Eye_Liner Pro',
+            'slug'        => 'eye-liner-underscore',
+            'description' => 'A precise liner tool.',
+        ]);
+        $withoutUnderscore = Product::factory()->published()->create([
+            'title'       => 'Eye Liner Pro',
+            'slug'        => 'eye-liner-space',
+            'description' => 'A smooth liner tool.',
+        ]);
+
+        $response = $this->getJson('/api/products?search=' . urlencode('_'));
+
+        $response->assertStatus(200);
+        $ids = collect($response->json('data'))->pluck('id')->toArray();
+        $this->assertContains($withUnderscore->id, $ids, 'Product with literal "_" in title must be in results.');
+        $this->assertNotContains($withoutUnderscore->id, $ids, 'Product without "_" must not appear — "_" must not act as a wildcard.');
+    }
+
     // -------------------------------------------------------------------------
     // Edge-case sort / filter contracts
     // -------------------------------------------------------------------------
