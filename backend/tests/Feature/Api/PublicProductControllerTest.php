@@ -446,6 +446,30 @@ class PublicProductControllerTest extends TestCase
         $this->assertEmpty($response->json('data'), 'Percent sign must be treated as a literal, not a wildcard.');
     }
 
+    public function test_percent_literal_is_matched_when_present(): void
+    {
+        // Seed one product whose title CONTAINS a literal percent sign and one that does not.
+        // Searching for "%" must return ONLY the product that literally has "%".
+        // This proves the explicit ESCAPE clause causes "%" to be treated as a literal
+        // on SQLite (:memory:) — structural coincidence would pass the negative test but
+        // fail this positive one.
+        $withPercent    = Product::factory()->published()->create([
+            'title' => '50% OFF Brush Set',
+            'slug'  => 'fifty-pct-brush',
+        ]);
+        $withoutPercent = Product::factory()->published()->create([
+            'title' => 'Brush Set Alpha',
+            'slug'  => 'brush-alpha-nopct',
+        ]);
+
+        $response = $this->getJson('/api/products?search=' . urlencode('%'));
+
+        $response->assertStatus(200);
+        $ids = collect($response->json('data'))->pluck('id')->toArray();
+        $this->assertContains($withPercent->id, $ids, 'Product with literal "%" in title must be in results.');
+        $this->assertNotContains($withoutPercent->id, $ids, 'Product without "%" must not appear in results.');
+    }
+
     // -------------------------------------------------------------------------
     // Edge-case sort / filter contracts
     // -------------------------------------------------------------------------
