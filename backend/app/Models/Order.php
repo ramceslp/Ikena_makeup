@@ -67,14 +67,16 @@ class Order extends Model
     {
         // saving hook fires before creating for new models.
         // It serves double duty:
-        //  1. Infer type when not explicitly set (regression-safe creating hook behaviour).
+        //  1. Infer type when not explicitly set on NEW records (regression-safe).
         //  2. Enforce the type-dispatched shape invariant.
         static::saving(function (Order $order) {
-            // Step 1: infer type for new records when caller omitted it.
-            // This is a regression-safe hook: existing call sites (CheckoutController,
-            // BookingController, AppointmentAdminTest, etc.) do NOT pass `type`,
-            // so we infer it from the FK pattern they DO provide.
-            if ($order->isClean('type') || empty($order->type)) {
+            // Step 1: infer type ONLY for new (not-yet-persisted) records when
+            // the caller omitted it. This is a regression-safe hook: existing call
+            // sites (CheckoutController, BookingController, AppointmentAdminTest, etc.)
+            // do NOT pass `type`, so we infer it from the FK pattern they DO provide.
+            //
+            // We must NOT re-infer on UPDATE — the persisted type is authoritative.
+            if (! $order->exists && empty($order->type)) {
                 if (! is_null($order->appointment_id)) {
                     $order->type = 'appointment';
                 } else {

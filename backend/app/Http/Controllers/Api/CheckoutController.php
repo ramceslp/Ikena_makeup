@@ -6,14 +6,19 @@ use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\Enrollment;
 use App\Models\Order;
+use App\Services\Commerce\StockReservation;
 use App\Services\Payments\Contracts\PaymentGatewayInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class CheckoutController extends Controller
 {
-    public function __construct(private readonly PaymentGatewayInterface $gateway) {}
+    public function __construct(
+        private readonly PaymentGatewayInterface $gateway,
+        private readonly StockReservation        $stockReservation,
+    ) {}
 
     /**
      * POST /api/courses/{course:slug}/checkout
@@ -69,9 +74,15 @@ class CheckoutController extends Controller
 
     /**
      * POST /api/payments/confirm
-     * Verifies the payment with the gateway and, if approved:
-     *  - For course orders: creates the Enrollment.
-     *  - For appointment orders: transitions the linked appointment to paid/confirmed.
+     * Verifies the payment with the gateway and, if approved, performs
+     * type-specific post-payment side effects:
+     *  - course:        create Enrollment
+     *  - appointment:   transition appointment to paid
+     *  - product_cart:  mark paid (stock already decremented at checkout)
+     *
+     * On gateway-declined for product_cart: restore stock.
+     * All paid transitions use a conditional UPDATE (WHERE status='pending')
+     * for idempotency and race-safety (confirm-vs-release arbitration).
      */
     public function confirm(Request $request): JsonResponse
     {
@@ -94,16 +105,28 @@ class CheckoutController extends Controller
             return response()->json(['message' => 'This order does not belong to you.'], 403);
         }
 
-        // Determine order type
-        $isCourseOrder      = ! is_null($order->course_id);
-        $isAppointmentOrder = ! is_null($order->appointment_id);
+        // Route by order type (replaces FK-sniffing with authoritative type column)
+        $orderType = $order->type;
 
-        // FIX 2 — guard: if the order is neither a course nor an appointment order
-        // (data inconsistency; XOR guard on Order model should prevent this in practice),
-        // return a clear error BEFORE any paid mutation to avoid a 500 and partial state.
-        if (! $isCourseOrder && ! $isAppointmentOrder) {
+        // Validate that the type is a known type we can confirm
+        if (! in_array($orderType, ['course', 'appointment', 'product_cart'], true)) {
             return response()->json(['message' => 'Invalid order state.'], 422);
         }
+
+        // -------------------------------------------------------------------------
+        // product_cart branch
+        // -------------------------------------------------------------------------
+
+        if ($orderType === 'product_cart') {
+            return $this->confirmProductCart($order, $gatewayId, $clientTransactionId);
+        }
+
+        // -------------------------------------------------------------------------
+        // course / appointment branches (unchanged from pre-PR2b)
+        // -------------------------------------------------------------------------
+
+        $isCourseOrder      = ($orderType === 'course');
+        $isAppointmentOrder = ($orderType === 'appointment');
 
         if ($isCourseOrder) {
             $order->loadMissing('course');
@@ -198,6 +221,91 @@ class CheckoutController extends Controller
             'data' => [
                 'status'         => 'failed',
                 'appointment_id' => $order->appointment_id,
+            ],
+        ]);
+    }
+
+    // -------------------------------------------------------------------------
+    // product_cart confirmation logic (extracted for clarity)
+    // -------------------------------------------------------------------------
+
+    private function confirmProductCart(Order $order, string $gatewayId, string $clientTransactionId): JsonResponse
+    {
+        // If already canceled (release command won the race) → 409
+        if ($order->status === 'canceled') {
+            return response()->json([
+                'data' => [
+                    'status'  => 'canceled',
+                    'message' => 'Reservation expired. Please start a new checkout.',
+                ],
+            ], 409);
+        }
+
+        // Idempotency: already paid → return terminal payload
+        if ($order->status === 'paid') {
+            return response()->json([
+                'data' => [
+                    'status'      => 'paid',
+                    'order_id'    => $order->id,
+                    'items_count' => $order->items()->count(),
+                ],
+            ]);
+        }
+
+        // Confirm with the payment gateway.
+        $result = $this->gateway->confirm($gatewayId, $clientTransactionId);
+
+        if ($result->approved) {
+            // Guard the paid transition atomically (confirm-vs-release arbitration).
+            // If the release command already canceled this order, affected rows = 0.
+            $claimed = DB::update(
+                "UPDATE orders SET status = 'paid', paid_at = ?, gateway_transaction_id = ?, meta = ? WHERE id = ? AND status = 'pending'",
+                [now(), $result->gatewayId, json_encode($result->raw), $order->id]
+            );
+
+            if ($claimed === 0) {
+                // Release command won the race — re-read current status and return terminal payload.
+                $order->refresh();
+
+                if ($order->status === 'canceled') {
+                    return response()->json([
+                        'data' => [
+                            'status'  => 'canceled',
+                            'message' => 'Reservation expired during payment confirmation.',
+                        ],
+                    ], 409);
+                }
+
+                // Some other terminal state (already paid by duplicate confirm?)
+                return response()->json([
+                    'data' => ['status' => $order->status],
+                ]);
+            }
+
+            // Payment confirmed and we claimed the transition.
+            // Stock is already decremented at checkout — NO further stock mutation.
+            return response()->json([
+                'data' => [
+                    'status'      => 'paid',
+                    'order_id'    => $order->id,
+                    'items_count' => $order->items()->count(),
+                ],
+            ]);
+        }
+
+        // Payment declined — mark failed and restore stock.
+        $order->update([
+            'status' => 'failed',
+            'meta'   => $result->raw,
+        ]);
+
+        // Restore stock immediately on payment failure (don't wait for sweep).
+        $this->stockReservation->release($order);
+
+        return response()->json([
+            'data' => [
+                'status'   => 'failed',
+                'order_id' => $order->id,
             ],
         ]);
     }
