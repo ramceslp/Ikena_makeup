@@ -69,7 +69,46 @@ export const useProductsStore = defineStore('products', {
       }
     },
 
+    async fetchAdminProducts(filters = {}) {
+      this.loading = true
+      this.error = null
+      try {
+        // Build local params object — do NOT mutate this.filters
+        const params = {}
+        for (const [key, value] of Object.entries(filters)) {
+          if (value !== '' && value !== null && value !== undefined) {
+            params[key] = value
+          }
+        }
+        const response = await api.get('/admin/products', { params })
+        this.products = response.data.data
+        this.productMeta = response.data.meta
+      } catch (err) {
+        this.error = err.response?.data?.message || 'Error al cargar los productos'
+      } finally {
+        this.loading = false
+      }
+    },
+
     // Admin actions
+
+    async fetchAdminProduct(id) {
+      // Admin edit must load products by id from the admin endpoint so that
+      // unpublished drafts are editable (the public /products/{slug} route
+      // returns 404 for unpublished products).
+      this.loading = true
+      this.error = null
+      try {
+        const response = await api.get(`/admin/products/${id}`)
+        this.currentProduct = response.data.data
+        return this.currentProduct
+      } catch (err) {
+        this.error = err.response?.data?.message || 'Error al cargar el producto'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
 
     async createProduct(formData) {
       const response = await api.post('/admin/products', formData, {

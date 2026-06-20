@@ -30,6 +30,11 @@ const AdminServices = () => import('../views/admin/AdminServices.vue')
 const AdminServiceCreate = () => import('../views/admin/AdminServiceCreate.vue')
 const AdminServiceEdit = () => import('../views/admin/AdminServiceEdit.vue')
 
+// Products — admin
+const AdminProducts = () => import('../views/admin/AdminProducts.vue')
+const AdminProductCreate = () => import('../views/admin/AdminProductCreate.vue')
+const AdminProductEdit = () => import('../views/admin/AdminProductEdit.vue')
+
 // Booking admin
 const AdminServiceSlots = () => import('../views/admin/AdminServiceSlots.vue')
 const AdminAppointments = () => import('../views/admin/AdminAppointments.vue')
@@ -173,6 +178,26 @@ const routes = [
     path: '/admin/services/:id/edit',
     name: 'AdminServiceEdit',
     component: AdminServiceEdit,
+    meta: { requiresAdmin: true },
+  },
+
+  // ── Admin: Products ───────────────────────────────────────────────────────
+  {
+    path: '/admin/products',
+    name: 'AdminProducts',
+    component: AdminProducts,
+    meta: { requiresAdmin: true },
+  },
+  {
+    path: '/admin/products/new',
+    name: 'AdminProductCreate',
+    component: AdminProductCreate,
+    meta: { requiresAdmin: true },
+  },
+  {
+    path: '/admin/products/:id/edit',
+    name: 'AdminProductEdit',
+    component: AdminProductEdit,
     meta: { requiresAdmin: true },
   },
 

@@ -82,6 +82,14 @@ const activeClass = 'text-primary border-b-2 border-apricot-glow'
             </RouterLink>
             <RouterLink
               v-if="user?.role === 'admin'"
+              to="/admin/products"
+              :class="linkClass"
+              :active-class="activeClass"
+            >
+              Productos admin
+            </RouterLink>
+            <RouterLink
+              v-if="user?.role === 'admin'"
               to="/admin/appointments"
               :class="linkClass"
               :active-class="activeClass"
@@ -218,6 +226,14 @@ const activeClass = 'text-primary border-b-2 border-apricot-glow'
             class="block py-2 font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors"
           >
             Servicios admin
+          </RouterLink>
+          <RouterLink
+            v-if="user?.role === 'admin'"
+            to="/admin/products"
+            @click="mobileOpen = false"
+            class="block py-2 font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors"
+          >
+            Productos admin
           </RouterLink>
           <RouterLink
             v-if="user?.role === 'admin'"
