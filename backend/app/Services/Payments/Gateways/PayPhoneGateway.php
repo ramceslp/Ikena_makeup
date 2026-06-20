@@ -27,9 +27,10 @@ class PayPhoneGateway implements PaymentGatewayInterface
         };
 
         // Build the exact PPaymentButtonBox config as specified in PAYMENTS.md §5.
-        // For product_cart: amountWithTax = tax_cents, amountWithoutTax = subtotal_cents,
-        //                   tax = tax_cents (IVA). Amount = total_cents = amount_cents.
-        // For course/appointment: no separate tax breakdown (MVP behavior unchanged).
+        // MVP (PAYMENTS.md §5): no tax breakdown sent to PayPhone for any order type —
+        //   amountWithoutTax = amount_cents, amountWithTax/tax/service/tip = 0.
+        //   Product IVA is stored in order.tax_cents for accounting only; passing it to
+        //   PayPhone is a deferred fiscal/SRI follow-up.
         $config = [
             'token'               => config('services.payments.payphone.token'),
             'clientTransactionId' => $order->client_transaction_id,

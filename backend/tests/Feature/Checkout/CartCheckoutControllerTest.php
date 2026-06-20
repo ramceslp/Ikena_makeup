@@ -54,18 +54,15 @@ class CartCheckoutControllerTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
-    // 422 — mixed cart (course or appointment item) rejected
+    // 422 — empty cart rejected (items array has min:1)
     // -------------------------------------------------------------------------
 
-    public function test_mixed_cart_returns_422(): void
+    public function test_empty_cart_returns_422(): void
     {
         $user = $this->makeUser();
         Sanctum::actingAs($user);
 
-        // Request with a non-existent/non-published product simulates invalid items array shape
-        // The request validator accepts only product_id (int) + quantity (int >= 1).
-        // A "mixed cart" scenario where a non-product item slips in is caught by validation
-        // (product_id must exist in products table as published).
+        // An empty items array fails the min:1 array validation rule.
         $response = $this->postJson('/api/cart/checkout', [
             'items' => [], // empty items — no line items at all
         ]);
@@ -99,7 +96,29 @@ class CartCheckoutControllerTest extends TestCase
             ],
         ]);
 
-        $response->assertStatus(422);
+        // Must be a VALIDATION error (the published check is enforced at the request boundary)
+        $response->assertStatus(422)
+                 ->assertJsonValidationErrors(['items.0.product_id']);
+    }
+
+    // -------------------------------------------------------------------------
+    // FIX 3 (RED) — quantity > 100 rejected at validation boundary
+    // -------------------------------------------------------------------------
+
+    public function test_quantity_over_max_returns_422(): void
+    {
+        $user    = $this->makeUser();
+        $product = $this->makeProduct(['stock_qty' => 200]);
+        Sanctum::actingAs($user);
+
+        $response = $this->postJson('/api/cart/checkout', [
+            'items' => [
+                ['product_id' => $product->id, 'quantity' => 101],
+            ],
+        ]);
+
+        $response->assertStatus(422)
+                 ->assertJsonValidationErrors(['items.0.quantity']);
     }
 
     public function test_quantity_less_than_1_returns_422(): void

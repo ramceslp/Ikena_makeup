@@ -76,7 +76,7 @@ class Order extends Model
             // do NOT pass `type`, so we infer it from the FK pattern they DO provide.
             //
             // We must NOT re-infer on UPDATE — the persisted type is authoritative.
-            if (! $order->exists && empty($order->type)) {
+            if (! $order->exists && ($order->type === null || $order->type === '')) {
                 if (! is_null($order->appointment_id)) {
                     $order->type = 'appointment';
                 } else {

@@ -293,13 +293,34 @@ class CheckoutController extends Controller
             ]);
         }
 
-        // Payment declined — mark failed and restore stock.
-        $order->update([
-            'status' => 'failed',
-            'meta'   => $result->raw,
-        ]);
+        // Payment declined — guard the failed transition atomically (mirrors the paid path above).
+        // If the release command already canceled this order, affected rows = 0 → do NOT
+        // restore stock a second time (release command already restored it).
+        $claimed = DB::update(
+            "UPDATE orders SET status = 'failed', meta = ? WHERE id = ? AND status = 'pending'",
+            [json_encode($result->raw), $order->id]
+        );
 
-        // Restore stock immediately on payment failure (don't wait for sweep).
+        if ($claimed === 0) {
+            // Release command won the race — re-read current status and return terminal payload.
+            $order->refresh();
+
+            if ($order->status === 'canceled') {
+                return response()->json([
+                    'data' => [
+                        'status'  => 'canceled',
+                        'message' => 'Reservation expired during payment confirmation.',
+                    ],
+                ], 409);
+            }
+
+            // Some other terminal state (already failed by duplicate decline?)
+            return response()->json([
+                'data' => ['status' => $order->status, 'order_id' => $order->id],
+            ]);
+        }
+
+        // We claimed the failed transition — restore stock (don't wait for sweep).
         $this->stockReservation->release($order);
 
         return response()->json([

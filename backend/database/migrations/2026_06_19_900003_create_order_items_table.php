@@ -30,8 +30,7 @@ return new class extends Migration
             $table->unsignedInteger('unit_price_cents');
             $table->unsignedInteger('line_total_cents');
             $table->timestamps();
-
-            $table->index('order_id');
+            // No explicit index('order_id') needed: foreignId()->constrained() already creates one.
         });
     }
 

@@ -197,4 +197,48 @@ class ConfirmProductCartTest extends TestCase
         $response->assertStatus(409)
                  ->assertJsonStructure(['data' => ['status', 'message']]);
     }
+
+    // -------------------------------------------------------------------------
+    // FIX 1 (RED) — declined payment after release command wins the race
+    // must NOT restore stock a second time and must return 409 canceled.
+    // -------------------------------------------------------------------------
+
+    public function test_declined_payment_after_release_does_not_double_restore_stock(): void
+    {
+        $user    = $this->makeUser();
+        // Original stock = 10; checkout decremented it to 8 (qty 2 reserved).
+        $product = $this->makeProduct(8);
+
+        // Build a pending order with a 'decline' ctid so FakeGateway returns declined.
+        $order = $this->makePendingCartOrder($user, $product, 2, 'decline-race-test-001');
+
+        // Simulate the release command winning BEFORE confirm() runs:
+        //  (a) cancel the order atomically
+        \Illuminate\Support\Facades\DB::update(
+            "UPDATE orders SET status = 'canceled' WHERE id = ? AND status = 'pending'",
+            [$order->id]
+        );
+        //  (b) restore stock (release command does this after claiming the transition)
+        $product->increment('stock_qty', 2); // back to original 10
+
+        Sanctum::actingAs($user);
+
+        // Now caller hits confirm with a DECLINED gateway stub.
+        // The declined path in confirmProductCart must detect the race (canceled status)
+        // and return 409 WITHOUT calling release() again.
+        $response = $this->postJson('/api/payments/confirm', [
+            'id'                  => 1,
+            'clientTransactionId' => $order->client_transaction_id,
+        ]);
+
+        // Must be 409 canceled
+        $response->assertStatus(409)
+                 ->assertJsonPath('data.status', 'canceled');
+
+        // Order status stays 'canceled' — must NOT be overwritten to 'failed'
+        $this->assertDatabaseHas('orders', ['id' => $order->id, 'status' => 'canceled']);
+
+        // Stock must equal original (10), NOT original + qty again (12)
+        $this->assertDatabaseHas('products', ['id' => $product->id, 'stock_qty' => 10]);
+    }
 }

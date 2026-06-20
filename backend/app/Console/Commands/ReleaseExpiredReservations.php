@@ -40,23 +40,34 @@ class ReleaseExpiredReservations extends Command
         $count = 0;
 
         foreach (Order::expiredProductCarts()->cursor() as $order) {
-            // Attempt to atomically claim the transition pending → canceled.
-            // If confirm() already transitioned this order (pending → paid),
-            // affected rows = 0 → we skip stock restore entirely.
-            $claimed = DB::update(
-                "UPDATE orders SET status = 'canceled' WHERE id = ? AND status = 'pending'",
-                [$order->id]
-            );
+            // Wrap the claim + release in a transaction so a crash between the two
+            // steps cannot leave the order canceled with stock permanently held.
+            // The WHERE status='pending' arbiter inside the transaction remains the
+            // single concurrency arbitration point: if confirm() wins, claimed = 0
+            // and the transaction rolls back harmlessly without touching stock.
+            $released = DB::transaction(function () use ($order): bool {
+                // Attempt to atomically claim the transition pending → canceled.
+                // If confirm() already transitioned this order (pending → paid),
+                // affected rows = 0 → we skip stock restore entirely.
+                $claimed = DB::update(
+                    "UPDATE orders SET status = 'canceled' WHERE id = ? AND status = 'pending'",
+                    [$order->id]
+                );
 
-            if ($claimed === 0) {
-                // confirm() won the race — order was already paid or otherwise handled.
-                continue;
+                if ($claimed === 0) {
+                    // confirm() won the race — order was already paid or otherwise handled.
+                    return false;
+                }
+
+                // We claimed the cancellation — restore the reserved stock.
+                $this->stockReservation->release($order);
+
+                return true;
+            });
+
+            if ($released) {
+                $count++;
             }
-
-            // We claimed the cancellation — restore the reserved stock.
-            $this->stockReservation->release($order);
-
-            $count++;
         }
 
         $this->info("Released {$count} expired reservation(s).");
