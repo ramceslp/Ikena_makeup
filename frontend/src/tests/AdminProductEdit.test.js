@@ -264,6 +264,24 @@ describe('AdminProductEdit.vue — load + update + image ops', () => {
     expect(wrapper.text()).toContain('No se permiten más de 10 imágenes por producto.')
   })
 
+  it('includes category_id="" in FormData when "Sin categoría" is selected', async () => {
+    const wrapper = await mountEdit()
+    await flushPromises()
+
+    const store = useProductsStore()
+    const updateSpy = vi.spyOn(store, 'updateProduct').mockResolvedValue({ id: 1 })
+
+    // Select "Sin categoría" (value="")
+    await wrapper.find('select[name="category_id"]').setValue('')
+
+    await wrapper.find('form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(updateSpy).toHaveBeenCalledTimes(1)
+    const [, calledFormData] = updateSpy.mock.calls[0]
+    expect(calledFormData.get('category_id')).toBe('')
+  })
+
   it('includes description="" in FormData when the description input is cleared', async () => {
     const wrapper = await mountEdit()
     await flushPromises()

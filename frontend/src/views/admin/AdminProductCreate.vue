@@ -31,13 +31,17 @@ function buildFormData() {
   fd.append('price', form.value.price)
   fd.append('stock_qty', form.value.stock_qty)
   fd.append('is_published', form.value.is_published ? '1' : '0')
-  if (form.value.category_id) fd.append('category_id', form.value.category_id)
+  fd.append('category_id', form.value.category_id ?? '')
   fd.append('description', form.value.description ?? '')
   return fd
 }
 
 async function handleSubmit() {
   if (loading.value) return
+  if (files.value.length > 10) {
+    error.value = 'No se permiten más de 10 imágenes por producto.'
+    return
+  }
   loading.value = true
   error.value = ''
   try {
@@ -70,8 +74,9 @@ onMounted(() => productsStore.fetchCategories())
       <form @submit.prevent="handleSubmit" class="space-y-6">
         <!-- Title -->
         <div>
-          <label class="block font-label-md text-label-md text-on-surface-variant mb-1.5">Título</label>
+          <label for="title" class="block font-label-md text-label-md text-on-surface-variant mb-1.5">Título</label>
           <input
+            id="title"
             name="title"
             v-model="form.title"
             type="text"
@@ -83,8 +88,9 @@ onMounted(() => productsStore.fetchCategories())
         <!-- Price + Stock -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label class="block font-label-md text-label-md text-on-surface-variant mb-1.5">Precio</label>
+            <label for="price" class="block font-label-md text-label-md text-on-surface-variant mb-1.5">Precio</label>
             <input
+              id="price"
               name="price"
               v-model="form.price"
               type="number"
@@ -95,8 +101,9 @@ onMounted(() => productsStore.fetchCategories())
             />
           </div>
           <div>
-            <label class="block font-label-md text-label-md text-on-surface-variant mb-1.5">Stock</label>
+            <label for="stock_qty" class="block font-label-md text-label-md text-on-surface-variant mb-1.5">Stock</label>
             <input
+              id="stock_qty"
               name="stock_qty"
               v-model="form.stock_qty"
               type="number"
@@ -109,8 +116,9 @@ onMounted(() => productsStore.fetchCategories())
 
         <!-- Category -->
         <div>
-          <label class="block font-label-md text-label-md text-on-surface-variant mb-1.5">Categoría</label>
+          <label for="category_id" class="block font-label-md text-label-md text-on-surface-variant mb-1.5">Categoría</label>
           <select
+            id="category_id"
             name="category_id"
             v-model="form.category_id"
             class="w-full rounded-xl border border-blush-canvas/40 px-4 py-2.5 font-body-md text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40"
@@ -122,8 +130,9 @@ onMounted(() => productsStore.fetchCategories())
 
         <!-- Description -->
         <div>
-          <label class="block font-label-md text-label-md text-on-surface-variant mb-1.5">Descripción</label>
+          <label for="description" class="block font-label-md text-label-md text-on-surface-variant mb-1.5">Descripción</label>
           <textarea
+            id="description"
             name="description"
             v-model="form.description"
             rows="4"
@@ -133,8 +142,9 @@ onMounted(() => productsStore.fetchCategories())
 
         <!-- Images -->
         <div>
-          <label class="block font-label-md text-label-md text-on-surface-variant mb-1.5">Imágenes</label>
+          <label for="images" class="block font-label-md text-label-md text-on-surface-variant mb-1.5">Imágenes</label>
           <input
+            id="images"
             type="file"
             accept="image/*"
             multiple
@@ -144,8 +154,8 @@ onMounted(() => productsStore.fetchCategories())
         </div>
 
         <!-- Published -->
-        <label class="flex items-center gap-3 cursor-pointer">
-          <input name="is_published" v-model="form.is_published" type="checkbox" class="w-4 h-4 rounded accent-primary" />
+        <label for="is_published" class="flex items-center gap-3 cursor-pointer">
+          <input id="is_published" name="is_published" v-model="form.is_published" type="checkbox" class="w-4 h-4 rounded accent-primary" />
           <span class="font-body-md text-body-md text-on-surface">Publicar producto</span>
         </label>
 

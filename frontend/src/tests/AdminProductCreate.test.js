@@ -196,6 +196,41 @@ describe('AdminProductCreate.vue — create form + createProductWithImages', () 
     expect(createWithImagesSpy).toHaveBeenCalledTimes(1)
   })
 
+  it('does NOT call createProductWithImages and shows error when more than 10 files are selected', async () => {
+    api.get.mockResolvedValueOnce({ data: { data: [] } })
+
+    const wrapper = mount(AdminProductCreate, {
+      global: { plugins: [pinia, router] },
+    })
+    await flushPromises()
+
+    const store = useProductsStore()
+    const createWithImagesSpy = vi
+      .spyOn(store, 'createProductWithImages')
+      .mockResolvedValue({ id: 50 })
+
+    await wrapper.find('input[name="title"]').setValue('Too Many Images')
+    await wrapper.find('input[name="price"]').setValue('10.00')
+    await wrapper.find('input[name="stock_qty"]').setValue('5')
+
+    // Simulate 11 files selected
+    const elevenFiles = Array.from({ length: 11 }, (_, i) =>
+      new File(['img'], `img${i}.jpg`, { type: 'image/jpeg' })
+    )
+    const fileInput = wrapper.find('input[type="file"]')
+    Object.defineProperty(fileInput.element, 'files', {
+      value: elevenFiles,
+      configurable: true,
+    })
+    await fileInput.trigger('change')
+
+    await wrapper.find('form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(createWithImagesSpy).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('No se permiten más de 10 imágenes por producto.')
+  })
+
   it('redirects to /admin/products after successful create', async () => {
     api.get.mockResolvedValueOnce({ data: { data: [] } })
 
