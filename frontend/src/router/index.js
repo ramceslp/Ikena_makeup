@@ -16,6 +16,10 @@ const InstructorDashboard = () => import('../views/InstructorDashboard.vue')
 const InstructorSubmissions = () => import('../views/InstructorSubmissions.vue')
 const Profile = () => import('../views/Profile.vue')
 
+// Products — public
+const Products = () => import('../views/Products.vue')
+const ProductDetail = () => import('../views/ProductDetail.vue')
+
 // Services — public
 const Services = () => import('../views/Services.vue')
 const ServiceDetail = () => import('../views/ServiceDetail.vue')
@@ -117,6 +121,18 @@ const routes = [
     name: 'InstructorCourseEdit',
     component: InstructorCourseEdit,
     meta: { requiresInstructor: true },
+  },
+
+  // ── Public: Products ─────────────────────────────────────────────────────
+  {
+    path: '/products',
+    name: 'Products',
+    component: Products,
+  },
+  {
+    path: '/products/:slug',
+    name: 'ProductDetail',
+    component: ProductDetail,
   },
 
   // ── Public: Services ──────────────────────────────────────────────────────
