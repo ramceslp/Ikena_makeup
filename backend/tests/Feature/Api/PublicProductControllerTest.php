@@ -434,8 +434,8 @@ class PublicProductControllerTest extends TestCase
     public function test_percent_wildcard_search_returns_empty_when_no_literal_match(): void
     {
         // Seed 3 published products whose titles contain NO percent sign.
-        // After escaping, ?search=% becomes LIKE "%\%%", which matches only
-        // rows that literally contain %. Since none do, data must be empty.
+        // After escaping, ?search=% becomes LIKE "%!%%" ESCAPE '!', which matches
+        // only rows that literally contain %. Since none do, data must be empty.
         Product::factory()->published()->create(['title' => 'Brush Set Alpha',  'slug' => 'brush-alpha']);
         Product::factory()->published()->create(['title' => 'Lip Gloss Shine',  'slug' => 'lip-shine']);
         Product::factory()->published()->create(['title' => 'Foundation Matte', 'slug' => 'foundation-matte']);
