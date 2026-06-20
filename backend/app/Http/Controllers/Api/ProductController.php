@@ -30,10 +30,12 @@ class ProductController extends Controller
             ->withCount('images');
 
         // Search filter — title or description
+        // Escape LIKE special characters so user input is treated as literals.
         if ($search = $request->query('search')) {
-            $query->where(function ($q) use ($search) {
-                $q->where('title', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%");
+            $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $search);
+            $query->where(function ($q) use ($escaped) {
+                $q->where('title', 'like', "%{$escaped}%")
+                  ->orWhere('description', 'like', "%{$escaped}%");
             });
         }
 

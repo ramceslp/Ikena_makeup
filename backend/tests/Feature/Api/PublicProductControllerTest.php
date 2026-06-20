@@ -426,4 +426,88 @@ class PublicProductControllerTest extends TestCase
 
         $response->assertStatus(404);
     }
+
+    // -------------------------------------------------------------------------
+    // Wildcard escape — FIX 1 regression guard
+    // -------------------------------------------------------------------------
+
+    public function test_percent_wildcard_search_returns_empty_when_no_literal_match(): void
+    {
+        // Seed 3 published products whose titles contain NO percent sign.
+        // After escaping, ?search=% becomes LIKE "%\%%", which matches only
+        // rows that literally contain %. Since none do, data must be empty.
+        Product::factory()->published()->create(['title' => 'Brush Set Alpha',  'slug' => 'brush-alpha']);
+        Product::factory()->published()->create(['title' => 'Lip Gloss Shine',  'slug' => 'lip-shine']);
+        Product::factory()->published()->create(['title' => 'Foundation Matte', 'slug' => 'foundation-matte']);
+
+        $response = $this->getJson('/api/products?search=' . urlencode('%'));
+
+        $response->assertStatus(200);
+        $this->assertEmpty($response->json('data'), 'Percent sign must be treated as a literal, not a wildcard.');
+    }
+
+    // -------------------------------------------------------------------------
+    // Edge-case sort / filter contracts
+    // -------------------------------------------------------------------------
+
+    public function test_unknown_sort_value_falls_back_to_newest(): void
+    {
+        $older = Product::factory()->published()->create(['slug' => 'sort-fallback-old']);
+        $older->forceFill(['created_at' => now()->subSeconds(10)])->save();
+
+        $newer = Product::factory()->published()->create(['slug' => 'sort-fallback-new']);
+
+        $response = $this->getJson('/api/products?sort=garbage');
+
+        $response->assertStatus(200);
+        $ids = collect($response->json('data'))->pluck('id')->toArray();
+        // Newer product must appear before the older one (desc created_at).
+        $this->assertLessThan(
+            array_search($older->id, $ids),
+            array_search($newer->id, $ids)
+        );
+    }
+
+    public function test_unknown_stock_state_value_is_ignored(): void
+    {
+        Product::factory()->published()->create(['slug' => 'bogus-stock-a', 'stock_qty' => 5]);
+        Product::factory()->published()->create(['slug' => 'bogus-stock-b', 'stock_qty' => 0]);
+
+        $response = $this->getJson('/api/products?stock_state=bogus');
+
+        $response->assertStatus(200);
+        // Both products must be returned — the unknown value must not filter anything.
+        $this->assertCount(2, $response->json('data'));
+    }
+
+    public function test_inverted_price_range_returns_empty_result(): void
+    {
+        Product::factory()->published()->create(['price' => 150.00, 'slug' => 'inv-range-prod']);
+
+        $response = $this->getJson('/api/products?min_price=500&max_price=100');
+
+        $response->assertStatus(200);
+        $this->assertEmpty($response->json('data'));
+    }
+
+    public function test_search_matches_description_only(): void
+    {
+        Product::factory()->published()->create([
+            'title'       => 'Plain Product Name',
+            'description' => 'Contains the term highlighter in description only.',
+            'slug'        => 'desc-only-match',
+        ]);
+        Product::factory()->published()->create([
+            'title'       => 'Another Item',
+            'description' => 'Totally unrelated text here.',
+            'slug'        => 'no-match-prod',
+        ]);
+
+        $response = $this->getJson('/api/products?search=highlighter');
+
+        $response->assertStatus(200);
+        $data = $response->json('data');
+        $this->assertCount(1, $data);
+        $this->assertEquals('Plain Product Name', $data[0]['title']);
+    }
 }
