@@ -35,6 +35,9 @@ const AdminProducts = () => import('../views/admin/AdminProducts.vue')
 const AdminProductCreate = () => import('../views/admin/AdminProductCreate.vue')
 const AdminProductEdit = () => import('../views/admin/AdminProductEdit.vue')
 
+// Cursos — public catalog page (relocated from Home)
+const Cursos = () => import('../views/Cursos.vue')
+
 // News (noticias) — public
 const News = () => import('../views/News.vue')
 const NewsDetail = () => import('../views/NewsDetail.vue')
@@ -208,6 +211,13 @@ const routes = [
     name: 'AdminProductEdit',
     component: AdminProductEdit,
     meta: { requiresAdmin: true },
+  },
+
+  // ── Public: Cursos (catalog) ─────────────────────────────────────────────
+  {
+    path: '/cursos',
+    name: 'Cursos',
+    component: Cursos,
   },
 
   // ── Public: News (noticias) ───────────────────────────────────────────────
