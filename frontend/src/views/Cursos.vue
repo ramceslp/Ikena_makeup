@@ -12,8 +12,6 @@ const maxPrice = ref('')
 const sort = ref('newest')
 const category = ref('')
 
-const catalogRef = ref(null)
-
 let debounceTimer = null
 
 function buildFilters() {
@@ -72,7 +70,7 @@ onMounted(() => {
       :categories="coursesStore.categories"
     />
 
-    <div ref="catalogRef">
+    <div>
       <CourseCatalog
         :courses="coursesStore.courses"
         :loading="coursesStore.loading"

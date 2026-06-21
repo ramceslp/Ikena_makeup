@@ -86,7 +86,7 @@ function getSlugLink(post) {
             <!-- CTA -->
             <div class="pt-2">
               <a
-                v-if="getCtaHref(post)"
+                v-if="getCtaHref(post) && post.cta_label"
                 :href="getCtaHref(post)"
                 target="_blank"
                 rel="noopener noreferrer"
@@ -106,6 +106,13 @@ function getSlugLink(post) {
             </div>
           </div>
         </article>
+      </div>
+
+      <!-- Empty state -->
+      <div v-else data-news-empty class="text-center py-12">
+        <p class="font-body-lg text-body-lg text-on-surface-variant">
+          Próximamente nuevas noticias.
+        </p>
       </div>
     </div>
   </section>

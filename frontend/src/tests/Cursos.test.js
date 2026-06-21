@@ -104,20 +104,19 @@ describe('Cursos.vue — course catalog page', () => {
     const callsAfterMount = api.get.mock.calls.length
 
     const searchInput = wrapper.find('input[aria-label="Buscar cursos"]')
-    if (searchInput.exists()) {
-      await searchInput.setValue('a')
-      await searchInput.setValue('ab')
-      await searchInput.setValue('abc')
+    expect(searchInput.exists()).toBe(true)
 
-      expect(api.get.mock.calls.length).toBe(callsAfterMount)
+    await searchInput.setValue('a')
+    await searchInput.setValue('ab')
+    await searchInput.setValue('abc')
 
-      vi.advanceTimersByTime(450)
-      await flushPromises()
+    // Debounced: no fetch yet.
+    expect(api.get.mock.calls.length).toBe(callsAfterMount)
 
-      expect(api.get.mock.calls.length).toBe(callsAfterMount + 1)
-    } else {
-      // CourseFilters may expose a different selector — skip timer test but mark as passing
-      expect(true).toBe(true)
-    }
+    vi.advanceTimersByTime(450)
+    await flushPromises()
+
+    // One fetch fires after the debounce window.
+    expect(api.get.mock.calls.length).toBe(callsAfterMount + 1)
   })
 })

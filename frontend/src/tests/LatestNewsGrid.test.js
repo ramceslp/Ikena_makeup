@@ -135,5 +135,30 @@ describe('LatestNewsGrid.vue — latest news section', () => {
     await flushPromises()
 
     expect(wrapper.find('[data-news-card]').exists()).toBe(false)
+    expect(wrapper.find('[data-news-empty]').exists()).toBe(true)
+  })
+
+  it('renders the "Leer más" fallback when cta_url is valid but cta_label is null', async () => {
+    const postNoLabel = [{
+      id: 9,
+      title: 'Sin Label',
+      slug: 'sin-label',
+      excerpt: 'Extracto.',
+      cover_image_url: null,
+      type: 'noticia',
+      cta_label: null,
+      cta_url: 'https://ikena.com/x',
+    }]
+    api.get.mockResolvedValueOnce({ data: { data: postNoLabel } })
+
+    const wrapper = mountGrid()
+    await flushPromises()
+
+    // A valid cta_url with no cta_label must NOT render an empty external anchor.
+    expect(wrapper.text()).toContain('Leer más')
+    const external = wrapper.findAll('a').find(
+      (a) => a.attributes('href') === 'https://ikena.com/x',
+    )
+    expect(external).toBeUndefined()
   })
 })

@@ -114,7 +114,24 @@ describe('FeaturedNewsHero.vue — featured post hero', () => {
     const wrapper = mountHero()
     await flushPromises()
 
-    expect(wrapper.find('[data-featured-hero]').exists()).toBe(false)
+    // The outer <section> is always present; the inner content block must be absent.
+    expect(wrapper.find('[data-featured-news-hero]').exists()).toBe(true)
+    expect(wrapper.find('[data-hero-content]').exists()).toBe(false)
+  })
+
+  it('renders the "Leer más" fallback when cta_url is valid but cta_label is null', async () => {
+    const postNoLabel = { ...fakePost, cta_label: null, cta_url: 'https://ikena.com/taller' }
+    api.get.mockResolvedValueOnce({ data: { data: postNoLabel } })
+
+    const wrapper = mountHero()
+    await flushPromises()
+
+    // No empty external anchor; the "Leer más" fallback renders instead.
+    expect(wrapper.text()).toContain('Leer más')
+    const external = wrapper.findAll('a').find(
+      (a) => a.attributes('href') === 'https://ikena.com/taller',
+    )
+    expect(external).toBeUndefined()
   })
 
   it('does NOT produce a javascript: href for malicious cta_url', async () => {

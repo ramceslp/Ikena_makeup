@@ -36,7 +36,7 @@ const slugLink = computed(() => {
     </div>
     <div v-else class="absolute inset-0 bg-gradient-to-br from-deep-marsala/10 to-blush-canvas/20 z-0" />
 
-    <div class="relative z-20 w-full max-w-container-max mx-auto px-gutter py-20" v-if="post">
+    <div data-hero-content class="relative z-20 w-full max-w-container-max mx-auto px-gutter py-20" v-if="post">
       <div class="max-w-2xl space-y-6">
         <!-- Type badge -->
         <div class="inline-flex items-center gap-2">
@@ -61,7 +61,7 @@ const slugLink = computed(() => {
         <!-- CTA -->
         <div class="flex flex-wrap gap-4 pt-2">
           <a
-            v-if="ctaHref"
+            v-if="ctaHref && post.cta_label"
             :href="ctaHref"
             target="_blank"
             rel="noopener noreferrer"
