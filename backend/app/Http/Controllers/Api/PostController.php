@@ -20,7 +20,7 @@ class PostController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Post::published()->with('images');
+        $query = Post::published();
 
         // Search filter — title or excerpt.
         // Escape LIKE metacharacters using '!' as the ESCAPE char.
@@ -64,10 +64,9 @@ class PostController extends Controller
      */
     public function latest(Request $request): JsonResponse
     {
-        $n = max(1, (int) $request->query('n', 3));
+        $n = min(max(1, (int) $request->query('n', 3)), 20);
 
         $posts = Post::published()
-            ->with('images')
             ->orderByRaw('COALESCE(published_at, created_at) DESC')
             ->take($n)
             ->get();

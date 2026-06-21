@@ -56,13 +56,19 @@ class PublicPostControllerTest extends TestCase
             'published_at' => now(),
         ]);
 
-        $response = $this->getJson('/api/posts?search=curs%25')->assertStatus(200);
+        // URL-encode: '%25' decodes to '%', so the server receives the literal search string "curs%".
+        // With '!' ESCAPE logic, '%' is treated as a literal character — NOT a LIKE wildcard.
+        // "Curso de Verano 50%" contains "50%" so "curs%" does NOT match it literally.
+        // Therefore 0 results should be returned (the literal substring "curs%" is not in any title).
+        $responseCursPercent = $this->getJson('/api/posts?search=curs%25')->assertStatus(200);
+        $this->assertCount(0, $responseCursPercent->json('data'),
+            'A search for literal "curs%" must NOT act as a wildcard and must return 0 results'
+        );
 
-        // Only the post with "Curso" in title should match the literal '%' escaped search
-        // Note: URL-encoded '%' is '%25' — but we're testing the LIKE escape logic
-        // The search "curs" (without %) should return 1 result
-        $response2 = $this->getJson('/api/posts?search=Curso')->assertStatus(200);
-        $this->assertCount(1, $response2->json('data'));
+        // Plain "curs" (no %) uses '%curs%' LIKE pattern and matches "Curso de Verano 50%"
+        $responseCurs = $this->getJson('/api/posts?search=Curso')->assertStatus(200);
+        $this->assertCount(1, $responseCurs->json('data'));
+        $this->assertEquals('Curso de Verano 50%', $responseCurs->json('data.0.title'));
     }
 
     public function test_index_search_escapes_percent_character(): void

@@ -17,7 +17,7 @@ class StorePostRequest extends FormRequest
             'title'        => ['required', 'string', 'max:255'],
             'slug'         => ['sometimes', 'nullable', 'string', 'max:255', 'unique:posts,slug'],
             'excerpt'      => ['sometimes', 'nullable', 'string', 'max:500'],
-            'body'         => ['required', 'string', 'not_regex:/data:image\//'],
+            'body'         => ['required', 'string', 'not_regex:/data:image\//i'],
             'type'         => ['required', 'string', 'in:noticia,nuevo_curso,oferta,evento,lanzamiento,certificacion,contenido'],
             'is_featured'  => ['sometimes', 'boolean'],
             'cta_label'    => ['sometimes', 'nullable', 'string', 'max:100'],

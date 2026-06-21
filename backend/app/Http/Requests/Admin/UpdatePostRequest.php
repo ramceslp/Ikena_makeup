@@ -27,7 +27,7 @@ class UpdatePostRequest extends FormRequest
                 Rule::unique('posts', 'slug')->ignore($post?->id),
             ],
             'excerpt'      => ['sometimes', 'nullable', 'string', 'max:500'],
-            'body'         => ['sometimes', 'string', 'not_regex:/data:image\//'],
+            'body'         => ['sometimes', 'string', 'not_regex:/data:image\//i'],
             'type'         => ['sometimes', 'string', 'in:noticia,nuevo_curso,oferta,evento,lanzamiento,certificacion,contenido'],
             'is_featured'  => ['sometimes', 'boolean'],
             'cta_label'    => ['sometimes', 'nullable', 'string', 'max:100'],
