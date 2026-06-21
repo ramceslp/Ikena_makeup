@@ -193,7 +193,7 @@ describe('AdminPosts.vue — admin post list', () => {
     const wrapper = mountAdminPosts(pinia)
     await flushPromises()
 
-    // Should have some way to navigate to /admin/posts/new
+    // Should have some way to navigate to /admin/noticias/new
     const newPostBtn = wrapper.find('[data-new-post-btn]')
     expect(newPostBtn.exists()).toBe(true)
   })

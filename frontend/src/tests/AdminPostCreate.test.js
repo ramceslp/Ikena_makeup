@@ -163,7 +163,7 @@ describe('AdminPostCreate.vue — create form with draft-first flow', () => {
     expect(createSpy).toHaveBeenCalledTimes(1)
   })
 
-  it('redirects to /admin/posts after successful create', async () => {
+  it('redirects to /admin/noticias after successful create', async () => {
     const created = { id: 5, title: 'Test', slug: 'test' }
     const wrapper = mountCreate()
 

@@ -221,7 +221,7 @@ describe('AdminPostEdit.vue — edit form', () => {
     expect(updateSpy).toHaveBeenCalledTimes(1)
   })
 
-  it('redirects to /admin/posts after successful update', async () => {
+  it('redirects to /admin/noticias after successful update', async () => {
     api.get.mockResolvedValueOnce({ data: { data: fakePost } })
 
     const store = usePostsStore()
