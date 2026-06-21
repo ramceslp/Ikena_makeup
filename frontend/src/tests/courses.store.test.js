@@ -69,6 +69,20 @@ describe('courses store', () => {
     })
   })
 
+  it('fetchCourses does NOT persist filters across calls (per_page contamination guard)', async () => {
+    api.get.mockResolvedValue({ data: { data: [], meta: {} } })
+
+    const store = useCoursesStore()
+    // A featured section fetches 3 items...
+    await store.fetchCourses({ page: 1, per_page: 3, sort: 'newest' })
+    // ...then the catalog fetches with no args — must NOT inherit per_page.
+    await store.fetchCourses()
+
+    const lastCall = api.get.mock.calls[api.get.mock.calls.length - 1]
+    expect(lastCall[1].params).not.toHaveProperty('per_page')
+    expect(store.filters).not.toHaveProperty('per_page')
+  })
+
   // -------------------------------------------------------------------------
   // toggleComplete — optimistic update + rollback
   // -------------------------------------------------------------------------

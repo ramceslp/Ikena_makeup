@@ -25,8 +25,10 @@ export const useServicesStore = defineStore('services', {
       this.loading = true
       this.error = null
       try {
+        // Build a local merged view only. Do NOT persist into this.filters:
+        // mutating shared state contaminates other consumers (a featured
+        // section's per_page would leak into the /services catalog). See posts.js.
         const merged = { ...this.filters, ...filters }
-        this.filters = merged
         // Strip empty/null/undefined values so they don't pollute query string
         const params = {}
         for (const [key, value] of Object.entries(merged)) {
