@@ -156,4 +156,60 @@ describe('NewsDetail.vue — post detail page', () => {
     resolveCall({ data: { data: fakePost } })
     await flushPromises()
   })
+
+  // FIX 1 — XSS guard: javascript: cta_url must never become a live <a> href
+  it('does NOT render a CTA <a> when cta_url is "javascript:alert(1)"', async () => {
+    const maliciousPost = {
+      ...fakePost,
+      cta_label: 'Click me',
+      cta_url: 'javascript:alert(1)',
+    }
+    api.get.mockResolvedValueOnce({ data: { data: maliciousPost } })
+
+    const wrapper = await mountNewsDetail(pinia)
+    await flushPromises()
+
+    // No <a> element should carry a javascript: href
+    const allAnchors = wrapper.findAll('a')
+    const xssAnchor = allAnchors.find((a) =>
+      a.attributes('href')?.startsWith('javascript:'),
+    )
+    expect(xssAnchor).toBeUndefined()
+  })
+
+  it('does NOT render a CTA <a> when cta_url is "data:text/html,xss"', async () => {
+    const maliciousPost = {
+      ...fakePost,
+      cta_label: 'Click',
+      cta_url: 'data:text/html,xss',
+    }
+    api.get.mockResolvedValueOnce({ data: { data: maliciousPost } })
+
+    const wrapper = await mountNewsDetail(pinia)
+    await flushPromises()
+
+    const allAnchors = wrapper.findAll('a')
+    const dataAnchor = allAnchors.find((a) =>
+      a.attributes('href')?.startsWith('data:'),
+    )
+    expect(dataAnchor).toBeUndefined()
+  })
+
+  it('renders the CTA <a> normally when cta_url starts with https://', async () => {
+    const safePost = {
+      ...fakePost,
+      cta_label: 'Ver más',
+      cta_url: 'https://example.com/oferta',
+    }
+    api.get.mockResolvedValueOnce({ data: { data: safePost } })
+
+    const wrapper = await mountNewsDetail(pinia)
+    await flushPromises()
+
+    const allAnchors = wrapper.findAll('a')
+    const ctaAnchor = allAnchors.find((a) =>
+      a.attributes('href') === 'https://example.com/oferta',
+    )
+    expect(ctaAnchor).toBeDefined()
+  })
 })

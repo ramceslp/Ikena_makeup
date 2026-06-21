@@ -71,8 +71,9 @@ describe('News.vue — public news list', () => {
   })
 
   it('calls fetchPosts on mount', async () => {
-    api.get.mockResolvedValueOnce({ data: { data: fakePosts, meta: { current_page: 1, last_page: 1, total: 2 } } })
-
+    // Spy on fetchPosts BEFORE mounting — api.get is never called (spy intercepts).
+    // Do NOT add an api.get.mockResolvedValueOnce here because it would not be
+    // consumed (the spy blocks the real fetchPosts) and would leak into later tests.
     const store = usePostsStore()
     const fetchSpy = vi.spyOn(store, 'fetchPosts').mockResolvedValue()
 
@@ -122,47 +123,39 @@ describe('News.vue — public news list', () => {
   })
 
   it('shows empty state when posts array is empty', async () => {
+    // FIX 5: API mock returns empty payload; the component must react to it.
+    // No manual store mutation — the test fails if v-else-if="!posts.length" regresses.
     api.get.mockResolvedValueOnce({ data: { data: [], meta: { current_page: 1, last_page: 1, total: 0 } } })
 
-    const store = usePostsStore()
     const wrapper = mountNews(pinia)
     await flushPromises()
-    // Directly set store state to bypass async resolution issues
-    store.posts = []
-    store.postMeta = { current_page: 1, last_page: 1, total: 0 }
-    store.loading = false
     await wrapper.vm.$nextTick()
 
     expect(wrapper.find('[data-empty-state]').exists()).toBe(true)
   })
 
   it('shows pagination when last_page > 1', async () => {
+    // FIX 5: API mock returns paginated payload; no manual store mutation.
+    // Test fails if the pagination v-if="meta && meta.last_page > 1" regresses.
     api.get.mockResolvedValueOnce({
       data: { data: fakePosts, meta: { current_page: 1, last_page: 3, total: 30 } },
     })
 
-    const store = usePostsStore()
     const wrapper = mountNews(pinia)
     await flushPromises()
-    store.posts = fakePosts
-    store.postMeta = { current_page: 1, last_page: 3, total: 30 }
-    store.loading = false
     await wrapper.vm.$nextTick()
 
     expect(wrapper.find('[data-pagination]').exists()).toBe(true)
   })
 
   it('hides pagination when last_page is 1', async () => {
+    // FIX 5: API mock returns single-page payload; no manual store mutation.
     api.get.mockResolvedValueOnce({
       data: { data: fakePosts, meta: { current_page: 1, last_page: 1, total: 2 } },
     })
 
-    const store = usePostsStore()
     const wrapper = mountNews(pinia)
     await flushPromises()
-    store.posts = fakePosts
-    store.postMeta = { current_page: 1, last_page: 1, total: 2 }
-    store.loading = false
     await wrapper.vm.$nextTick()
 
     expect(wrapper.find('[data-pagination]').exists()).toBe(false)
@@ -177,5 +170,58 @@ describe('News.vue — public news list', () => {
     const links = wrapper.findAll('a')
     const slugLink = links.find((l) => l.attributes('href') === '/noticias/nuevo-curso-verano')
     expect(slugLink).toBeDefined()
+  })
+
+  // FIX 1 — XSS guard: javascript: cta_url must never become a live <a> href
+  it('does NOT render a CTA <a> when cta_url is "javascript:alert(1)"', async () => {
+    const maliciousPost = {
+      ...fakePosts[1],
+      cta_label: 'Click me',
+      cta_url: 'javascript:alert(1)',
+    }
+    api.get.mockResolvedValueOnce({ data: { data: [maliciousPost], meta: {} } })
+
+    const wrapper = mountNews(pinia)
+    await flushPromises()
+
+    // No <a> element should carry a javascript: href
+    const allAnchors = wrapper.findAll('a')
+    const xssAnchor = allAnchors.find((a) =>
+      a.attributes('href')?.startsWith('javascript:'),
+    )
+    expect(xssAnchor).toBeUndefined()
+  })
+
+  it('does NOT render a CTA <a> when cta_url is "data:text/html,<script>alert(1)</script>"', async () => {
+    const maliciousPost = {
+      ...fakePosts[1],
+      cta_label: 'Click',
+      cta_url: 'data:text/html,<script>alert(1)</script>',
+    }
+    api.get.mockResolvedValueOnce({ data: { data: [maliciousPost], meta: {} } })
+
+    const wrapper = mountNews(pinia)
+    await flushPromises()
+
+    const allAnchors = wrapper.findAll('a')
+    const dataAnchor = allAnchors.find((a) =>
+      a.attributes('href')?.startsWith('data:'),
+    )
+    expect(dataAnchor).toBeUndefined()
+  })
+
+  it('renders the CTA <a> normally when cta_url starts with https://', async () => {
+    api.get.mockResolvedValueOnce({ data: { data: [fakePosts[1]], meta: {} } })
+
+    const wrapper = mountNews(pinia)
+    await flushPromises()
+    await wrapper.vm.$nextTick()
+
+    // fakePosts[1] has cta_url = 'https://ikena.com/oferta'
+    const allAnchors = wrapper.findAll('a')
+    const ctaAnchor = allAnchors.find((a) =>
+      a.attributes('href') === 'https://ikena.com/oferta',
+    )
+    expect(ctaAnchor).toBeDefined()
   })
 })

@@ -1,9 +1,42 @@
 <script setup>
 import { ref, watch, onBeforeUnmount } from 'vue'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
+import { Node, mergeAttributes } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
 import Youtube from '@tiptap/extension-youtube'
 import { usePostsStore } from '../../stores/posts.js'
+import { isSafeLinkUrl, parseEmbedUrl } from '../../utils/cta.js'
+
+// ---------------------------------------------------------------------------
+// Custom Iframe Node — makes Vimeo (and generic iframes) survive in ProseMirror.
+// insertContent('<iframe ...>') is silently dropped because the default schema
+// has no iframe node. Registering this extension adds the node type so we can
+// insert iframes via { type: 'iframe', attrs: { src, ... } }.
+// ---------------------------------------------------------------------------
+const IframeNode = Node.create({
+  name: 'iframe',
+  group: 'block',
+  atom: true,
+
+  addAttributes() {
+    return {
+      src: { default: null },
+      width: { default: 640 },
+      height: { default: 360 },
+      frameborder: { default: 0 },
+      allowfullscreen: { default: true },
+      allow: { default: 'autoplay; fullscreen; picture-in-picture' },
+    }
+  },
+
+  parseHTML() {
+    return [{ tag: 'iframe' }]
+  },
+
+  renderHTML({ HTMLAttributes }) {
+    return ['iframe', mergeAttributes(HTMLAttributes)]
+  },
+})
 
 // ---------------------------------------------------------------------------
 // Props & Emits
@@ -42,6 +75,7 @@ const editor = useEditor({
       heading: { levels: [2, 3, 4] },
     }),
     Youtube.configure({ controls: false }),
+    IframeNode,
   ],
   onUpdate({ editor }) {
     emit('update:modelValue', editor.getHTML())
@@ -99,6 +133,10 @@ function setLink() {
     editor.value?.chain().focus().unsetLink().run()
     return
   }
+  if (!isSafeLinkUrl(url)) {
+    // Reject javascript:, data:, and other non-allowlisted protocols
+    return
+  }
   editor.value?.chain().focus().setLink({ href: url }).run()
 }
 
@@ -137,17 +175,28 @@ function insertEmbed() {
   const url = window.prompt('Ingresa la URL del video (YouTube o Vimeo)')
   if (!url) return
 
-  if (/youtube\.com|youtu\.be/.test(url)) {
-    editor.value?.chain().focus().setYoutubeVideo({ src: url }).run()
-  } else if (/vimeo\.com/.test(url)) {
-    // Vimeo: extract ID and build embed URL, then insert as raw iframe via insertContent
-    const vimeoMatch = url.match(/vimeo\.com\/(\d+)/)
-    if (vimeoMatch) {
-      const embedUrl = `https://player.vimeo.com/video/${vimeoMatch[1]}`
-      editor.value?.chain().focus().insertContent(
-        `<iframe src="${embedUrl}" width="640" height="360" frameborder="0" allowfullscreen></iframe>`,
-      ).run()
-    }
+  const parsed = parseEmbedUrl(url)
+  if (!parsed) return
+
+  if (parsed.type === 'youtube') {
+    // YouTube: delegate to the @tiptap/extension-youtube node which handles
+    // controls, nocookie, and dimension attrs natively.
+    editor.value?.chain().focus().setYoutubeVideo({ src: parsed.embedUrl }).run()
+  } else if (parsed.type === 'vimeo') {
+    // Vimeo: use the custom IframeNode so the embed survives in getHTML().
+    // insertContent('<iframe ...>') is silently dropped by ProseMirror because
+    // the default schema has no iframe node type.
+    editor.value?.chain().focus().insertContent({
+      type: 'iframe',
+      attrs: {
+        src: parsed.embedUrl,
+        width: 640,
+        height: 360,
+        frameborder: 0,
+        allowfullscreen: true,
+        allow: 'autoplay; fullscreen; picture-in-picture',
+      },
+    }).run()
   }
 }
 </script>

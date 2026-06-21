@@ -28,6 +28,7 @@ vi.mock('@tiptap/vue-3', () => {
         unsetLink: () => ({ run: vi.fn() }),
         setImage: () => ({ run: vi.fn() }),
         setYoutubeVideo: () => ({ run: vi.fn() }),
+        insertContent: () => ({ run: vi.fn() }),
         run: vi.fn(),
       }),
     }),
@@ -44,6 +45,15 @@ vi.mock('@tiptap/vue-3', () => {
 
 vi.mock('@tiptap/starter-kit', () => ({ default: { configure: vi.fn(() => ({})) } }))
 vi.mock('@tiptap/extension-youtube', () => ({ default: { configure: vi.fn(() => ({})) } }))
+
+// @tiptap/core is imported for Node.create() / mergeAttributes — stub both so
+// jsdom does not attempt to load ProseMirror internals.
+vi.mock('@tiptap/core', () => ({
+  Node: {
+    create: vi.fn(() => ({})),
+  },
+  mergeAttributes: vi.fn((...attrs) => Object.assign({}, ...attrs)),
+}))
 
 // ---------------------------------------------------------------------------
 // Mock api + pinia
@@ -64,6 +74,7 @@ vi.mock('../services/api.js', () => ({
 import api from '../services/api.js'
 import { usePostsStore } from '../stores/posts.js'
 import TipTapEditor from '../components/editor/TipTapEditor.vue'
+import StarterKit from '@tiptap/starter-kit'
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -193,5 +204,56 @@ describe('TipTapEditor.vue — contract tests', () => {
     expect(uploadSpy).toHaveBeenCalledWith(7, [fakeFile])
     // Verify no base64 was used (uploadImages would not be called if base64 was used instead)
     expect(uploadSpy).toHaveBeenCalledTimes(1)
+  })
+
+  // FIX 4 — StarterKit schema config: heading.levels must exclude h1
+  // This test asserts the ACTUAL configure() call args, not just the toolbar UI.
+  it('StarterKit.configure is called with heading: { levels: [2, 3, 4] } — no h1 in schema', () => {
+    // Mounting the component triggers useEditor() which calls StarterKit.configure()
+    mountEditor()
+    expect(StarterKit.configure).toHaveBeenCalledWith(
+      expect.objectContaining({ heading: { levels: [2, 3, 4] } }),
+    )
+  })
+
+  // FIX 2 — setLink must reject javascript: URLs and NOT call editor.chain().setLink
+  it('setLink does NOT call editor setLink when URL is "javascript:alert(1)"', async () => {
+    // window.prompt is not defined in jsdom — mock it
+    const promptSpy = vi.spyOn(window, 'prompt').mockReturnValue('javascript:alert(1)')
+
+    // Capture the chain mock so we can spy on setLink
+    const setLinkSpy = vi.fn(() => ({ run: vi.fn() }))
+    const { useEditor } = await import('@tiptap/vue-3')
+    useEditor.mockReturnValueOnce({
+      chain: () => ({
+        focus: () => ({
+          toggleBold: () => ({ run: vi.fn() }),
+          toggleItalic: () => ({ run: vi.fn() }),
+          toggleHeading: () => ({ run: vi.fn() }),
+          toggleBulletList: () => ({ run: vi.fn() }),
+          toggleOrderedList: () => ({ run: vi.fn() }),
+          toggleBlockquote: () => ({ run: vi.fn() }),
+          toggleCode: () => ({ run: vi.fn() }),
+          setLink: setLinkSpy,
+          unsetLink: () => ({ run: vi.fn() }),
+          setImage: () => ({ run: vi.fn() }),
+          setYoutubeVideo: () => ({ run: vi.fn() }),
+          insertContent: () => ({ run: vi.fn() }),
+          run: vi.fn(),
+        }),
+      }),
+      getHTML: vi.fn(() => '<p>mock content</p>'),
+      isActive: vi.fn(() => false),
+      isDestroyed: false,
+      destroy: vi.fn(),
+    })
+
+    const wrapper = mountEditor()
+    await wrapper.find('[data-toolbar-link]').trigger('click')
+
+    // setLink on the editor chain must NOT have been called with the javascript: URL
+    expect(setLinkSpy).not.toHaveBeenCalled()
+
+    promptSpy.mockRestore()
   })
 })

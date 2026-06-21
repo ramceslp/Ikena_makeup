@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { usePostsStore } from '../stores/posts.js'
+import { safeCtaUrl } from '../utils/cta.js'
 
 const postsStore = usePostsStore()
 
@@ -129,8 +130,8 @@ onMounted(() => {
 
               <!-- CTA -->
               <a
-                v-if="post.cta_label && post.cta_url"
-                :href="post.cta_url"
+                v-if="post.cta_label && safeCtaUrl(post.cta_url)"
+                :href="safeCtaUrl(post.cta_url)"
                 target="_blank"
                 rel="noopener noreferrer"
                 class="mt-auto font-label-md text-label-md text-primary hover:underline"
