@@ -8,9 +8,11 @@ use App\Http\Controllers\Api\CertificateController;
 use App\Http\Controllers\Api\CheckoutController;
 use App\Http\Controllers\Api\CourseController;
 use App\Http\Controllers\Api\CourseReviewController;
+use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\Admin\AppointmentController as AdminAppointmentController;
+use App\Http\Controllers\Api\Admin\PostController as AdminPostController;
 use App\Http\Controllers\Api\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\Api\Admin\ServiceController as AdminServiceController;
 use App\Http\Controllers\Api\Admin\ServiceSlotController as AdminServiceSlotController;
@@ -41,6 +43,14 @@ Route::get('/services/{slug}', [ServiceController::class, 'show']);
 // Public product catalog — no auth required
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/{slug}', [ProductController::class, 'show']);
+
+// Public post (news) endpoints.
+// Static segments MUST be declared BEFORE the parameterized {slug} route
+// to prevent "latest" and "featured" from being captured as slug values.
+Route::get('/posts', [PostController::class, 'index']);
+Route::get('/posts/latest', [PostController::class, 'latest']);
+Route::get('/posts/featured', [PostController::class, 'featured']);
+Route::get('/posts/{slug}', [PostController::class, 'show']);
 Route::get('/services/{serviceId}/available-slots', [BookingController::class, 'availableSlots']);
 Route::get('/courses/{course:slug}/reviews', [CourseReviewController::class, 'index']);
 Route::get('/certificates/verify/{code}', [CertificateController::class, 'verify']);
@@ -110,6 +120,22 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/products/{product}/images', [AdminProductController::class, 'storeImages']);
         Route::delete('/products/{product}/images/{image}', [AdminProductController::class, 'destroyImage']);
         Route::post('/products/{product}/images/reorder', [AdminProductController::class, 'reorderImages']);
+
+        // Posts (news) CRUD
+        Route::get('/posts', [AdminPostController::class, 'index']);
+        Route::post('/posts', [AdminPostController::class, 'store']);
+        Route::get('/posts/{post}', [AdminPostController::class, 'show']);
+        Route::post('/posts/{post}', [AdminPostController::class, 'update']);
+        Route::delete('/posts/{post}', [AdminPostController::class, 'destroy']);
+
+        // Post cover image management
+        Route::post('/posts/{post}/cover', [AdminPostController::class, 'storeCoverImage']);
+        Route::delete('/posts/{post}/cover', [AdminPostController::class, 'destroyCoverImage']);
+
+        // Post body image management
+        Route::post('/posts/{post}/images', [AdminPostController::class, 'storeImages']);
+        Route::delete('/posts/{post}/images/{image}', [AdminPostController::class, 'destroyImage']);
+        Route::post('/posts/{post}/images/reorder', [AdminPostController::class, 'reorderImages']);
 
         // Appointment management
         Route::get('/appointments', [AdminAppointmentController::class, 'index']);
