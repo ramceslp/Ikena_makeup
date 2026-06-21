@@ -1,84 +1,30 @@
 <script setup>
-import { ref, watch, onMounted } from 'vue'
-import { useCoursesStore } from '../stores/courses.js'
-import HeroSection from '../components/home/HeroSection.vue'
-import CourseFilters from '../components/home/CourseFilters.vue'
-import CourseCatalog from '../components/home/CourseCatalog.vue'
+import FeaturedNewsHero from '../components/home/FeaturedNewsHero.vue'
+import LatestNewsGrid from '../components/home/LatestNewsGrid.vue'
+import FeaturedCourses from '../components/home/FeaturedCourses.vue'
+import FeaturedServices from '../components/home/FeaturedServices.vue'
+import FeaturedProducts from '../components/home/FeaturedProducts.vue'
 import NewsletterCta from '../components/home/NewsletterCta.vue'
-
-const coursesStore = useCoursesStore()
-
-const search = ref('')
-const minPrice = ref('')
-const maxPrice = ref('')
-const sort = ref('newest')
-const category = ref('')
-
-const catalogRef = ref(null)
-
-let debounceTimer = null
-
-function buildFilters() {
-  return {
-    search: search.value,
-    min_price: minPrice.value,
-    max_price: maxPrice.value,
-    sort: sort.value,
-    category: category.value,
-    page: 1,
-  }
-}
-
-function applyFilters() {
-  coursesStore.fetchCourses(buildFilters())
-}
-
-// Search is debounced; price/sort/category apply immediately
-watch(search, () => {
-  clearTimeout(debounceTimer)
-  debounceTimer = setTimeout(applyFilters, 400)
-})
-
-watch([minPrice, maxPrice, sort, category], applyFilters)
-
-function goToPage(page) {
-  coursesStore.fetchCourses({ ...buildFilters(), page })
-}
-
-function scrollToCatalog() {
-  catalogRef.value?.scrollIntoView({ behavior: 'smooth' })
-}
-
-onMounted(() => {
-  coursesStore.fetchCategories()
-  coursesStore.fetchCourses()
-})
 </script>
 
 <template>
   <div>
-    <HeroSection @explore="scrollToCatalog" />
+    <!-- 1. Featured news hero (replaces old courses HeroSection) -->
+    <FeaturedNewsHero />
 
-    <CourseFilters
-      v-model:search="search"
-      v-model:min-price="minPrice"
-      v-model:max-price="maxPrice"
-      v-model:sort="sort"
-      v-model:category="category"
-      :categories="coursesStore.categories"
-    />
+    <!-- 2. Latest news grid -->
+    <LatestNewsGrid />
 
-    <div ref="catalogRef">
-      <CourseCatalog
-        :courses="coursesStore.courses"
-        :loading="coursesStore.loading"
-        :error="coursesStore.error"
-        :meta="coursesStore.meta"
-        @retry="applyFilters"
-        @page-change="goToPage"
-      />
-    </div>
+    <!-- 3. Featured courses (3 most-recent, link → /cursos) -->
+    <FeaturedCourses />
 
+    <!-- 4. Featured services (3 most-recent, link → /services) -->
+    <FeaturedServices />
+
+    <!-- 5. Featured products (3 most-recent, link → /products) -->
+    <FeaturedProducts />
+
+    <!-- 6. Newsletter CTA (unchanged) -->
     <NewsletterCta />
   </div>
 </template>

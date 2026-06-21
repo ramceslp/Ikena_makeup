@@ -53,6 +53,9 @@ const activeClass = 'text-primary border-b-2 border-apricot-glow'
           <RouterLink to="/" :class="linkClass" :exact-active-class="activeClass">
             Explorar
           </RouterLink>
+          <RouterLink to="/cursos" :class="linkClass" :active-class="activeClass">
+            Cursos
+          </RouterLink>
           <RouterLink to="/services" :class="linkClass" :active-class="activeClass">
             Servicios
           </RouterLink>
@@ -175,6 +178,13 @@ const activeClass = 'text-primary border-b-2 border-apricot-glow'
           class="block py-2 font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors"
         >
           Explorar
+        </RouterLink>
+        <RouterLink
+          to="/cursos"
+          @click="mobileOpen = false"
+          class="block py-2 font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors"
+        >
+          Cursos
         </RouterLink>
         <RouterLink
           to="/services"

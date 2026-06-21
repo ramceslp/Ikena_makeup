@@ -75,7 +75,7 @@ onMounted(() => {
           ¡Explora el catálogo y empieza a aprender!
         </p>
         <RouterLink
-          to="/"
+          to="/cursos"
           class="inline-flex items-center gap-2 bg-apricot-glow text-deep-marsala px-6 py-3 rounded-xl font-title-md text-title-md shadow-lg shadow-apricot-glow/20 hover:-translate-y-0.5 transition-all"
         >
           <span class="material-symbols-outlined text-[18px]" aria-hidden="true">explore</span>

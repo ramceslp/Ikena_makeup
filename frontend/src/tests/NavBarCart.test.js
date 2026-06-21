@@ -23,6 +23,7 @@ const router = createRouter({
   history: createMemoryHistory(),
   routes: [
     { path: '/', component: { template: '<div/>' } },
+    { path: '/cursos', name: 'Cursos', component: { template: '<div/>' } },
     { path: '/cart', name: 'Cart', component: { template: '<div/>' } },
     { path: '/:pathMatch(.*)*', component: { template: '<div/>' } },
   ],
@@ -62,6 +63,14 @@ describe('NavBar — cart badge', () => {
     const badge = wrapper.find('[data-cart-badge]')
     expect(badge.exists()).toBe(true)
     expect(badge.text()).toBe('3') // 2 + 1
+  })
+
+  it('has a "Cursos" nav link pointing to /cursos', () => {
+    const wrapper = mount(NavBar, {
+      global: { plugins: [pinia, router] },
+    })
+    const cursosLink = wrapper.findAll('a').find((l) => l.attributes('href') === '/cursos')
+    expect(cursosLink).toBeDefined()
   })
 
   it('cart icon links to /cart route', () => {

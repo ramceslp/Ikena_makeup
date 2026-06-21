@@ -62,6 +62,18 @@ describe('products store — fetchProducts', () => {
     expect(store.error).toBeNull()
   })
 
+  it('fetchProducts does NOT persist filters across calls (per_page contamination guard)', async () => {
+    api.get.mockResolvedValue({ data: { data: [], meta: {} } })
+
+    const store = useProductsStore()
+    await store.fetchProducts({ page: 1, per_page: 3, sort: 'newest' })
+    await store.fetchProducts()
+
+    const lastCall = api.get.mock.calls[api.get.mock.calls.length - 1]
+    expect(lastCall[1].params).not.toHaveProperty('per_page')
+    expect(store.filters).not.toHaveProperty('per_page')
+  })
+
   it('fetchProducts sets error state when API call fails', async () => {
     api.get.mockRejectedValueOnce({
       response: { data: { message: 'Error del servidor' } },

@@ -40,8 +40,10 @@ export const useCoursesStore = defineStore('courses', {
       this.loading = true
       this.error = null
       try {
+        // Build a local merged view only. Do NOT persist into this.filters:
+        // mutating shared state contaminates other consumers (e.g. a featured
+        // section passing per_page:3 would leak into /cursos). See posts.js.
         const merged = { ...this.filters, ...filters }
-        this.filters = merged
         // Remove empty values so they don't pollute the query string
         const params = {}
         for (const [key, value] of Object.entries(merged)) {
