@@ -48,7 +48,7 @@ class PostController extends Controller
         }
 
         // Sanitize body HTML server-side
-        $data['body'] = Purifier::clean($data['body'], 'posts');
+        $data['body'] = $this->cleanBody($data['body']);
 
         // Set author to current admin
         $data['author_id'] = $request->user()->id;
@@ -107,7 +107,7 @@ class PostController extends Controller
 
         // Re-sanitize body if provided
         if (isset($data['body'])) {
-            $data['body'] = Purifier::clean($data['body'], 'posts');
+            $data['body'] = $this->cleanBody($data['body']);
         }
 
         // Remove cover_image from fillable data
@@ -306,6 +306,43 @@ class PostController extends Controller
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
+
+    /**
+     * Sanitize post body HTML using the 'posts' purifier profile.
+     *
+     * `allow` and `allowfullscreen` are HTML5 iframe attributes absent from
+     * HTMLPurifier's default HTML4 doctype definition. They cannot be added via
+     * HTML.Allowed alone (that would throw an ErrorException at runtime).
+     * Instead we register them through a custom HTMLPurifier definition using
+     * mews/purifier 3.x's closure hook (`Purifier::clean($html, $config, Closure)`).
+     *
+     * The closure uses `maybeGetRawHTMLDefinition()` (the optimized path) which
+     * returns null on a cache hit (definition already registered) or a raw
+     * HTMLPurifier_HTMLDefinition on a cache miss. This avoids the E_USER_WARNING
+     * that `getHTMLDefinition(true)` emits when DefinitionID is set but the
+     * non-optimized raw path is used — Laravel converts that warning to an
+     * ErrorException in production-strict mode.
+     *
+     * Config keys HTML.DefinitionID and HTML.DefinitionRev (set in purifier.php)
+     * are required for the optimized cache path. Bump DefinitionRev whenever the
+     * definition changes.
+     *
+     * mews/purifier ≥ 3.3.x supports the third closure argument. The installed
+     * version is 3.4.4 (verified via `composer show mews/purifier`).
+     */
+    private function cleanBody(string $html): string
+    {
+        return Purifier::clean($html, 'posts', function (\HTMLPurifier_Config $config): void {
+            // maybeGetRawHTMLDefinition uses the optimized path:
+            // returns null when the cached definition is already available
+            // (no edits needed), or a raw HTMLPurifier_HTMLDefinition otherwise.
+            $def = $config->maybeGetRawHTMLDefinition();
+            if ($def) {
+                $def->addAttribute('iframe', 'allowfullscreen', 'Bool');
+                $def->addAttribute('iframe', 'allow', 'Text');
+            }
+        });
+    }
 
     /**
      * Generate a slug that is unique in the posts table.

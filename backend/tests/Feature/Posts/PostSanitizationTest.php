@@ -82,6 +82,8 @@ class PostSanitizationTest extends TestCase
 
         $this->assertNotNull($stored);
         $this->assertStringNotContainsString('evil.com', $stored);
+        // AutoFormat.RemoveEmpty removes the residual empty <iframe> left after src is stripped
+        $this->assertStringNotContainsString('<iframe', $stored);
     }
 
     public function test_style_tag_is_stripped(): void
@@ -112,24 +114,30 @@ class PostSanitizationTest extends TestCase
     {
         Sanctum::actingAs($this->admin());
 
-        $youtubeHtml = '<iframe src="https://www.youtube.com/embed/abc123" width="560" height="315" frameborder="0" allowfullscreen></iframe>';
+        $youtubeHtml = '<iframe src="https://www.youtube.com/embed/abc123" width="560" height="315" frameborder="0" allowfullscreen allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"></iframe>';
         $stored      = $this->getStoredBody('<p>Watch:</p>' . $youtubeHtml);
 
         $this->assertNotNull($stored);
         $this->assertStringContainsString('youtube.com/embed/abc123', $stored);
         $this->assertStringContainsString('<iframe', $stored);
+        // allowfullscreen and allow must survive sanitization (HTML5 attrs registered via custom definition)
+        $this->assertStringContainsString('allowfullscreen', $stored);
+        $this->assertStringContainsString('allow=', $stored);
     }
 
     public function test_vimeo_embed_iframe_is_preserved(): void
     {
         Sanctum::actingAs($this->admin());
 
-        $vimeoHtml = '<iframe src="https://player.vimeo.com/video/456789" width="640" height="360" frameborder="0" allowfullscreen></iframe>';
+        $vimeoHtml = '<iframe src="https://player.vimeo.com/video/456789" width="640" height="360" frameborder="0" allowfullscreen allow="autoplay; fullscreen; picture-in-picture"></iframe>';
         $stored    = $this->getStoredBody('<p>Video:</p>' . $vimeoHtml);
 
         $this->assertNotNull($stored);
         $this->assertStringContainsString('player.vimeo.com/video/456789', $stored);
         $this->assertStringContainsString('<iframe', $stored);
+        // allowfullscreen and allow must survive sanitization (HTML5 attrs registered via custom definition)
+        $this->assertStringContainsString('allowfullscreen', $stored);
+        $this->assertStringContainsString('allow=', $stored);
     }
 
     public function test_allowed_formatting_tags_are_preserved(): void
@@ -145,6 +153,31 @@ class PostSanitizationTest extends TestCase
         $this->assertStringContainsString('<em>', $stored);
         $this->assertStringContainsString('<ul>', $stored);
         $this->assertStringContainsString('<li>', $stored);
+    }
+
+    // =========================================================================
+    // Sanitization on update() path
+    // =========================================================================
+
+    public function test_update_body_is_sanitized_on_update_path(): void
+    {
+        Sanctum::actingAs($this->admin());
+
+        // Create an existing post first
+        $createResponse = $this->storePostWithBody('<p>Original safe content</p>')->assertStatus(201);
+        $postId         = $createResponse->json('data.id');
+
+        // Submit a malicious body via the update path (POST /api/admin/posts/{id})
+        $updateResponse = $this->postJson("/api/admin/posts/{$postId}", [
+            'body' => '<p>Updated</p><script>alert("xss-on-update")</script>',
+        ])->assertStatus(200);
+
+        $stored = \App\Models\Post::find($postId)?->body;
+
+        $this->assertNotNull($stored);
+        $this->assertStringNotContainsString('<script', $stored);
+        $this->assertStringNotContainsString('alert', $stored);
+        $this->assertStringContainsString('Updated', $stored);
     }
 
     // =========================================================================
