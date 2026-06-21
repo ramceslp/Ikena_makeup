@@ -8,35 +8,61 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
+import { ref } from 'vue'
 
 // ---------------------------------------------------------------------------
 // Mock TipTap modules so jsdom does not crash on ProseMirror
 // ---------------------------------------------------------------------------
+
+// vi.hoisted runs BEFORE vi.mock hoisting — this is the only safe way to share
+// spy references between a vi.mock factory and the test body.
+const chainSpies = vi.hoisted(() => ({
+  insertContent: vi.fn(() => ({ run: vi.fn() })),
+  setYoutubeVideo: vi.fn(() => ({ run: vi.fn() })),
+  setLink: vi.fn(() => ({ run: vi.fn() })),
+}))
+
 vi.mock('@tiptap/vue-3', () => {
-  const useEditor = vi.fn(() => ({
-    chain: () => ({
-      focus: () => ({
-        toggleBold: () => ({ run: vi.fn() }),
-        toggleItalic: () => ({ run: vi.fn() }),
-        toggleHeading: () => ({ run: vi.fn() }),
-        toggleBulletList: () => ({ run: vi.fn() }),
-        toggleOrderedList: () => ({ run: vi.fn() }),
-        toggleBlockquote: () => ({ run: vi.fn() }),
-        toggleCode: () => ({ run: vi.fn() }),
-        toggleCodeBlock: () => ({ run: vi.fn() }),
-        setLink: () => ({ run: vi.fn() }),
-        unsetLink: () => ({ run: vi.fn() }),
-        setImage: () => ({ run: vi.fn() }),
-        setYoutubeVideo: () => ({ run: vi.fn() }),
-        insertContent: () => ({ run: vi.fn() }),
-        run: vi.fn(),
-      }),
-    }),
-    getHTML: vi.fn(() => '<p>mock content</p>'),
-    isActive: vi.fn(() => false),
-    isDestroyed: false,
-    destroy: vi.fn(),
-  }))
+  // useEditor in @tiptap/vue-3 returns a Ref<Editor | undefined>.
+  // The component accesses the editor in TWO ways:
+  //   1. Template: `editor?.isActive(...)` — accesses isActive on the ref object directly
+  //      (Vue auto-unwraps real refs in templates, but our mock is a plain object,
+  //       so the template sees the outer object. The outer object must have isActive.)
+  //   2. Setup fns: `editor.value?.chain()...` — accesses chain via .value
+  //
+  // Solution: return a dual-interface object where the outer object has the editor API
+  // (for template use) AND a .value property pointing to the same instance
+  // (for setup function use via editor.value?.chain()).
+  const useEditor = vi.fn(() => {
+    const chainFocus = () => ({
+      toggleBold: () => ({ run: vi.fn() }),
+      toggleItalic: () => ({ run: vi.fn() }),
+      toggleHeading: () => ({ run: vi.fn() }),
+      toggleBulletList: () => ({ run: vi.fn() }),
+      toggleOrderedList: () => ({ run: vi.fn() }),
+      toggleBlockquote: () => ({ run: vi.fn() }),
+      toggleCode: () => ({ run: vi.fn() }),
+      toggleCodeBlock: () => ({ run: vi.fn() }),
+      setLink: chainSpies.setLink,
+      unsetLink: () => ({ run: vi.fn() }),
+      setImage: () => ({ run: vi.fn() }),
+      setYoutubeVideo: chainSpies.setYoutubeVideo,
+      insertContent: chainSpies.insertContent,
+      run: vi.fn(),
+    })
+    const editorInstance = {
+      chain: () => ({ focus: chainFocus }),
+      commands: { setContent: vi.fn() },
+      getHTML: vi.fn(() => '<p>mock content</p>'),
+      isActive: vi.fn(() => false),
+      isDestroyed: false,
+      destroy: vi.fn(),
+    }
+    // Dual-interface: outer object = editor (for template `editor?.isActive`),
+    // .value = same instance (for setup fns `editor.value?.chain()`).
+    editorInstance.value = editorInstance
+    return editorInstance
+  })
 
   const EditorContent = { template: '<div class="tiptap-mock-content"></div>', name: 'EditorContent' }
 
@@ -87,6 +113,10 @@ describe('TipTapEditor.vue — contract tests', () => {
     pinia = createPinia()
     setActivePinia(pinia)
     vi.clearAllMocks()
+    // Reset shared chain spies after vi.clearAllMocks() clears call history
+    chainSpies.insertContent.mockImplementation(() => ({ run: vi.fn() }))
+    chainSpies.setYoutubeVideo.mockImplementation(() => ({ run: vi.fn() }))
+    chainSpies.setLink.mockImplementation(() => ({ run: vi.fn() }))
   })
 
   function mountEditor(props = {}) {
@@ -221,38 +251,48 @@ describe('TipTapEditor.vue — contract tests', () => {
     // window.prompt is not defined in jsdom — mock it
     const promptSpy = vi.spyOn(window, 'prompt').mockReturnValue('javascript:alert(1)')
 
-    // Capture the chain mock so we can spy on setLink
-    const setLinkSpy = vi.fn(() => ({ run: vi.fn() }))
-    const { useEditor } = await import('@tiptap/vue-3')
-    useEditor.mockReturnValueOnce({
-      chain: () => ({
-        focus: () => ({
-          toggleBold: () => ({ run: vi.fn() }),
-          toggleItalic: () => ({ run: vi.fn() }),
-          toggleHeading: () => ({ run: vi.fn() }),
-          toggleBulletList: () => ({ run: vi.fn() }),
-          toggleOrderedList: () => ({ run: vi.fn() }),
-          toggleBlockquote: () => ({ run: vi.fn() }),
-          toggleCode: () => ({ run: vi.fn() }),
-          setLink: setLinkSpy,
-          unsetLink: () => ({ run: vi.fn() }),
-          setImage: () => ({ run: vi.fn() }),
-          setYoutubeVideo: () => ({ run: vi.fn() }),
-          insertContent: () => ({ run: vi.fn() }),
-          run: vi.fn(),
-        }),
-      }),
-      getHTML: vi.fn(() => '<p>mock content</p>'),
-      isActive: vi.fn(() => false),
-      isDestroyed: false,
-      destroy: vi.fn(),
-    })
-
+    // chainSpies.setLink is already wired into the default editor mock.
+    // We just mount and click — the shared spy should NOT be called.
     const wrapper = mountEditor()
     await wrapper.find('[data-toolbar-link]').trigger('click')
 
     // setLink on the editor chain must NOT have been called with the javascript: URL
-    expect(setLinkSpy).not.toHaveBeenCalled()
+    expect(chainSpies.setLink).not.toHaveBeenCalled()
+
+    promptSpy.mockRestore()
+  })
+
+  // FIX 1 — insertEmbed dispatches insertContent for Vimeo IframeNode
+  it('insertEmbed calls insertContent with { type: "iframe", attrs: { src: Vimeo player URL } } for a Vimeo URL', async () => {
+    const promptSpy = vi.spyOn(window, 'prompt').mockReturnValue('https://vimeo.com/123456')
+
+    const wrapper = mountEditor()
+    await wrapper.find('[data-toolbar-embed]').trigger('click')
+
+    expect(chainSpies.insertContent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'iframe',
+        attrs: expect.objectContaining({ src: 'https://player.vimeo.com/video/123456' }),
+      }),
+    )
+    expect(chainSpies.setYoutubeVideo).not.toHaveBeenCalled()
+
+    promptSpy.mockRestore()
+  })
+
+  // FIX 1 — insertEmbed dispatches setYoutubeVideo for a YouTube URL
+  it('insertEmbed calls setYoutubeVideo with the parsed embed URL for a YouTube URL', async () => {
+    const promptSpy = vi
+      .spyOn(window, 'prompt')
+      .mockReturnValue('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
+
+    const wrapper = mountEditor()
+    await wrapper.find('[data-toolbar-embed]').trigger('click')
+
+    expect(chainSpies.setYoutubeVideo).toHaveBeenCalledWith(
+      expect.objectContaining({ src: 'https://www.youtube.com/embed/dQw4w9WgXcQ' }),
+    )
+    expect(chainSpies.insertContent).not.toHaveBeenCalled()
 
     promptSpy.mockRestore()
   })
