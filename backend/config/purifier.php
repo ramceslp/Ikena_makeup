@@ -37,11 +37,14 @@ return [
         | HTML.DefinitionID + HTML.DefinitionRev are required to activate custom
         | definitions; DefinitionRev must be bumped whenever the definition changes.
         |
-        | AutoFormat.RemoveEmpty strips iframes whose src was rejected by
-        | URI.SafeIframeRegexp (HTMLPurifier removes the src, leaving <iframe></iframe>).
-        | The Predicate ensures the rule only removes elements that are empty due to
-        | a missing required attribute; valid YouTube/Vimeo iframes retain their src
-        | and are therefore NOT removed.
+        | NOTE — AutoFormat.RemoveEmpty is intentionally NOT set here.
+        | A global RemoveEmpty (even with a Predicate) silently deletes ANY empty
+        | element from admin-authored body HTML, which can destroy intentional empty
+        | markup (e.g. spacer elements, editor-inserted blocks). The tradeoff is that
+        | a foreign-src iframe whose src was stripped by URI.SafeIframeRegexp will
+        | leave a residual <iframe></iframe> in the stored body. This is accepted as
+        | inert: the element has no src, no srcdoc (not allowlisted), no href, and no
+        | event handlers — it cannot load external content or execute scripts.
         */
         'posts' => [
             'HTML.Allowed'             => 'p,br,strong,em,u,s,h2,h3,h4,ul,ol,li,blockquote,a[href|target|rel],img[src|alt|width|height],iframe[src|width|height|frameborder|allowfullscreen|allow],pre,code,span[class]',
@@ -49,8 +52,6 @@ return [
             'URI.SafeIframeRegexp'     => '%^https://(www\.youtube\.com/embed/|player\.vimeo\.com/video/)%',
             'AutoFormat.AutoParagraph' => false,
             'Output.TidyFormat'        => false,
-            'AutoFormat.RemoveEmpty'   => true,
-            'AutoFormat.RemoveEmpty.Predicate' => ['iframe' => [0 => 'src'], 'img' => [0 => 'src'], 'a' => [0 => 'href']],
             'HTML.DefinitionID'        => 'posts-embeds',
             'HTML.DefinitionRev'       => 1,
         ],

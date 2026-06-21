@@ -81,9 +81,13 @@ class PostSanitizationTest extends TestCase
         $stored = $this->getStoredBody('<iframe src="https://evil.com/track"></iframe>');
 
         $this->assertNotNull($stored);
+
+        // Security property: the foreign host must be gone from the stored body.
+        // URI.SafeIframeRegexp strips any src not matching YouTube/Vimeo, so the
+        // original evil.com URL must not appear — regardless of whether a residual
+        // sourceless <iframe> element remains (which is inert and accepted).
         $this->assertStringNotContainsString('evil.com', $stored);
-        // AutoFormat.RemoveEmpty removes the residual empty <iframe> left after src is stripped
-        $this->assertStringNotContainsString('<iframe', $stored);
+        $this->assertStringNotContainsString('src="https://evil.com', $stored);
     }
 
     public function test_style_tag_is_stripped(): void
