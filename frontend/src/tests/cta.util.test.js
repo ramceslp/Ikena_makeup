@@ -44,6 +44,32 @@ describe('safeCtaUrl', () => {
   it('returns null for empty string', () => {
     expect(safeCtaUrl('')).toBeNull()
   })
+
+  // FIX 3 — new URL() hardening
+  it('returns null for data: URL (new URL() hardening)', () => {
+    expect(safeCtaUrl('data:text/html,x')).toBeNull()
+  })
+
+  it('returns null for javascript: URL (new URL() hardening)', () => {
+    expect(safeCtaUrl('javascript:alert(1)')).toBeNull()
+  })
+
+  it('returns null for JAVASCRIPT: uppercase variant', () => {
+    expect(safeCtaUrl('JAVASCRIPT:alert(1)')).toBeNull()
+  })
+
+  it('returns null for DATA: uppercase variant', () => {
+    expect(safeCtaUrl('DATA:text/html,x')).toBeNull()
+  })
+
+  it('returns the trimmed url when input has leading/trailing whitespace', () => {
+    expect(safeCtaUrl('  https://example.com  ')).toBe('https://example.com')
+  })
+
+  it('returns true for mailto: URL (isSafeLinkUrl covers it; safeCtaUrl rejects non-web)', () => {
+    // safeCtaUrl is for CTAs (web links only) — mailto: is NOT allowed here
+    expect(safeCtaUrl('mailto:a@b.com')).toBeNull()
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -84,6 +110,27 @@ describe('isSafeLinkUrl', () => {
 
   it('returns FALSE for empty string', () => {
     expect(isSafeLinkUrl('')).toBe(false)
+  })
+
+  // FIX 3 — new URL() hardening
+  it('returns false for data:text/html,x (new URL() hardening)', () => {
+    expect(isSafeLinkUrl('data:text/html,x')).toBe(false)
+  })
+
+  it('returns false for DATA: uppercase variant', () => {
+    expect(isSafeLinkUrl('DATA:text/html,x')).toBe(false)
+  })
+
+  it('returns true for mailto:a@b.com', () => {
+    expect(isSafeLinkUrl('mailto:a@b.com')).toBe(true)
+  })
+
+  it('returns true for tel:+123', () => {
+    expect(isSafeLinkUrl('tel:+123')).toBe(true)
+  })
+
+  it('returns true for https://x.com', () => {
+    expect(isSafeLinkUrl('https://x.com')).toBe(true)
   })
 })
 

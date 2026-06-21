@@ -1,15 +1,24 @@
 /**
  * safeCtaUrl — guard against javascript:/data: XSS in CTA href bindings.
  *
- * Returns the url only when it starts with http:// or https://.
- * Returns null for any other value (javascript:, data:, relative paths, empty).
+ * Returns the url only when it is a valid http: or https: URL.
+ * Returns null for any other value (javascript:, data:, relative paths, empty, malformed).
+ *
+ * Uses new URL() for robust parsing — correctly rejects javascript:/data: by
+ * protocol inspection, not prefix matching.
  *
  * @param {string|null|undefined} url
  * @returns {string|null}
  */
 export function safeCtaUrl(url) {
   if (!url || typeof url !== 'string') return null
-  return /^https?:\/\//i.test(url) ? url : null
+  const trimmed = url.trim()
+  try {
+    const u = new URL(trimmed)
+    return ['http:', 'https:'].includes(u.protocol) ? trimmed : null
+  } catch {
+    return null
+  }
 }
 
 /**
@@ -18,12 +27,21 @@ export function safeCtaUrl(url) {
  * Allows: http:, https:, mailto:, tel:
  * Rejects: javascript:, data:, and anything else.
  *
+ * Uses new URL() for robust parsing — correctly rejects javascript:/data: by
+ * protocol inspection, not prefix matching.
+ *
  * @param {string|null|undefined} url
  * @returns {boolean}
  */
 export function isSafeLinkUrl(url) {
   if (!url || typeof url !== 'string') return false
-  return /^(https?:|mailto:|tel:)/i.test(url.trim())
+  const trimmed = url.trim()
+  try {
+    const u = new URL(trimmed)
+    return ['http:', 'https:', 'mailto:', 'tel:'].includes(u.protocol)
+  } catch {
+    return false
+  }
 }
 
 /**
