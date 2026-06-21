@@ -35,6 +35,15 @@ const AdminProducts = () => import('../views/admin/AdminProducts.vue')
 const AdminProductCreate = () => import('../views/admin/AdminProductCreate.vue')
 const AdminProductEdit = () => import('../views/admin/AdminProductEdit.vue')
 
+// News (noticias) — public
+const News = () => import('../views/News.vue')
+const NewsDetail = () => import('../views/NewsDetail.vue')
+
+// News (noticias) — admin
+const AdminPosts = () => import('../views/admin/AdminPosts.vue')
+const AdminPostCreate = () => import('../views/admin/AdminPostCreate.vue')
+const AdminPostEdit = () => import('../views/admin/AdminPostEdit.vue')
+
 // Booking admin
 const AdminServiceSlots = () => import('../views/admin/AdminServiceSlots.vue')
 const AdminAppointments = () => import('../views/admin/AdminAppointments.vue')
@@ -198,6 +207,38 @@ const routes = [
     path: '/admin/products/:id/edit',
     name: 'AdminProductEdit',
     component: AdminProductEdit,
+    meta: { requiresAdmin: true },
+  },
+
+  // ── Public: News (noticias) ───────────────────────────────────────────────
+  {
+    path: '/noticias',
+    name: 'News',
+    component: News,
+  },
+  {
+    path: '/noticias/:slug',
+    name: 'NewsDetail',
+    component: NewsDetail,
+  },
+
+  // ── Admin: Posts (noticias) ───────────────────────────────────────────────
+  {
+    path: '/admin/posts',
+    name: 'AdminPosts',
+    component: AdminPosts,
+    meta: { requiresAdmin: true },
+  },
+  {
+    path: '/admin/posts/new',
+    name: 'AdminPostCreate',
+    component: AdminPostCreate,
+    meta: { requiresAdmin: true },
+  },
+  {
+    path: '/admin/posts/:id/edit',
+    name: 'AdminPostEdit',
+    component: AdminPostEdit,
     meta: { requiresAdmin: true },
   },
 
