@@ -10,5 +10,12 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: [],
+    server: {
+      deps: {
+        // TipTap packages use subpath exports not compatible with vitest's
+        // default module resolution; inlining lets vite transform them correctly.
+        inline: ['@tiptap/vue-3', '@tiptap/starter-kit', '@tiptap/extension-youtube', '@tiptap/core', '@tiptap/pm'],
+      },
+    },
   },
 })
