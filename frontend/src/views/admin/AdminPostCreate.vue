@@ -66,7 +66,7 @@ async function handleSubmit() {
       await postsStore.uploadCover(created.id, coverFile.value)
     }
 
-    router.push('/admin/posts')
+    router.push('/admin/noticias')
   } catch (err) {
     error.value = err.response?.data?.message || 'Error al crear la publicación'
   } finally {
@@ -239,7 +239,7 @@ async function handleSubmit() {
 
         <!-- Actions -->
         <div class="flex items-center justify-end gap-3 pt-2">
-          <BaseButton type="button" variant="outline" @click="router.push('/admin/posts')">
+          <BaseButton type="button" variant="outline" @click="router.push('/admin/noticias')">
             Cancelar
           </BaseButton>
           <BaseButton type="submit" variant="primary" :disabled="loading">

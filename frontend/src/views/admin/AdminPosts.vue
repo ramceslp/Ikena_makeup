@@ -58,7 +58,7 @@ onMounted(loadPosts)
       <BaseButton
         data-new-post-btn
         variant="primary"
-        @click="router.push('/admin/posts/new')"
+        @click="router.push('/admin/noticias/new')"
       >
         <span class="material-symbols-outlined text-[18px]" aria-hidden="true">add</span>
         Nueva publicación
@@ -82,7 +82,7 @@ onMounted(loadPosts)
     <div v-else-if="!posts.length" data-empty-state class="text-center py-16">
       <span class="material-symbols-outlined text-5xl text-blush-canvas mb-4" aria-hidden="true">newspaper</span>
       <p class="font-body-lg text-body-lg text-on-surface-variant">No hay publicaciones aún</p>
-      <BaseButton variant="primary" class="mt-6" @click="router.push('/admin/posts/new')">
+      <BaseButton variant="primary" class="mt-6" @click="router.push('/admin/noticias/new')">
         Crear primera publicación
       </BaseButton>
     </div>
@@ -147,7 +147,7 @@ onMounted(loadPosts)
                 <button
                   type="button"
                   data-edit-btn
-                  @click="router.push(`/admin/posts/${post.id}/edit`)"
+                  @click="router.push(`/admin/noticias/${post.id}/edit`)"
                   class="p-2 rounded-lg hover:bg-surface-container transition-colors text-on-surface-variant hover:text-primary"
                   aria-label="Editar publicación"
                 >

@@ -93,6 +93,30 @@ describe('posts store — fetchPosts', () => {
     expect(loadingDuringCall).toBe(true)
     expect(store.loading).toBe(false)
   })
+
+  // FIX 7 — fetchPosts must NOT mutate this.filters (cross-navigation contamination)
+  it('fetchPosts does NOT persist params into this.filters across calls', async () => {
+    api.get.mockResolvedValue({ data: { data: [], meta: {} } })
+
+    const store = usePostsStore()
+    const filtersBefore = JSON.stringify(store.filters)
+
+    // First call with explicit type + page filters
+    await store.fetchPosts({ type: 'oferta', page: 3 })
+
+    // store.filters must be unchanged
+    expect(JSON.stringify(store.filters)).toBe(filtersBefore)
+
+    vi.clearAllMocks()
+    api.get.mockResolvedValue({ data: { data: [], meta: {} } })
+
+    // Second call with NO args — must NOT carry type/page from the first call
+    await store.fetchPosts()
+
+    const secondCallArgs = api.get.mock.calls[0]
+    expect(secondCallArgs[1].params).not.toHaveProperty('type')
+    expect(secondCallArgs[1].params).not.toHaveProperty('page')
+  })
 })
 
 // ---------------------------------------------------------------------------

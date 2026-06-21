@@ -23,9 +23,9 @@ import AdminPosts from '../views/admin/AdminPosts.vue'
 const router = createRouter({
   history: createMemoryHistory(),
   routes: [
-    { path: '/admin/posts', component: AdminPosts, name: 'AdminPosts' },
-    { path: '/admin/posts/new', component: { template: '<div/>' }, name: 'AdminPostCreate' },
-    { path: '/admin/posts/:id/edit', component: { template: '<div/>' }, name: 'AdminPostEdit' },
+    { path: '/admin/noticias', component: AdminPosts, name: 'AdminPosts' },
+    { path: '/admin/noticias/new', component: { template: '<div/>' }, name: 'AdminPostCreate' },
+    { path: '/admin/noticias/:id/edit', component: { template: '<div/>' }, name: 'AdminPostEdit' },
     { path: '/:pathMatch(.*)*', component: { template: '<div/>' } },
   ],
 })
@@ -62,12 +62,13 @@ describe('AdminPosts.vue — admin post list', () => {
     pinia = createPinia()
     setActivePinia(pinia)
     vi.clearAllMocks()
-    await router.push('/admin/posts')
+    await router.push('/admin/noticias')
   })
 
   it('calls fetchAdminPosts on mount', async () => {
-    api.get.mockResolvedValueOnce({ data: { data: fakePosts, meta: {} } })
-
+    // Spy BEFORE mounting — api.get is never called (spy intercepts fetchAdminPosts).
+    // Do NOT add api.get.mockResolvedValueOnce here; it would not be consumed and
+    // would leak into later tests (vi.clearAllMocks() does not clear the Once queue).
     const store = usePostsStore()
     const fetchSpy = vi.spyOn(store, 'fetchAdminPosts').mockResolvedValue()
 
@@ -135,14 +136,12 @@ describe('AdminPosts.vue — admin post list', () => {
   })
 
   it('shows empty state when no posts', async () => {
+    // FIX 5: API mock returns empty payload; no manual store mutation.
+    // Test fails if v-else-if="!posts.length" regresses.
     api.get.mockResolvedValueOnce({ data: { data: [], meta: {} } })
 
-    const store = usePostsStore()
     const wrapper = mountAdminPosts(pinia)
     await flushPromises()
-    store.posts = []
-    store.loading = false
-    await wrapper.vm.$nextTick()
 
     expect(wrapper.find('[data-empty-state]').exists()).toBe(true)
   })

@@ -38,35 +38,35 @@ describe('news routes — public', () => {
 })
 
 describe('news routes — admin', () => {
-  it('/admin/posts route exists with name AdminPosts', () => {
+  it('/admin/noticias route exists with name AdminPosts', () => {
     const route = findRoute('AdminPosts')
     expect(route).toBeDefined()
-    expect(route.path).toBe('/admin/posts')
+    expect(route.path).toBe('/admin/noticias')
   })
 
-  it('/admin/posts route has requiresAdmin meta', () => {
+  it('/admin/noticias route has requiresAdmin meta', () => {
     const route = findRoute('AdminPosts')
     expect(route.meta?.requiresAdmin).toBe(true)
   })
 
-  it('/admin/posts/new route exists with name AdminPostCreate', () => {
+  it('/admin/noticias/new route exists with name AdminPostCreate', () => {
     const route = findRoute('AdminPostCreate')
     expect(route).toBeDefined()
-    expect(route.path).toBe('/admin/posts/new')
+    expect(route.path).toBe('/admin/noticias/new')
   })
 
-  it('/admin/posts/new route has requiresAdmin meta', () => {
+  it('/admin/noticias/new route has requiresAdmin meta', () => {
     const route = findRoute('AdminPostCreate')
     expect(route.meta?.requiresAdmin).toBe(true)
   })
 
-  it('/admin/posts/:id/edit route exists with name AdminPostEdit', () => {
+  it('/admin/noticias/:id/edit route exists with name AdminPostEdit', () => {
     const route = findRoute('AdminPostEdit')
     expect(route).toBeDefined()
-    expect(route.path).toBe('/admin/posts/:id/edit')
+    expect(route.path).toBe('/admin/noticias/:id/edit')
   })
 
-  it('/admin/posts/:id/edit route has requiresAdmin meta', () => {
+  it('/admin/noticias/:id/edit route has requiresAdmin meta', () => {
     const route = findRoute('AdminPostEdit')
     expect(route.meta?.requiresAdmin).toBe(true)
   })

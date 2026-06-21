@@ -20,11 +20,11 @@ export const usePostsStore = defineStore('posts', {
       this.loading = true
       this.error = null
       try {
-        const merged = { ...this.filters, ...filters }
-        this.filters = merged
-        // Strip empty/null/undefined values so they don't pollute the query string
+        // Build a local params object — do NOT mutate this.filters.
+        // Mutating this.filters causes cross-navigation filter contamination:
+        // a second call with no args would silently carry params from the first call.
         const params = {}
-        for (const [key, value] of Object.entries(merged)) {
+        for (const [key, value] of Object.entries(filters)) {
           if (value !== '' && value !== null && value !== undefined) {
             params[key] = value
           }

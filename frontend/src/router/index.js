@@ -224,19 +224,19 @@ const routes = [
 
   // ── Admin: Posts (noticias) ───────────────────────────────────────────────
   {
-    path: '/admin/posts',
+    path: '/admin/noticias',
     name: 'AdminPosts',
     component: AdminPosts,
     meta: { requiresAdmin: true },
   },
   {
-    path: '/admin/posts/new',
+    path: '/admin/noticias/new',
     name: 'AdminPostCreate',
     component: AdminPostCreate,
     meta: { requiresAdmin: true },
   },
   {
-    path: '/admin/posts/:id/edit',
+    path: '/admin/noticias/:id/edit',
     name: 'AdminPostEdit',
     component: AdminPostEdit,
     meta: { requiresAdmin: true },

@@ -22,6 +22,10 @@ vi.mock('@tiptap/vue-3', () => {
 })
 vi.mock('@tiptap/starter-kit', () => ({ default: { configure: vi.fn(() => ({})) } }))
 vi.mock('@tiptap/extension-youtube', () => ({ default: { configure: vi.fn(() => ({})) } }))
+vi.mock('@tiptap/core', () => ({
+  Node: { create: vi.fn(() => ({})) },
+  mergeAttributes: vi.fn((...attrs) => Object.assign({}, ...attrs)),
+}))
 
 vi.mock('../services/api.js', () => ({
   default: {
@@ -43,8 +47,8 @@ import AdminPostCreate from '../views/admin/AdminPostCreate.vue'
 const router = createRouter({
   history: createMemoryHistory(),
   routes: [
-    { path: '/admin/posts/new', component: AdminPostCreate, name: 'AdminPostCreate' },
-    { path: '/admin/posts', component: { template: '<div/>' }, name: 'AdminPosts' },
+    { path: '/admin/noticias/new', component: AdminPostCreate, name: 'AdminPostCreate' },
+    { path: '/admin/noticias', component: { template: '<div/>' }, name: 'AdminPosts' },
     { path: '/:pathMatch(.*)*', component: { template: '<div/>' } },
   ],
 })
@@ -56,7 +60,7 @@ describe('AdminPostCreate.vue — create form with draft-first flow', () => {
     pinia = createPinia()
     setActivePinia(pinia)
     vi.clearAllMocks()
-    await router.push('/admin/posts/new')
+    await router.push('/admin/noticias/new')
   })
 
   function mountCreate() {
@@ -170,7 +174,7 @@ describe('AdminPostCreate.vue — create form with draft-first flow', () => {
     await wrapper.find('form').trigger('submit.prevent')
     await flushPromises()
 
-    expect(router.currentRoute.value.path).toBe('/admin/posts')
+    expect(router.currentRoute.value.path).toBe('/admin/noticias')
   })
 
   it('TipTapEditor postId is null before first save (draft-first)', () => {

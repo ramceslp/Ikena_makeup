@@ -22,6 +22,10 @@ vi.mock('@tiptap/vue-3', () => {
 })
 vi.mock('@tiptap/starter-kit', () => ({ default: { configure: vi.fn(() => ({})) } }))
 vi.mock('@tiptap/extension-youtube', () => ({ default: { configure: vi.fn(() => ({})) } }))
+vi.mock('@tiptap/core', () => ({
+  Node: { create: vi.fn(() => ({})) },
+  mergeAttributes: vi.fn((...attrs) => Object.assign({}, ...attrs)),
+}))
 
 vi.mock('../services/api.js', () => ({
   default: {
@@ -43,8 +47,8 @@ import AdminPostEdit from '../views/admin/AdminPostEdit.vue'
 const router = createRouter({
   history: createMemoryHistory(),
   routes: [
-    { path: '/admin/posts/:id/edit', component: AdminPostEdit, name: 'AdminPostEdit' },
-    { path: '/admin/posts', component: { template: '<div/>' }, name: 'AdminPosts' },
+    { path: '/admin/noticias/:id/edit', component: AdminPostEdit, name: 'AdminPostEdit' },
+    { path: '/admin/noticias', component: { template: '<div/>' }, name: 'AdminPosts' },
     { path: '/:pathMatch(.*)*', component: { template: '<div/>' } },
   ],
 })
@@ -73,7 +77,7 @@ describe('AdminPostEdit.vue — edit form', () => {
     pinia = createPinia()
     setActivePinia(pinia)
     vi.clearAllMocks()
-    await router.push('/admin/posts/7/edit')
+    await router.push('/admin/noticias/7/edit')
   })
 
   function mountEdit() {
@@ -230,6 +234,6 @@ describe('AdminPostEdit.vue — edit form', () => {
     await wrapper.find('form').trigger('submit.prevent')
     await flushPromises()
 
-    expect(router.currentRoute.value.path).toBe('/admin/posts')
+    expect(router.currentRoute.value.path).toBe('/admin/noticias')
   })
 })
