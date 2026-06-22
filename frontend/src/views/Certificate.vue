@@ -2,21 +2,28 @@
 import { onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useCoursesStore } from '../stores/courses.js'
+import { useCertificateSettingsStore } from '../stores/certificateSettings.js'
 import CertificateCanvas from '../components/certificate/CertificateCanvas.vue'
 import CertificateControls from '../components/certificate/CertificateControls.vue'
 
 const route = useRoute()
 const coursesStore = useCoursesStore()
+const certificateSettingsStore = useCertificateSettingsStore()
 
 function handlePrint() {
   window.print()
 }
 
 onMounted(async () => {
+  // Branding (settings) is decoupled from issuance: fetch both in parallel.
+  // fetchSettings never throws — it falls back to the backend defaults payload.
   try {
-    await coursesStore.fetchCertificate(route.params.slug)
+    await Promise.all([
+      coursesStore.fetchCertificate(route.params.slug),
+      certificateSettingsStore.fetchSettings(),
+    ])
   } catch {
-    // error state is handled via coursesStore.certificateError in the template
+    // certificate error state is handled via coursesStore.certificateError
   }
 })
 </script>
@@ -71,7 +78,10 @@ onMounted(async () => {
 
       <!-- Success state -->
       <div v-else-if="coursesStore.certificate">
-        <CertificateCanvas :certificate="coursesStore.certificate" />
+        <CertificateCanvas
+          :certificate="coursesStore.certificate"
+          :settings="certificateSettingsStore.settings"
+        />
         <CertificateControls @print="handlePrint" />
       </div>
 
