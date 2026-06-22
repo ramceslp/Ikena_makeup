@@ -20,9 +20,20 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // ---------------------------------------------------------------
-        // 0. Categories (must exist before courses reference them)
+        // 0. Categories (must exist before courses/products reference them)
         // ---------------------------------------------------------------
         $this->call(CategorySeeder::class);
+
+        // ---------------------------------------------------------------
+        // 0b. Products (physical catalog — depends on categories)
+        // ---------------------------------------------------------------
+        $this->call(ProductSeeder::class);
+
+        // ---------------------------------------------------------------
+        // 0c. Services + their booking slots (depend on categories)
+        // ---------------------------------------------------------------
+        $this->call(ServiceSeeder::class);
+        $this->call(ServiceSlotSeeder::class);
 
         // ---------------------------------------------------------------
         // 1. Instructor
@@ -263,5 +274,15 @@ class DatabaseSeeder extends Seeder
             $lesson1_1_1->id => ['completed_at' => now()],
             $lesson1_1_2->id => ['completed_at' => now()],
         ]);
+
+        // ---------------------------------------------------------------
+        // 9. Appointments (need services + users) — one per lifecycle state
+        // ---------------------------------------------------------------
+        $this->call(AppointmentSeeder::class);
+
+        // ---------------------------------------------------------------
+        // 10. Posts / news (need an author user)
+        // ---------------------------------------------------------------
+        $this->call(PostSeeder::class);
     }
 }
