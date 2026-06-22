@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\CartCheckoutController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\CertificateController;
+use App\Http\Controllers\Api\CertificateSettingController;
 use App\Http\Controllers\Api\CheckoutController;
 use App\Http\Controllers\Api\CourseController;
 use App\Http\Controllers\Api\CourseReviewController;
@@ -54,6 +55,10 @@ Route::get('/posts/{slug}', [PostController::class, 'show']);
 Route::get('/services/{serviceId}/available-slots', [BookingController::class, 'availableSlots']);
 Route::get('/courses/{course:slug}/reviews', [CourseReviewController::class, 'index']);
 Route::get('/certificates/verify/{code}', [CertificateController::class, 'verify']);
+
+// Public certificate branding (logo, business name, copy, signer, design variant)
+// for the certificate canvas. No auth — returns defaults when unseeded.
+Route::get('/certificate-settings', [CertificateSettingController::class, 'show']);
 
 // Protected routes — require Sanctum Bearer token
 Route::middleware('auth:sanctum')->group(function () {

@@ -284,5 +284,10 @@ class DatabaseSeeder extends Seeder
         // 10. Posts / news (need an author user)
         // ---------------------------------------------------------------
         $this->call(PostSeeder::class);
+
+        // ---------------------------------------------------------------
+        // 11. Certificate branding singleton (id=1) with defaults
+        // ---------------------------------------------------------------
+        $this->call(CertificateSettingSeeder::class);
     }
 }
