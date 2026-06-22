@@ -1,6 +1,7 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import BaseButton from '../ui/BaseButton.vue'
+import CertificateCanvas from '../certificate/CertificateCanvas.vue'
 
 const props = defineProps({
   settings: { type: Object, default: null },
@@ -44,6 +45,28 @@ function handleLogoChange(event) {
   selectedLogo.value = event.target.files?.[0] ?? null
 }
 
+// Live preview — mirrors the current form values through the real canvas so the
+// admin sees the chosen variant + copy before saving. Logo uses the stored URL
+// (the new file only appears in the preview after a successful save).
+const sampleCertificate = {
+  code: 'IKENA-0000-DEMO',
+  issued_at: new Date().toISOString(),
+  student_name: 'Nombre del Alumno',
+  course_title: 'Nombre del Curso',
+  instructor_name: '',
+}
+
+const previewSettings = computed(() => ({
+  business_name: business_name.value,
+  title: title.value,
+  award_line: award_line.value,
+  achievement_line: achievement_line.value,
+  signer_name: signer_name.value,
+  signer_role: signer_role.value,
+  design_variant: design_variant.value,
+  logo_url: props.settings?.logo_url ?? null,
+}))
+
 function handleSubmit() {
   const fd = new FormData()
   fd.append('business_name', business_name.value)
@@ -62,7 +85,8 @@ const inputClass =
 </script>
 
 <template>
-  <form @submit.prevent="handleSubmit" class="flex flex-col gap-6">
+  <div class="flex flex-col gap-8">
+    <form @submit.prevent="handleSubmit" class="flex flex-col gap-6">
     <!-- Business name -->
     <div class="flex flex-col gap-1">
       <label for="business_name" class="font-label-md text-label-md text-on-surface-variant">Nombre del negocio *</label>
@@ -128,5 +152,17 @@ const inputClass =
         {{ loading ? 'Guardando…' : 'Guardar configuración' }}
       </BaseButton>
     </div>
-  </form>
+    </form>
+
+    <!-- Live preview -->
+    <section class="border-t border-blush-canvas/20 pt-6">
+      <h2 class="font-title-md text-title-md text-deep-marsala mb-1">Vista previa</h2>
+      <p class="font-body-sm text-body-sm text-on-surface-variant mb-4">
+        Refleja los valores actuales del formulario. El logo nuevo se verá tras guardar.
+      </p>
+      <div class="bg-surface-container-low rounded-2xl p-4 overflow-x-auto">
+        <CertificateCanvas :certificate="sampleCertificate" :settings="previewSettings" />
+      </div>
+    </section>
+  </div>
 </template>

@@ -3,6 +3,9 @@ import { mount } from '@vue/test-utils'
 import CertificateCanvas from '../components/certificate/CertificateCanvas.vue'
 import Variant1 from '../components/certificate/variants/Variant1.vue'
 import Variant2 from '../components/certificate/variants/Variant2.vue'
+import Variant3 from '../components/certificate/variants/Variant3.vue'
+import Variant4 from '../components/certificate/variants/Variant4.vue'
+import Variant5 from '../components/certificate/variants/Variant5.vue'
 
 // ---------------------------------------------------------------------------
 // CertificateCanvas is now a THIN SWITCHER: it picks the active variant from
@@ -50,9 +53,22 @@ describe('CertificateCanvas.vue — variant switcher', () => {
     expect(wrapper.findComponent(Variant1).exists()).toBe(false)
   })
 
-  it('falls back to Variant1 for a not-yet-implemented variant (3-5)', () => {
+  it('renders Variant3 when design_variant is 3', () => {
+    const wrapper = mountCanvas(3)
+    expect(wrapper.findComponent(Variant3).exists()).toBe(true)
+    expect(wrapper.findComponent(Variant1).exists()).toBe(false)
+  })
+
+  it('renders Variant4 when design_variant is 4', () => {
     const wrapper = mountCanvas(4)
-    expect(wrapper.findComponent(Variant1).exists()).toBe(true)
+    expect(wrapper.findComponent(Variant4).exists()).toBe(true)
+    expect(wrapper.findComponent(Variant1).exists()).toBe(false)
+  })
+
+  it('renders Variant5 when design_variant is 5', () => {
+    const wrapper = mountCanvas(5)
+    expect(wrapper.findComponent(Variant5).exists()).toBe(true)
+    expect(wrapper.findComponent(Variant1).exists()).toBe(false)
   })
 
   it('falls back to Variant1 for an out-of-range design_variant', () => {
