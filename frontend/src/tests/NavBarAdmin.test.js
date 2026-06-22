@@ -67,6 +67,7 @@ describe('NavBar — unified admin menu', () => {
 
     expect(adminHrefs(wrapper).sort()).toEqual([
       '/admin/appointments',
+      '/admin/certificate',
       '/admin/noticias',
       '/admin/products',
       '/admin/services',

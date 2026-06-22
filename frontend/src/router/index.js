@@ -51,6 +51,9 @@ const AdminPostEdit = () => import('../views/admin/AdminPostEdit.vue')
 const AdminServiceSlots = () => import('../views/admin/AdminServiceSlots.vue')
 const AdminAppointments = () => import('../views/admin/AdminAppointments.vue')
 
+// Certificate branding — admin
+const AdminCertificateSettings = () => import('../views/admin/AdminCertificateSettings.vue')
+
 const routes = [
   {
     path: '/',
@@ -263,6 +266,14 @@ const routes = [
     path: '/admin/appointments',
     name: 'AdminAppointments',
     component: AdminAppointments,
+    meta: { requiresAdmin: true },
+  },
+
+  // ── Admin: Certificate branding settings ─────────────────────────────────
+  {
+    path: '/admin/certificate',
+    name: 'AdminCertificateSettings',
+    component: AdminCertificateSettings,
     meta: { requiresAdmin: true },
   },
 ]

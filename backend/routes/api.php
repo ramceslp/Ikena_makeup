@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\Admin\AppointmentController as AdminAppointmentController;
+use App\Http\Controllers\Api\Admin\CertificateSettingController as AdminCertificateSettingController;
 use App\Http\Controllers\Api\Admin\PostController as AdminPostController;
 use App\Http\Controllers\Api\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\Api\Admin\ServiceController as AdminServiceController;
@@ -141,6 +142,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/posts/{post}/images', [AdminPostController::class, 'storeImages']);
         Route::delete('/posts/{post}/images/{image}', [AdminPostController::class, 'destroyImage']);
         Route::post('/posts/{post}/images/reorder', [AdminPostController::class, 'reorderImages']);
+
+        // Certificate branding settings (singleton)
+        Route::get('/certificate-settings', [AdminCertificateSettingController::class, 'show']);
+        Route::post('/certificate-settings', [AdminCertificateSettingController::class, 'update']);
 
         // Appointment management
         Route::get('/appointments', [AdminAppointmentController::class, 'index']);
