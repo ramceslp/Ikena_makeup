@@ -2,6 +2,9 @@
 import { computed } from 'vue'
 import Variant1 from './variants/Variant1.vue'
 import Variant2 from './variants/Variant2.vue'
+import Variant3 from './variants/Variant3.vue'
+import Variant4 from './variants/Variant4.vue'
+import Variant5 from './variants/Variant5.vue'
 
 const props = defineProps({
   certificate: {
@@ -33,12 +36,14 @@ const CLIENT_DEFAULTS = {
 
 const safeSettings = computed(() => props.settings ?? CLIENT_DEFAULTS)
 
-// Only the variants shipped so far are registered; 3-5 arrive in PR4.
 // Anything unknown / out-of-range / missing falls back to Variant1 so the
 // certificate never fails to render.
 const variantMap = {
   1: Variant1,
   2: Variant2,
+  3: Variant3,
+  4: Variant4,
+  5: Variant5,
 }
 
 const activeVariant = computed(() => {

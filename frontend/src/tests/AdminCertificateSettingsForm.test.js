@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import AdminCertificateSettingsForm from '../components/admin/AdminCertificateSettingsForm.vue'
+import CertificateCanvas from '../components/certificate/CertificateCanvas.vue'
+import Variant5 from '../components/certificate/variants/Variant5.vue'
 
 const settings = {
   business_name: 'Studio Bella',
@@ -54,5 +56,34 @@ describe('AdminCertificateSettingsForm.vue', () => {
 
     const fd = wrapper.emitted('submit')[0][0]
     expect(fd.get('design_variant')).toBe('5')
+  })
+
+  it('renders a live certificate preview reflecting the current form values', () => {
+    const wrapper = mount(AdminCertificateSettingsForm, { props: { settings } })
+
+    const preview = wrapper.findComponent(CertificateCanvas)
+    expect(preview.exists()).toBe(true)
+    expect(preview.props('settings')).toMatchObject({
+      business_name: 'Studio Bella',
+      design_variant: 3,
+    })
+  })
+
+  it('live preview switches variant when design_variant changes', async () => {
+    const wrapper = mount(AdminCertificateSettingsForm, { props: { settings } })
+
+    await wrapper.find('#design_variant').setValue('5')
+
+    expect(wrapper.findComponent(Variant5).exists()).toBe(true)
+  })
+
+  it('live preview reflects edits to a text field', async () => {
+    const wrapper = mount(AdminCertificateSettingsForm, { props: { settings } })
+
+    await wrapper.find('#business_name').setValue('Nuevo Estudio')
+
+    expect(wrapper.findComponent(CertificateCanvas).props('settings').business_name).toBe(
+      'Nuevo Estudio',
+    )
   })
 })
