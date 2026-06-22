@@ -1,15 +1,50 @@
 <script setup>
+import { computed } from 'vue'
+import Variant1 from './variants/Variant1.vue'
+import Variant2 from './variants/Variant2.vue'
+
 const props = defineProps({
   certificate: {
     type: Object,
     required: true,
-    // expected shape: { code, issued_at, student_name, course_title, instructor_name }
+    // shape: { code, issued_at, student_name, course_title, instructor_name }
+  },
+  settings: {
+    type: Object,
+    required: true,
+    // shape: { business_name, title, award_line, achievement_line,
+    //          signer_name, signer_role, design_variant, logo_url }
   },
 })
 
-function formatDate(iso) {
-  return new Intl.DateTimeFormat('es', { dateStyle: 'long' }).format(new Date(iso))
+// Failsafe branding, mirroring the backend model defaults. The public endpoint
+// always returns a defaults-filled payload, so this only kicks in on a transport
+// failure — guaranteeing the certificate never renders blank (design §6).
+const CLIENT_DEFAULTS = {
+  business_name: 'Ikena Makeup Academy',
+  title: 'Certificado de Profesionalización',
+  award_line: 'Se otorga el presente certificado a',
+  achievement_line: 'por completar satisfactoriamente el curso',
+  signer_name: 'Ikena Makeup Academy',
+  signer_role: null,
+  design_variant: 1,
+  logo_url: null,
 }
+
+const safeSettings = computed(() => props.settings ?? CLIENT_DEFAULTS)
+
+// Only the variants shipped so far are registered; 3-5 arrive in PR4.
+// Anything unknown / out-of-range / missing falls back to Variant1 so the
+// certificate never fails to render.
+const variantMap = {
+  1: Variant1,
+  2: Variant2,
+}
+
+const activeVariant = computed(() => {
+  const idx = Number(safeSettings.value.design_variant)
+  return variantMap[idx] ?? Variant1
+})
 </script>
 
 <template>
@@ -17,107 +52,8 @@ function formatDate(iso) {
   <div
     class="w-full max-w-3xl mx-auto bg-background"
     role="document"
-    aria-label="Certificado de Profesionalización"
+    :aria-label="safeSettings.title"
   >
-    <!-- Outer decorative frame -->
-    <div class="border border-deep-marsala p-3 rounded-2xl">
-      <!-- Inner accent border -->
-      <div class="border-[3px] border-apricot-glow rounded-xl p-10 text-center space-y-6">
-
-        <!-- Header mark -->
-        <div class="flex justify-center mb-2">
-          <span
-            class="material-symbols-outlined text-apricot-glow"
-            style="font-size: 48px;"
-            aria-hidden="true"
-          >workspace_premium</span>
-        </div>
-
-        <!-- Academy name -->
-        <p class="font-label-md text-label-md text-on-surface-variant tracking-widest uppercase">
-          Ikena Makeup Academy
-        </p>
-
-        <!-- Main heading -->
-        <h1 class="font-display-lg text-display-lg text-deep-marsala leading-tight">
-          Certificado de Profesionalización
-        </h1>
-
-        <!-- Decorative divider -->
-        <div class="flex items-center gap-4 justify-center">
-          <div class="h-px flex-1 bg-outline-variant" />
-          <span class="text-apricot-glow text-lg">✦</span>
-          <div class="h-px flex-1 bg-outline-variant" />
-        </div>
-
-        <!-- Award body -->
-        <div class="space-y-2">
-          <p class="font-body-md text-body-md text-on-surface-variant">
-            Se otorga el presente certificado a
-          </p>
-
-          <!-- Student name — largest, most prominent element -->
-          <p class="font-headline-lg text-headline-lg text-deep-marsala font-semibold mt-1">
-            {{ certificate.student_name }}
-          </p>
-
-          <p class="font-body-md text-body-md text-on-surface-variant mt-3">
-            por completar satisfactoriamente el curso
-          </p>
-
-          <!-- Course title -->
-          <p class="font-title-md text-title-md text-on-surface font-semibold mt-1 italic">
-            "{{ certificate.course_title }}"
-          </p>
-        </div>
-
-        <!-- Decorative divider -->
-        <div class="flex items-center gap-4 justify-center">
-          <div class="h-px flex-1 bg-outline-variant" />
-          <span class="text-apricot-glow text-lg">✦</span>
-          <div class="h-px flex-1 bg-outline-variant" />
-        </div>
-
-        <!-- Footer info row -->
-        <div class="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
-          <!-- Instructor -->
-          <div class="text-center sm:text-left">
-            <p class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest mb-1">
-              Instructor
-            </p>
-            <p class="font-body-md text-body-md text-on-surface font-medium">
-              {{ certificate.instructor_name }}
-            </p>
-          </div>
-
-          <!-- Decorative seal placeholder -->
-          <div
-            class="w-16 h-16 rounded-full border-2 border-apricot-glow bg-surface-container flex items-center justify-center flex-shrink-0"
-            aria-hidden="true"
-          >
-            <span class="material-symbols-outlined text-apricot-glow text-2xl">verified</span>
-          </div>
-
-          <!-- Issue date -->
-          <div class="text-center sm:text-right">
-            <p class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest mb-1">
-              Fecha de emisión
-            </p>
-            <p class="font-body-md text-body-md text-on-surface font-medium">
-              {{ formatDate(certificate.issued_at) }}
-            </p>
-          </div>
-        </div>
-
-        <!-- Verification code footer -->
-        <div class="mt-4 pt-4 border-t border-outline-variant">
-          <p class="font-label-sm text-label-sm text-on-surface-variant">
-            Código de verificación:
-            <span class="text-deep-marsala font-semibold tracking-wider ml-1">{{ certificate.code }}</span>
-          </p>
-        </div>
-
-      </div>
-    </div>
+    <component :is="activeVariant" :certificate="certificate" :settings="safeSettings" />
   </div>
 </template>
