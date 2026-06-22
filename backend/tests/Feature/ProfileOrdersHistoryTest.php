@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\Appointment;
 use App\Models\Course;
 use App\Models\Order;
+use App\Models\OrderItem;
+use App\Models\Product;
 use App\Models\Service;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -183,6 +185,54 @@ class ProfileOrdersHistoryTest extends TestCase
         $this->assertArrayHasKey('course', $row, 'Course order must have `course` key');
         $this->assertArrayNotHasKey('appointment', $row, 'Course order must NOT have `appointment` key');
         $this->assertEquals($course->title, $row['course']['title']);
+    }
+
+    // -------------------------------------------------------------------------
+    // Product cart order shape: exposes `type` + `items`, no course/appointment.
+    // Regression for the Profile history crash where product_cart orders (no
+    // course/appointment relation) reached the course render branch.
+    // -------------------------------------------------------------------------
+
+    public function test_product_cart_order_exposes_type_and_items_in_profile_history(): void
+    {
+        $user    = $this->makeUser();
+        $product = Product::factory()->create(['title' => 'Labial Mate Rojo']);
+
+        $order = Order::create([
+            'user_id'               => $user->id,
+            'course_id'             => null,
+            'appointment_id'        => null,
+            'type'                  => 'product_cart',
+            'client_transaction_id' => 'ORD-prod-001',
+            'gateway'               => 'fake',
+            'amount_cents'          => 9545,
+            'currency'              => 'USD',
+            'status'                => 'pending',
+        ]);
+
+        OrderItem::create([
+            'order_id'         => $order->id,
+            'product_id'       => $product->id,
+            'product_title'    => 'Labial Mate Rojo',
+            'quantity'         => 2,
+            'unit_price_cents' => 2200,
+            'line_total_cents' => 4400,
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $response = $this->getJson('/api/profile/orders');
+        $response->assertStatus(200);
+
+        $row = $response->json('data')[0];
+
+        $this->assertSame('product_cart', $row['type']);
+        $this->assertArrayNotHasKey('course', $row);
+        $this->assertArrayNotHasKey('appointment', $row);
+        $this->assertArrayHasKey('items', $row);
+        $this->assertCount(1, $row['items']);
+        $this->assertSame('Labial Mate Rojo', $row['items'][0]['product_title']);
+        $this->assertSame(2, $row['items'][0]['quantity']);
     }
 
     // -------------------------------------------------------------------------

@@ -106,3 +106,52 @@ describe('PurchaseRow.vue — appointment variant', () => {
     expect(wrapper.text()).toContain('10:00')
   })
 })
+
+// ---------------------------------------------------------------------------
+// Product cart variant — regression for the Profile history crash where a
+// product_cart order (no course/appointment relation) reached the course branch
+// and threw on `order.course.thumbnail`.
+// ---------------------------------------------------------------------------
+
+describe('PurchaseRow.vue — product cart variant', () => {
+  const productOrder = {
+    id: 10,
+    type: 'product_cart',
+    status: 'pending',
+    amount_cents: 9545,
+    currency: 'USD',
+    paid_at: null,
+    created_at: '2026-06-01T00:00:00Z',
+    items: [
+      { product_title: 'Labial Mate Rojo', quantity: 2, line_total_cents: 4400 },
+    ],
+  }
+
+  it('renders a single-item product order without crashing', () => {
+    const wrapper = mount(PurchaseRow, { props: { order: productOrder } })
+    expect(wrapper.text()).toContain('Labial Mate Rojo')
+    expect(wrapper.text()).toContain('$95.45')
+  })
+
+  it('summarizes multiple products by count', () => {
+    const wrapper = mount(PurchaseRow, {
+      props: {
+        order: {
+          ...productOrder,
+          items: [
+            { product_title: 'Base', quantity: 1, line_total_cents: 6000 },
+            { product_title: 'Paleta', quantity: 1, line_total_cents: 6000 },
+          ],
+        },
+      },
+    })
+    expect(wrapper.text()).toContain('2 productos')
+  })
+
+  it('does not crash when a course order is missing its relation (defensive)', () => {
+    const wrapper = mount(PurchaseRow, {
+      props: { order: { id: 11, type: 'course', status: 'pending', amount_cents: 5000, currency: 'USD' } },
+    })
+    expect(wrapper.find('div').exists()).toBe(true)
+  })
+})

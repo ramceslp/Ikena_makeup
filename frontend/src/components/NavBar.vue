@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 import { useCartStore } from '../stores/cart.js'
@@ -10,8 +10,37 @@ const cartStore = useCartStore()
 
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 const user = computed(() => authStore.user)
+const isAdmin = computed(() => authStore.user?.role === 'admin')
 const cartCount = computed(() => cartStore.count)
 const mobileOpen = ref(false)
+
+// Single source of truth for the unified admin menu (desktop dropdown + mobile group).
+const adminLinks = [
+  { to: '/admin/services', label: 'Servicios' },
+  { to: '/admin/products', label: 'Productos' },
+  { to: '/admin/noticias', label: 'Noticias' },
+  { to: '/admin/appointments', label: 'Citas' },
+]
+
+// Desktop dropdown open/close + click-outside.
+const adminOpen = ref(false)
+const adminMenuRef = ref(null)
+
+function closeAdmin() {
+  adminOpen.value = false
+}
+
+function onDocumentClick(event) {
+  if (adminMenuRef.value && !adminMenuRef.value.contains(event.target)) {
+    adminOpen.value = false
+  }
+}
+
+onMounted(() => document.addEventListener('click', onDocumentClick))
+onBeforeUnmount(() => document.removeEventListener('click', onDocumentClick))
+
+// Mobile admin group (collapsible inside the hamburger menu).
+const adminMobileOpen = ref(false)
 
 function toggleMobile() {
   mobileOpen.value = !mobileOpen.value
@@ -75,30 +104,41 @@ const activeClass = 'text-primary border-b-2 border-apricot-glow'
             >
               Panel instructor
             </RouterLink>
-            <RouterLink
-              v-if="user?.role === 'admin'"
-              to="/admin/services"
-              :class="linkClass"
-              :active-class="activeClass"
-            >
-              Servicios admin
-            </RouterLink>
-            <RouterLink
-              v-if="user?.role === 'admin'"
-              to="/admin/products"
-              :class="linkClass"
-              :active-class="activeClass"
-            >
-              Productos admin
-            </RouterLink>
-            <RouterLink
-              v-if="user?.role === 'admin'"
-              to="/admin/appointments"
-              :class="linkClass"
-              :active-class="activeClass"
-            >
-              Citas
-            </RouterLink>
+            <!-- Unified admin menu (dropdown) -->
+            <div v-if="isAdmin" ref="adminMenuRef" class="relative">
+              <button
+                type="button"
+                data-admin-menu-trigger
+                @click="adminOpen = !adminOpen"
+                :class="[linkClass, 'flex items-center gap-1', adminOpen && activeClass]"
+                aria-haspopup="true"
+                :aria-expanded="adminOpen"
+              >
+                Admin
+                <span
+                  class="material-symbols-outlined text-[18px] transition-transform"
+                  :class="adminOpen && 'rotate-180'"
+                  aria-hidden="true"
+                >
+                  expand_more
+                </span>
+              </button>
+              <div
+                v-if="adminOpen"
+                class="absolute right-0 mt-2 w-48 rounded-xl bg-surface shadow-lg border border-blush-canvas/20 py-2 z-50"
+              >
+                <RouterLink
+                  v-for="link in adminLinks"
+                  :key="link.to"
+                  :to="link.to"
+                  @click="closeAdmin"
+                  class="block px-4 py-2 font-body-md text-body-md text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-colors"
+                  active-class="text-primary"
+                >
+                  {{ link.label }}
+                </RouterLink>
+              </div>
+            </div>
 
             <!-- User avatar + logout -->
             <div class="flex items-center gap-3">
@@ -229,30 +269,35 @@ const activeClass = 'text-primary border-b-2 border-apricot-glow'
           >
             Panel instructor
           </RouterLink>
-          <RouterLink
-            v-if="user?.role === 'admin'"
-            to="/admin/services"
-            @click="mobileOpen = false"
-            class="block py-2 font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors"
-          >
-            Servicios admin
-          </RouterLink>
-          <RouterLink
-            v-if="user?.role === 'admin'"
-            to="/admin/products"
-            @click="mobileOpen = false"
-            class="block py-2 font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors"
-          >
-            Productos admin
-          </RouterLink>
-          <RouterLink
-            v-if="user?.role === 'admin'"
-            to="/admin/appointments"
-            @click="mobileOpen = false"
-            class="block py-2 font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors"
-          >
-            Citas
-          </RouterLink>
+          <!-- Unified admin group (collapsible) -->
+          <template v-if="isAdmin">
+            <button
+              type="button"
+              @click="adminMobileOpen = !adminMobileOpen"
+              class="flex items-center justify-between w-full py-2 font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors"
+              :aria-expanded="adminMobileOpen"
+            >
+              Admin
+              <span
+                class="material-symbols-outlined text-[20px] transition-transform"
+                :class="adminMobileOpen && 'rotate-180'"
+                aria-hidden="true"
+              >
+                expand_more
+              </span>
+            </button>
+            <div v-if="adminMobileOpen" class="pl-4 space-y-1">
+              <RouterLink
+                v-for="link in adminLinks"
+                :key="link.to"
+                :to="link.to"
+                @click="mobileOpen = false"
+                class="block py-2 font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors"
+              >
+                {{ link.label }}
+              </RouterLink>
+            </div>
+          </template>
           <RouterLink to="/profile" @click="mobileOpen = false" class="flex items-center gap-2 py-2 hover:opacity-80 transition-opacity">
             <img v-if="user?.avatar" :src="user.avatar" :alt="user.name" class="w-9 h-9 rounded-full object-cover ring-2 ring-apricot-glow" />
             <div
