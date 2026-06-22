@@ -20,6 +20,7 @@ const adminLinks = [
   { to: '/admin/products', label: 'Productos' },
   { to: '/admin/noticias', label: 'Noticias' },
   { to: '/admin/appointments', label: 'Citas' },
+  { to: '/admin/certificate', label: 'Certificados' },
 ]
 
 // Desktop dropdown open/close + click-outside.
