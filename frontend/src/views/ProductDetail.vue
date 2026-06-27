@@ -112,10 +112,12 @@ onMounted(async () => {
             data-add-to-cart
             :disabled="product.stock_state === 'Agotado'"
             @click="addToCart"
-            class="flex-1 bg-apricot-glow text-deep-marsala px-6 py-4 rounded-xl font-label-md text-label-md hover:-translate-y-0.5 active:scale-95 transition-all shadow-lg shadow-apricot-glow/20 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            class="btn-gloss flex-1 bg-apricot-glow text-deep-marsala px-6 py-4 rounded-xl font-label-md text-label-md hover:-translate-y-0.5 active:scale-95 transition-all shadow-lg shadow-apricot-glow/20 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            <span class="material-symbols-outlined text-[20px]" aria-hidden="true">add_shopping_cart</span>
-            {{ product.stock_state === 'Agotado' ? 'Sin stock' : 'Agregar al carrito' }}
+            <span class="relative z-[1] inline-flex items-center justify-center gap-2">
+              <span class="material-symbols-outlined text-[20px]" aria-hidden="true">add_shopping_cart</span>
+              {{ product.stock_state === 'Agotado' ? 'Sin stock' : 'Agregar al carrito' }}
+            </span>
           </button>
           <RouterLink
             to="/cart"

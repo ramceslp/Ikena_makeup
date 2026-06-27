@@ -27,8 +27,10 @@ function isPaid(price) {
 
 <template>
   <!-- Hero: dark primary band matching Stitch layout -->
-  <section class="bg-primary text-on-primary">
-    <div class="max-w-container-max mx-auto px-gutter py-10 md:py-14">
+  <section class="relative overflow-hidden bg-primary text-on-primary">
+    <!-- Warm brand bloom over the dark marsala band -->
+    <div class="makeup-mesh absolute inset-0 opacity-20" aria-hidden="true" />
+    <div class="relative z-10 max-w-container-max mx-auto px-gutter py-10 md:py-14">
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-10 items-start">
 
         <!-- Left column: info (2/3 width on lg) -->
@@ -83,19 +85,21 @@ function isPaid(price) {
             <RouterLink
               v-if="!isAuthenticated"
               to="/login"
-              class="inline-flex items-center gap-2 bg-apricot-glow text-deep-marsala px-8 py-4 rounded-xl font-title-md text-title-md font-bold shadow-lg shadow-apricot-glow/20 hover:-translate-y-0.5 active:scale-95 transition-all"
+              class="btn-gloss inline-flex items-center gap-2 bg-apricot-glow text-deep-marsala px-8 py-4 rounded-xl font-title-md text-title-md font-bold shadow-lg shadow-apricot-glow/20 hover:-translate-y-0.5 active:scale-95 transition-all"
             >
-              Inicia sesión para inscribirte
+              <span class="relative z-[1]">Inicia sesión para inscribirte</span>
             </RouterLink>
 
             <!-- Enrolled → go to player -->
             <RouterLink
               v-else-if="course.is_enrolled"
               :to="`/learn/${course.slug}`"
-              class="inline-flex items-center gap-2 bg-apricot-glow text-deep-marsala px-8 py-4 rounded-xl font-title-md text-title-md font-bold shadow-lg shadow-apricot-glow/20 hover:-translate-y-0.5 active:scale-95 transition-all"
+              class="btn-gloss inline-flex items-center gap-2 bg-apricot-glow text-deep-marsala px-8 py-4 rounded-xl font-title-md text-title-md font-bold shadow-lg shadow-apricot-glow/20 hover:-translate-y-0.5 active:scale-95 transition-all"
             >
-              <span class="material-symbols-outlined text-[18px]" aria-hidden="true">play_circle</span>
-              Ir al curso
+              <span class="relative z-[1] inline-flex items-center gap-2">
+                <span class="material-symbols-outlined text-[18px]" aria-hidden="true">play_circle</span>
+                Ir al curso
+              </span>
             </RouterLink>
 
             <!-- Not enrolled + paid → checkout -->
