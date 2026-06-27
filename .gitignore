@@ -7,8 +7,13 @@
 .env
 *.env.local
 
+# ── Dependencies (root-level; per-app node_modules ignored in their own dirs) ──
+/node_modules/
+
 # ── Local tooling / agent state ────────────────────────────────────
 .atl/
+.claude/
+sdd/
 
 # ── OS ─────────────────────────────────────────────────────────────
 .DS_Store
