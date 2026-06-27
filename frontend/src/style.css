@@ -146,6 +146,28 @@
   --radius-xl: 0.75rem;
 }
 
+/*
+  Scroll-reveal motion (Phase 2). Paired with the v-reveal directive.
+  The hidden state is gated behind `prefers-reduced-motion: no-preference`, so a
+  user who opts out of motion always sees content at rest (never stuck at 0).
+  Uses transform/opacity only (GPU-friendly, no layout reflow). Ease-out curve
+  for an entrance that decelerates into place.
+*/
+@media (prefers-reduced-motion: no-preference) {
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition:
+      opacity 500ms cubic-bezier(0.16, 1, 0.3, 1),
+      transform 500ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .reveal.is-revealed {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 @media print {
   .no-print { display: none !important; }
   body { background: #ffffff; }

@@ -23,7 +23,7 @@ function formatPrice(price) {
   <section data-featured-products class="py-20 bg-surface-muted">
     <div class="max-w-container-max mx-auto px-gutter">
       <!-- Section header -->
-      <div class="flex items-end justify-between mb-10">
+      <div v-reveal class="flex items-end justify-between mb-10">
         <div>
           <p class="font-label-sm text-label-sm text-primary uppercase tracking-widest mb-2">
             Productos Profesionales
@@ -44,10 +44,11 @@ function formatPrice(price) {
       <!-- Products grid -->
       <div v-if="products.length > 0" class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div
-          v-for="product in products"
+          v-for="(product, i) in products"
           :key="product.id"
+          v-reveal="i"
           data-product-card
-          class="group flex flex-col bg-surface rounded-2xl overflow-hidden border border-blush-canvas/30 hover:shadow-lg transition-shadow"
+          class="group flex flex-col bg-surface rounded-2xl overflow-hidden border border-blush-canvas/30 hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-1 transition-all duration-300"
         >
           <!-- Thumbnail -->
           <router-link :to="`/products/${product.slug}`" class="block relative aspect-video bg-blush-canvas/10 overflow-hidden">
