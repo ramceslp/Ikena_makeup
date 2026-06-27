@@ -23,7 +23,7 @@ onMounted(() => {
     <div class="max-w-container-max mx-auto px-gutter">
 
       <!-- Page header + nav tabs -->
-      <div class="mb-10 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+      <div v-reveal class="mb-10 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
           <h1 class="font-headline-lg text-headline-lg text-deep-marsala">Panel del Instructor</h1>
           <p class="font-body-md text-body-md text-on-surface-variant mt-1">
@@ -110,27 +110,32 @@ onMounted(() => {
         <!-- KPI metric cards grid -->
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
           <MetricCard
+            v-reveal="0"
             label="Ingresos"
             :value="formatCurrency(kpis.total_revenue_cents, kpis.currency)"
             icon="payments"
           />
           <MetricCard
+            v-reveal="1"
             label="Ventas"
             :value="kpis.total_sales"
             icon="shopping_cart"
           />
           <MetricCard
+            v-reveal="2"
             label="Estudiantes"
             :value="kpis.total_students"
             icon="group"
           />
           <MetricCard
+            v-reveal="3"
             label="Cursos"
             :value="kpis.total_courses"
             icon="menu_book"
             :hint="`${kpis.published_courses} publicado${kpis.published_courses !== 1 ? 's' : ''}`"
           />
           <MetricCard
+            v-reveal="4"
             label="Valoración media"
             :value="kpis.average_rating ?? '—'"
             icon="star"
@@ -139,7 +144,7 @@ onMounted(() => {
         </div>
 
         <!-- Sales chart card -->
-        <div class="bg-surface-container-low rounded-2xl border border-outline-variant p-6">
+        <div v-reveal class="bg-surface-container-low rounded-2xl border border-outline-variant shadow-md shadow-primary/5 p-6">
           <h2 class="font-title-md text-title-md text-deep-marsala mb-6">
             Ventas (últimos 6 meses)
           </h2>
