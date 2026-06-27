@@ -23,7 +23,7 @@ function formatPrice(price) {
   <section data-featured-services class="py-20 bg-background">
     <div class="max-w-container-max mx-auto px-gutter">
       <!-- Section header -->
-      <div class="flex items-end justify-between mb-10">
+      <div v-reveal class="flex items-end justify-between mb-10">
         <div>
           <p class="font-label-sm text-label-sm text-primary uppercase tracking-widest mb-2">
             Experiencias Profesionales
@@ -44,11 +44,12 @@ function formatPrice(price) {
       <!-- Services grid -->
       <div v-if="services.length > 0" class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <router-link
-          v-for="service in services"
+          v-for="(service, i) in services"
           :key="service.id"
+          v-reveal="i"
           :to="`/services/${service.slug}`"
           data-service-card
-          class="group flex flex-col bg-surface rounded-2xl overflow-hidden border border-blush-canvas/30 hover:shadow-lg transition-shadow no-underline"
+          class="group flex flex-col bg-surface rounded-2xl overflow-hidden border border-blush-canvas/30 shadow-md shadow-primary/5 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-1 transition-all duration-300 no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
           <!-- Thumbnail -->
           <div class="aspect-video bg-blush-canvas/10 overflow-hidden">

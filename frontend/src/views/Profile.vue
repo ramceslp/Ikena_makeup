@@ -83,7 +83,7 @@ onMounted(async () => {
   <section class="py-12 bg-background min-h-screen">
     <div class="max-w-container-max mx-auto px-gutter">
       <!-- Page header -->
-      <div class="mb-8">
+      <div v-reveal class="mb-8">
         <h1 class="font-headline-lg text-headline-lg text-deep-marsala">Mi perfil</h1>
       </div>
 
@@ -96,7 +96,7 @@ onMounted(async () => {
         <!-- Content area -->
         <div class="flex-1 min-w-0">
           <!-- Personal info section -->
-          <div v-if="activeSection === 'perfil'" class="bg-surface rounded-2xl border border-blush-canvas/30 p-6">
+          <div v-if="activeSection === 'perfil'" v-reveal class="bg-surface rounded-2xl border border-blush-canvas/30 shadow-md shadow-primary/5 p-6">
             <h2 class="font-title-lg text-title-lg text-on-surface mb-6">Información personal</h2>
             <PersonalInfoForm
               v-if="user"
@@ -110,7 +110,7 @@ onMounted(async () => {
           </div>
 
           <!-- Security section -->
-          <div v-else-if="activeSection === 'seguridad'" class="bg-surface rounded-2xl border border-blush-canvas/30 p-6">
+          <div v-else-if="activeSection === 'seguridad'" v-reveal class="bg-surface rounded-2xl border border-blush-canvas/30 shadow-md shadow-primary/5 p-6">
             <h2 class="font-title-lg text-title-lg text-on-surface mb-6">Seguridad</h2>
             <SecurityForm
               v-if="user"
@@ -124,7 +124,7 @@ onMounted(async () => {
           </div>
 
           <!-- Purchase history section -->
-          <div v-else-if="activeSection === 'historial'" class="bg-surface rounded-2xl border border-blush-canvas/30 p-6">
+          <div v-else-if="activeSection === 'historial'" v-reveal class="bg-surface rounded-2xl border border-blush-canvas/30 shadow-md shadow-primary/5 p-6">
             <h2 class="font-title-lg text-title-lg text-on-surface mb-6">Historial de compras</h2>
             <PurchaseHistory
               :orders="authStore.orders"

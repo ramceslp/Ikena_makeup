@@ -141,7 +141,8 @@ defineExpose({ handleSubmit })
       <!-- Submit button -->
       <BaseButton
         data-submit
-        :disabled="!beforeFile || !afterFile || submitting"
+        :disabled="!beforeFile || !afterFile"
+        :loading="submitting"
         @click="handleSubmit"
         variant="primary"
         size="sm"

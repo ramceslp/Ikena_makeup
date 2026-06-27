@@ -27,7 +27,7 @@ defineProps({
 
 <template>
   <div
-    class="bg-surface-container-low rounded-2xl border border-outline-variant p-6 flex flex-col gap-3 hover:border-blush-canvas/40 transition-colors"
+    class="bg-surface-container-low rounded-2xl border border-outline-variant shadow-sm shadow-primary/5 p-6 flex flex-col gap-3 hover:border-blush-canvas/40 hover:shadow-md hover:-translate-y-0.5 transition-all"
   >
     <!-- Icon + Label row -->
     <div class="flex items-center gap-2">

@@ -161,19 +161,21 @@ function handleGoogleRegister() {
       <button
         type="submit"
         :disabled="loading"
-        class="w-full bg-apricot-glow text-deep-marsala font-bold py-3.5 rounded-xl shadow-lg shadow-apricot-glow/20 hover:scale-[1.02] active:scale-[0.98] transition-all font-title-md text-title-md flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+        class="btn-gloss w-full bg-apricot-glow text-deep-marsala font-bold py-3.5 rounded-xl shadow-lg shadow-apricot-glow/20 hover:scale-[1.02] active:scale-[0.98] transition-all font-title-md text-title-md flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
       >
-        <svg
-          v-if="loading"
-          class="animate-spin w-5 h-5 shrink-0"
-          fill="none"
-          viewBox="0 0 24 24"
-          aria-hidden="true"
-        >
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-        </svg>
-        {{ loading ? 'Creando cuenta...' : 'Crear cuenta' }}
+        <span class="relative z-[1] inline-flex items-center justify-center gap-2">
+          <svg
+            v-if="loading"
+            class="animate-spin w-5 h-5 shrink-0"
+            fill="none"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          {{ loading ? 'Creando cuenta...' : 'Crear cuenta' }}
+        </span>
       </button>
     </form>
 

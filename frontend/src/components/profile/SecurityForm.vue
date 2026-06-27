@@ -93,7 +93,7 @@ function handleSubmit() {
       Contraseña actualizada correctamente.
     </p>
 
-    <BaseButton type="submit" :disabled="saving" size="sm">
+    <BaseButton type="submit" :loading="saving" size="sm">
       {{ saving ? 'Guardando…' : 'Cambiar contraseña' }}
     </BaseButton>
   </form>

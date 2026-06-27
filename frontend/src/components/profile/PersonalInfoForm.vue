@@ -113,7 +113,7 @@ function handleSubmit() {
       Perfil actualizado correctamente.
     </p>
 
-    <BaseButton type="submit" :disabled="saving" size="sm">
+    <BaseButton type="submit" :loading="saving" size="sm">
       {{ saving ? 'Guardando…' : 'Guardar cambios' }}
     </BaseButton>
   </form>

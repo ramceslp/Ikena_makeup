@@ -37,6 +37,6 @@ const props = defineProps({
 
   <!-- Orders list -->
   <div v-else class="space-y-3">
-    <PurchaseRow v-for="order in orders" :key="order.id" :order="order" />
+    <PurchaseRow v-for="(order, i) in orders" :key="order.id" v-reveal="i % 3" :order="order" />
   </div>
 </template>

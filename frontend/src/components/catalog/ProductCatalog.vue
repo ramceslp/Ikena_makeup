@@ -56,8 +56,9 @@ defineEmits(['retry', 'page-change'])
       <!-- Grid -->
       <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12">
         <ProductCard
-          v-for="product in products"
+          v-for="(product, i) in products"
           :key="product.id"
+          v-reveal="i % 3"
           :product="product"
         />
       </div>
