@@ -84,10 +84,14 @@
   --color-blush-canvas: #f4acab;
   --color-apricot-glow: #ffa580;
 
-  /* ---- Typography: families ---- */
-  --font-display-lg: "Hanken Grotesk", sans-serif;
-  --font-headline-lg: "Hanken Grotesk", sans-serif;
-  --font-headline-lg-mobile: "Hanken Grotesk", sans-serif;
+  /* ---- Typography: families ----
+     Editorial pairing: high-contrast serif (Playfair Display) for the large
+     display/headline tier — the "defined brows" that give beauty/luxury sites
+     their signature — over a clean sans (Hanken Grotesk) for every functional
+     tier (titles, body, labels). The contrast is what reads as elegant. */
+  --font-display-lg: "Playfair Display", serif;
+  --font-headline-lg: "Playfair Display", serif;
+  --font-headline-lg-mobile: "Playfair Display", serif;
   --font-title-md: "Hanken Grotesk", sans-serif;
   --font-body-lg: "Hanken Grotesk", sans-serif;
   --font-body-md: "Hanken Grotesk", sans-serif;
