@@ -18,6 +18,12 @@ class ProductSeeder extends Seeder
      * Image paths use absolute https URLs (Product::resolveImageUrl returns them
      * as-is), so thumbnails render without any file present on the public disk —
      * the same approach courses use for their thumbnails.
+     *
+     * Photos come from LoremFlickr, which serves real Flickr photos matched by
+     * keyword (e.g. /lipstick, /eyeshadow) so each product shows an image that
+     * actually relates to what it is, instead of a random placeholder. The
+     * `?lock=N` seed pins one specific photo per slot, keeping demo data stable
+     * across reloads and re-seeds.
      */
     public function run(): void
     {
@@ -33,8 +39,8 @@ class ProductSeeder extends Seeder
                 'price'        => 38.00,
                 'stock_qty'    => 24,
                 'images'       => [
-                    'https://picsum.photos/seed/ikena-foundation-a/640/640',
-                    'https://picsum.photos/seed/ikena-foundation-b/640/640',
+                    'https://loremflickr.com/640/640/makeup,foundation?lock=11',
+                    'https://loremflickr.com/640/640/cosmetics?lock=12',
                 ],
             ],
             [
@@ -44,8 +50,8 @@ class ProductSeeder extends Seeder
                 'price'        => 45.00,
                 'stock_qty'    => 16,
                 'images'       => [
-                    'https://picsum.photos/seed/ikena-palette-a/640/640',
-                    'https://picsum.photos/seed/ikena-palette-b/640/640',
+                    'https://loremflickr.com/640/640/eyeshadow?lock=13',
+                    'https://loremflickr.com/640/640/eyeshadow,palette?lock=14',
                 ],
             ],
             [
@@ -55,7 +61,7 @@ class ProductSeeder extends Seeder
                 'price'        => 22.00,
                 'stock_qty'    => 40,
                 'images'       => [
-                    'https://picsum.photos/seed/ikena-lipstick/640/640',
+                    'https://loremflickr.com/640/640/lipstick,red?lock=15',
                 ],
             ],
             [
@@ -65,8 +71,8 @@ class ProductSeeder extends Seeder
                 'price'        => 65.00,
                 'stock_qty'    => 12,
                 'images'       => [
-                    'https://picsum.photos/seed/ikena-brushes-a/640/640',
-                    'https://picsum.photos/seed/ikena-brushes-b/640/640',
+                    'https://loremflickr.com/640/640/brush,makeup?lock=16',
+                    'https://loremflickr.com/640/640/cosmetics,brush?lock=17',
                 ],
             ],
             [
@@ -76,7 +82,7 @@ class ProductSeeder extends Seeder
                 'price'        => 28.00,
                 'stock_qty'    => 3,
                 'images'       => [
-                    'https://picsum.photos/seed/ikena-highlighter/640/640',
+                    'https://loremflickr.com/640/640/highlighter,makeup?lock=18',
                 ],
             ],
             [
@@ -86,7 +92,7 @@ class ProductSeeder extends Seeder
                 'price'        => 19.00,
                 'stock_qty'    => 0,
                 'images'       => [
-                    'https://picsum.photos/seed/ikena-mascara/640/640',
+                    'https://loremflickr.com/640/640/mascara,eyelashes?lock=19',
                 ],
             ],
         ];

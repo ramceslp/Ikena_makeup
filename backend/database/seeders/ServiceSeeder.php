@@ -15,6 +15,10 @@ class ServiceSeeder extends Seeder
      * images are keyed on (service_id, sort_order). Image paths use absolute
      * https URLs (Service::resolveImageUrl returns them as-is) so thumbnails
      * render without any file on the public disk.
+     *
+     * Photos come from LoremFlickr, matched by keyword (e.g. /bride,makeup) so
+     * each service shows a relevant real photo. The `?lock=N` seed pins a stable
+     * image per service across reloads and re-seeds.
      */
     public function run(): void
     {
@@ -29,7 +33,7 @@ class ServiceSeeder extends Seeder
                 'duration_hours'    => 3,
                 'availability_type' => 'by_appointment',
                 'deposit_percentage' => 50,
-                'images'            => ['https://picsum.photos/seed/ikena-svc-bride/800/600'],
+                'images'            => ['https://loremflickr.com/800/600/bride,makeup?lock=31'],
             ],
             [
                 'title'             => 'Maquillaje Social y de Noche',
@@ -39,7 +43,7 @@ class ServiceSeeder extends Seeder
                 'duration_hours'    => 2,
                 'availability_type' => 'by_appointment',
                 'deposit_percentage' => 40,
-                'images'            => ['https://picsum.photos/seed/ikena-svc-night/800/600'],
+                'images'            => ['https://loremflickr.com/800/600/makeup,glamour?lock=32'],
             ],
             [
                 'title'             => 'Maquillaje Editorial y Books',
@@ -49,7 +53,7 @@ class ServiceSeeder extends Seeder
                 'duration_hours'    => 4,
                 'availability_type' => 'by_appointment',
                 'deposit_percentage' => 50,
-                'images'            => ['https://picsum.photos/seed/ikena-svc-editorial/800/600'],
+                'images'            => ['https://loremflickr.com/800/600/fashion,makeup?lock=33'],
             ],
             [
                 'title'             => 'Asesoría de Imagen Express',
@@ -59,7 +63,7 @@ class ServiceSeeder extends Seeder
                 'duration_hours'    => 1,
                 'availability_type' => 'immediate',
                 'deposit_percentage' => 100,
-                'images'            => ['https://picsum.photos/seed/ikena-svc-advice/800/600'],
+                'images'            => ['https://loremflickr.com/800/600/skincare,beauty?lock=34'],
             ],
         ];
 

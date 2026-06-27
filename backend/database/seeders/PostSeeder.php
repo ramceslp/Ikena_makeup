@@ -16,6 +16,10 @@ class PostSeeder extends Seeder
      * post, and an unpublished draft. cover_image_path uses absolute https URLs
      * (Post::resolveImageUrl returns them as-is) so covers render with no file.
      *
+     * Cover photos come from LoremFlickr, matched by keyword per post topic
+     * (e.g. /bride,makeup for the bridal-trends article) so each cover relates
+     * to its content. The `?lock=N` seed pins a stable image across re-seeds.
+     *
      * Valid types: noticia, nuevo_curso, oferta, evento, lanzamiento,
      * certificacion, contenido.
      */
@@ -40,6 +44,8 @@ class PostSeeder extends Seeder
                 'cta_label'   => 'Ver productos',
                 'cta_url'     => '/products',
                 'days_ago'    => 1,
+                'image'       => 'lipstick,cosmetics',
+                'lock'        => 41,
             ],
             [
                 'title'       => 'Curso de automaquillaje: nuevas fechas de inscripción',
@@ -49,6 +55,8 @@ class PostSeeder extends Seeder
                 'cta_label'   => 'Ver cursos',
                 'cta_url'     => '/cursos',
                 'days_ago'    => 3,
+                'image'       => 'makeup,brush',
+                'lock'        => 42,
             ],
             [
                 'title'       => 'Tendencias de maquillaje para novias 2026',
@@ -58,6 +66,8 @@ class PostSeeder extends Seeder
                 'cta_label'   => null,
                 'cta_url'     => null,
                 'days_ago'    => 6,
+                'image'       => 'bride,makeup',
+                'lock'        => 43,
             ],
             [
                 'title'       => 'Masterclass presencial de maquillaje editorial',
@@ -67,6 +77,8 @@ class PostSeeder extends Seeder
                 'cta_label'   => 'Reservar lugar',
                 'cta_url'     => '/services',
                 'days_ago'    => 10,
+                'image'       => 'fashion,makeup',
+                'lock'        => 44,
             ],
             [
                 'title'       => 'Certificación profesional Ikena disponible',
@@ -76,6 +88,8 @@ class PostSeeder extends Seeder
                 'cta_label'   => null,
                 'cta_url'     => null,
                 'days_ago'    => 14,
+                'image'       => 'makeup,artist',
+                'lock'        => 45,
             ],
             [
                 // Draft — exercises the unpublished state in the admin list.
@@ -86,6 +100,8 @@ class PostSeeder extends Seeder
                 'cta_label'   => null,
                 'cta_url'     => null,
                 'days_ago'    => null, // null => draft (unpublished)
+                'image'       => 'skincare,cosmetics',
+                'lock'        => 46,
             ],
         ];
 
@@ -98,7 +114,7 @@ class PostSeeder extends Seeder
                     'author_id'        => $author->id,
                     'title'            => $data['title'],
                     'excerpt'          => $data['excerpt'],
-                    'cover_image_path' => 'https://picsum.photos/seed/ikena-post-' . Str::slug($data['type']) . '-' . $data['days_ago'] . '/1200/630',
+                    'cover_image_path' => 'https://loremflickr.com/1200/630/' . $data['image'] . '?lock=' . $data['lock'],
                     'body'             => '<p>' . $data['excerpt'] . '</p><p>Contenido de ejemplo generado por el seeder para previsualizar la sección de novedades.</p>',
                     'type'             => $data['type'],
                     'is_featured'      => $data['is_featured'],

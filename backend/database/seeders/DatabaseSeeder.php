@@ -84,7 +84,7 @@ class DatabaseSeeder extends Seeder
                 'title'         => 'Fundamentos del Maquillaje',
                 'description'   => 'Aprende las técnicas esenciales del maquillaje profesional desde cero. Este curso completo cubre la preparación de la piel, la teoría del color y las herramientas indispensables para toda artista.',
                 'price'         => 49.99,
-                'thumbnail'     => 'https://picsum.photos/seed/makeup1/640/360',
+                'thumbnail'     => 'https://loremflickr.com/640/360/makeup,cosmetics?lock=51',
                 'is_published'  => true,
             ]
         );
@@ -169,7 +169,7 @@ class DatabaseSeeder extends Seeder
                 'title'         => 'Maestría en Maquillaje de Ojos',
                 'description'   => 'Domina el arte del maquillaje de ojos con técnicas de ahumados, cut crease, looks con glitter y estilos naturales para el día a día. Apto para todas las formas de ojo.',
                 'price'         => 29.99,
-                'thumbnail'     => 'https://picsum.photos/seed/makeup2/640/360',
+                'thumbnail'     => 'https://loremflickr.com/640/360/eye,makeup?lock=52',
                 'is_published'  => true,
             ]
         );
@@ -227,7 +227,7 @@ class DatabaseSeeder extends Seeder
                 'title'         => 'Maquillaje de Novia Esencial',
                 'description'   => 'Todo lo que necesitas para crear un look de novia impecable que dure todo el día. Incluye técnicas de base, productos resistentes al agua y estrategias de retoque.',
                 'price'         => 0.00,
-                'thumbnail'     => 'https://picsum.photos/seed/makeup3/640/360',
+                'thumbnail'     => 'https://loremflickr.com/640/360/bride,makeup?lock=53',
                 'is_published'  => true,
             ]
         );
