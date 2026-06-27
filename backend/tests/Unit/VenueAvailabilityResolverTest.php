@@ -14,10 +14,11 @@ use Tests\TestCase;
 /**
  * VenueAvailabilityResolverTest
  *
- * Unit tests for VenueAvailabilityResolver covering VAVL-001, VAVL-002, VAVL-003.
+ * Unit tests for VenueAvailabilityResolver covering VAVL-001, VAVL-002, VAVL-003,
+ * plus coverage of the null-limit config fallback (DM-003) and recurring
+ * day_of_week block resolution.
  *
- * All tests use specific_date AgendaBlocks (not day_of_week recurring blocks)
- * for deterministic, date-pinned results. Tests run on SQLite :memory:.
+ * Tests run on SQLite :memory:.
  */
 class VenueAvailabilityResolverTest extends TestCase
 {
@@ -377,5 +378,99 @@ class VenueAvailabilityResolverTest extends TestCase
         $this->assertFalse($slot10['is_near_capacity'],
             'is_near_capacity must always be false when block.soft_threshold is null.');
         $this->assertNull($slot10['warning_message']);
+    }
+
+    // =========================================================================
+    // W1 — Null concurrency_limit fallback to config default (DM-003)
+    // =========================================================================
+
+    /**
+     * DM-003: When block.concurrency_limit is null, the resolver falls back to
+     * config('booking.venue.default_concurrency_limit') (default: 1).
+     *
+     * With effective_limit=1 and 1 overlapping appointment, the candidate must be
+     * excluded — directly exercising the `?? config(...)` branch in the resolver.
+     */
+    public function test_null_block_concurrency_limit_falls_back_to_config_default(): void
+    {
+        $date    = $this->tomorrowDate();
+        $service = $this->makeService(durationHours: 1);
+
+        // Block with concurrency_limit = null — resolver must use config default (1)
+        $this->makeBlock($date, [
+            'open_time'         => '09:00',
+            'close_time'        => '18:00',
+            'concurrency_limit' => null,
+            'soft_threshold'    => null,
+        ]);
+
+        // 1 pending appointment at 10:00–11:00
+        // overlap_count=1 >= effective_limit=config default (1) → candidate excluded
+        $this->makeAppointment($date, '10:00', '11:00', 'pending');
+
+        $results = $this->resolver->resolve($service);
+
+        $timesOnDate = collect($results)->where('date_label', $date)->pluck('start_time')->toArray();
+
+        // 10:00 must be excluded: effective limit is the config default (1), already reached
+        $this->assertNotContains('10:00', $timesOnDate,
+            '10:00 must be excluded: overlap_count (1) >= effective_limit (config default 1).');
+
+        // 09:00 must be included: no appointments overlap [09:00, 10:00)
+        $this->assertContains('09:00', $timesOnDate,
+            '09:00 must be included: no overlapping appointments.');
+
+        // Verify capacity_remaining for 09:00 equals the config default (1), not 0 or infinity
+        $slot09 = collect($results)
+            ->where('date_label', $date)
+            ->where('start_time', '09:00')
+            ->first();
+
+        $this->assertNotNull($slot09);
+        $this->assertSame(
+            (int) config('booking.venue.default_concurrency_limit'),
+            $slot09['capacity_remaining'],
+            'capacity_remaining must equal the config default_concurrency_limit when block limit is null.'
+        );
+    }
+
+    // =========================================================================
+    // W2 — Recurring day_of_week block (exercises the day_of_week query branch)
+    // =========================================================================
+
+    /**
+     * VAVL-001 (recurring): A block with day_of_week set (no specific_date) must
+     * generate candidates on every matching weekday within the look-ahead window.
+     *
+     * Uses AgendaBlock::factory() default (day_of_week=1, Monday, 09:00–18:00).
+     * Verifies: (a) results are non-empty, (b) every date_label falls on Monday,
+     * (c) at least 8 Monday dates appear in the 60-day window.
+     */
+    public function test_recurring_day_of_week_block_generates_candidates_on_matching_weekday(): void
+    {
+        $service = $this->makeService(durationHours: 1);
+
+        // AgendaBlock factory default: day_of_week=1 (Monday), specific_date=null,
+        // 09:00–18:00, concurrency_limit=2. This block recurs every Monday.
+        AgendaBlock::factory()->create();
+
+        $results = $this->resolver->resolve($service);
+
+        $this->assertNotEmpty($results,
+            'A recurring day_of_week block must produce candidates within the look-ahead window.');
+
+        // All result dates must fall on the matching weekday (Monday = dayOfWeek 1)
+        $wrongDays = collect($results)
+            ->filter(fn ($occ) => Carbon::parse($occ['date_label'])->dayOfWeek !== 1)
+            ->all();
+
+        $this->assertEmpty($wrongDays,
+            'All candidates from a Monday recurring block must fall on Monday (dayOfWeek=1).');
+
+        // In a 60-day window there are always at least 8 Mondays
+        $distinctDates = collect($results)->pluck('date_label')->unique()->count();
+
+        $this->assertGreaterThanOrEqual(8, $distinctDates,
+            'Expected at least 8 distinct Monday dates in the 60-day look-ahead window.');
     }
 }
