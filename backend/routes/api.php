@@ -36,8 +36,12 @@ Route::post('/auth/google', [AuthController::class, 'google']);
 
 Route::get('/categories', [CategoryController::class, 'index']);
 
-Route::get('/courses', [CourseController::class, 'index']);
-Route::get('/courses/{slug}', [CourseController::class, 'show']);
+// Public catalog/detail — personalized (is_enrolled, my_review) when a bearer
+// token is present, so they resolve the Sanctum user via 'auth.optional'.
+Route::middleware('auth.optional')->group(function () {
+    Route::get('/courses', [CourseController::class, 'index']);
+    Route::get('/courses/{slug}', [CourseController::class, 'show']);
+});
 
 Route::get('/services', [ServiceController::class, 'index']);
 Route::get('/services/{slug}', [ServiceController::class, 'show']);
@@ -54,7 +58,8 @@ Route::get('/posts/latest', [PostController::class, 'latest']);
 Route::get('/posts/featured', [PostController::class, 'featured']);
 Route::get('/posts/{slug}', [PostController::class, 'show']);
 Route::get('/services/{serviceId}/available-slots', [BookingController::class, 'availableSlots']);
-Route::get('/courses/{course:slug}/reviews', [CourseReviewController::class, 'index']);
+Route::get('/courses/{course:slug}/reviews', [CourseReviewController::class, 'index'])
+    ->middleware('auth.optional');
 Route::get('/certificates/verify/{code}', [CertificateController::class, 'verify']);
 
 // Public certificate branding (logo, business name, copy, signer, design variant)
