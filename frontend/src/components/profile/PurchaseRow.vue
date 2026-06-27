@@ -64,7 +64,7 @@ const dateStr = computed(() => props.order.paid_at ?? props.order.created_at)
 </script>
 
 <template>
-  <div class="flex items-center gap-4 bg-surface rounded-2xl border border-blush-canvas/30 p-4">
+  <div class="flex items-center gap-4 bg-surface rounded-2xl border border-blush-canvas/30 shadow-sm shadow-primary/5 p-4">
 
     <!-- ── Appointment variant ──────────────────────────────────────────── -->
     <template v-if="variant === 'appointment'">
