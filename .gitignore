@@ -15,6 +15,11 @@
 .claude/
 sdd/
 
+# ── Design references (Stitch mockups — kept locally, not tracked) ──
+catálogo de productos y servicios/
+catálogo productos físicos/
+homepage y centro de novedades/
+
 # ── OS ─────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
