@@ -25,6 +25,8 @@ const route = useRoute()
       <div
         class="absolute inset-0 bg-gradient-to-tr from-surface-muted via-transparent to-surface-container-low"
       />
+      <!-- Soft brand-color bloom for warmth behind the glass card -->
+      <div class="makeup-mesh absolute inset-0 opacity-30" aria-hidden="true" />
     </div>
 
     <!-- Main container -->
