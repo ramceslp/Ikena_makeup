@@ -43,13 +43,13 @@ function formatPrice(price) {
 
       <!-- Courses grid -->
       <div v-if="courses.length > 0" class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div
+        <router-link
           v-for="(course, i) in courses"
           :key="course.id"
           v-reveal="i"
+          :to="`/courses/${course.slug}`"
           data-course-card
-          class="group flex flex-col bg-surface rounded-2xl overflow-hidden border border-blush-canvas/30 shadow-md shadow-primary/5 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-1 transition-all duration-300 cursor-pointer"
-          @click="$router.push(`/courses/${course.slug}`)"
+          class="group flex flex-col bg-surface rounded-2xl overflow-hidden border border-blush-canvas/30 shadow-md shadow-primary/5 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-1 transition-all duration-300 no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface-muted"
         >
           <!-- Thumbnail -->
           <div class="aspect-video bg-blush-canvas/10 overflow-hidden">
@@ -76,7 +76,7 @@ function formatPrice(price) {
               {{ formatPrice(course.price) }}
             </p>
           </div>
-        </div>
+        </router-link>
       </div>
 
       <!-- Empty state -->

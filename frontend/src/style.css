@@ -230,6 +230,11 @@
   }
 }
 
+/* Smooth anchor scrolling — disabled when the user prefers reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+}
+
 @media print {
   .no-print { display: none !important; }
   body { background: #ffffff; }

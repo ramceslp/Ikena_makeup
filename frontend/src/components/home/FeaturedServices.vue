@@ -49,7 +49,7 @@ function formatPrice(price) {
           v-reveal="i"
           :to="`/services/${service.slug}`"
           data-service-card
-          class="group flex flex-col bg-surface rounded-2xl overflow-hidden border border-blush-canvas/30 shadow-md shadow-primary/5 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-1 transition-all duration-300 no-underline"
+          class="group flex flex-col bg-surface rounded-2xl overflow-hidden border border-blush-canvas/30 shadow-md shadow-primary/5 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-1 transition-all duration-300 no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
           <!-- Thumbnail -->
           <div class="aspect-video bg-blush-canvas/10 overflow-hidden">
