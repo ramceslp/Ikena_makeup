@@ -31,9 +31,20 @@ function closeAdmin() {
   adminOpen.value = false
 }
 
+// Desktop user dropdown (Perfil / Salir) open/close + click-outside.
+const userOpen = ref(false)
+const userMenuRef = ref(null)
+
+function closeUser() {
+  userOpen.value = false
+}
+
 function onDocumentClick(event) {
   if (adminMenuRef.value && !adminMenuRef.value.contains(event.target)) {
     adminOpen.value = false
+  }
+  if (userMenuRef.value && !userMenuRef.value.contains(event.target)) {
+    userOpen.value = false
   }
 }
 
@@ -50,6 +61,7 @@ function toggleMobile() {
 async function handleLogout() {
   await authStore.logout()
   mobileOpen.value = false
+  userOpen.value = false
   router.push('/login')
 }
 
@@ -141,9 +153,16 @@ const activeClass = 'text-primary border-b-2 border-apricot-glow'
               </div>
             </div>
 
-            <!-- User avatar + logout -->
-            <div class="flex items-center gap-3">
-              <RouterLink to="/profile" class="flex items-center gap-2 hover:opacity-80 transition-opacity">
+            <!-- User menu (dropdown: Perfil / Salir) -->
+            <div ref="userMenuRef" class="relative">
+              <button
+                type="button"
+                data-user-menu-trigger
+                @click="userOpen = !userOpen"
+                class="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                aria-haspopup="true"
+                :aria-expanded="userOpen"
+              >
                 <img
                   v-if="user?.avatar"
                   :src="user.avatar"
@@ -157,13 +176,36 @@ const activeClass = 'text-primary border-b-2 border-apricot-glow'
                   {{ initials(user?.name) }}
                 </div>
                 <span class="font-body-md text-body-md text-on-surface font-medium">{{ user?.name }}</span>
-              </RouterLink>
-              <button
-                @click="handleLogout"
-                class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors"
-              >
-                Salir
+                <span
+                  class="material-symbols-outlined text-[18px] text-on-surface-variant transition-transform"
+                  :class="userOpen && 'rotate-180'"
+                  aria-hidden="true"
+                >
+                  expand_more
+                </span>
               </button>
+              <div
+                v-if="userOpen"
+                class="absolute right-0 mt-2 w-44 rounded-xl bg-surface shadow-lg border border-blush-canvas/20 py-2 z-50"
+              >
+                <RouterLink
+                  to="/profile"
+                  data-user-menu-profile
+                  @click="closeUser"
+                  class="block px-4 py-2 font-body-md text-body-md text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-colors"
+                  active-class="text-primary"
+                >
+                  Perfil
+                </RouterLink>
+                <button
+                  type="button"
+                  data-user-menu-logout
+                  @click="handleLogout"
+                  class="block w-full text-left px-4 py-2 font-body-md text-body-md text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-colors"
+                >
+                  Salir
+                </button>
+              </div>
             </div>
           </template>
 
