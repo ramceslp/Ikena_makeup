@@ -25,16 +25,24 @@ const slugLink = computed(() => {
 <template>
   <section data-featured-news-hero class="relative overflow-hidden min-h-[480px] flex items-center bg-surface-muted">
     <!-- Background image when available -->
-    <div v-if="post?.cover_image_url" class="absolute inset-0 z-0">
-      <div class="absolute inset-0 bg-gradient-to-r from-background via-background/60 to-transparent z-10" />
+    <div v-if="post?.cover_image_url" class="absolute inset-0 z-0 overflow-hidden">
       <img
         :src="post.cover_image_url"
         alt=""
         aria-hidden="true"
         class="w-full h-full object-cover object-center"
       />
+      <!-- Legibility veil (left → right) -->
+      <div class="absolute inset-0 bg-gradient-to-r from-background via-background/60 to-transparent z-10" />
+      <!-- Warm highlighter bloom over the photo -->
+      <div class="makeup-mesh absolute inset-0 z-10 opacity-40 mix-blend-screen" aria-hidden="true" />
+      <!-- Depth vignette anchoring the content -->
+      <div class="absolute inset-0 bg-gradient-to-t from-deep-marsala/25 via-transparent to-transparent z-10" />
     </div>
-    <div v-else class="absolute inset-0 bg-gradient-to-br from-deep-marsala/10 to-blush-canvas/20 z-0" />
+    <!-- Fallback: signature gradient mesh -->
+    <div v-else class="absolute inset-0 z-0 bg-surface-muted overflow-hidden">
+      <div class="makeup-mesh absolute -inset-[10%]" aria-hidden="true" />
+    </div>
 
     <div data-hero-content class="relative z-20 w-full max-w-container-max mx-auto px-gutter py-20" v-if="post">
       <div class="max-w-2xl space-y-6">
@@ -65,16 +73,16 @@ const slugLink = computed(() => {
             :href="ctaHref"
             target="_blank"
             rel="noopener noreferrer"
-            class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-deep-marsala text-white font-label-lg text-label-lg hover:bg-deep-marsala/90 transition-colors"
+            class="btn-gloss inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-deep-marsala text-white font-label-lg text-label-lg hover:bg-deep-marsala/90 transition-colors"
           >
-            {{ post.cta_label }}
+            <span class="relative z-[1]">{{ post.cta_label }}</span>
           </a>
           <router-link
             v-else
             :to="slugLink"
-            class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-deep-marsala text-white font-label-lg text-label-lg hover:bg-deep-marsala/90 transition-colors"
+            class="btn-gloss inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-deep-marsala text-white font-label-lg text-label-lg hover:bg-deep-marsala/90 transition-colors"
           >
-            Leer más
+            <span class="relative z-[1]">Leer más</span>
           </router-link>
         </div>
       </div>

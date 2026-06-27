@@ -168,6 +168,68 @@
   }
 }
 
+/*
+  Makeup-texture decoration (Phase 3): a soft "highlighter bloom" built from the
+  brand-color radial gradients. Purely decorative — call sites mark it
+  aria-hidden and pointer-events-none. It drifts slowly unless the user prefers
+  reduced motion. Animates transform only (GPU-friendly, no reflow).
+*/
+.makeup-mesh {
+  background-image:
+    radial-gradient(42% 52% at 82% 18%, color-mix(in srgb, var(--color-apricot-glow) 50%, transparent), transparent 72%),
+    radial-gradient(46% 56% at 16% 86%, color-mix(in srgb, var(--color-blush-canvas) 45%, transparent), transparent 72%),
+    radial-gradient(38% 44% at 68% 88%, color-mix(in srgb, var(--color-deep-marsala) 28%, transparent), transparent 70%);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .makeup-mesh {
+    animation: makeup-mesh-drift 20s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes makeup-mesh-drift {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to   { transform: translate3d(0, -2.5%, 0) scale(1.06); }
+}
+
+/*
+  Gloss sheen for primary CTAs (Phase 3): a top light highlight (like light
+  catching a lip gloss) plus a single sheen sweep on hover. The sweep only
+  runs when motion is allowed. Pseudo-elements paint above the button
+  background but below the label (the label is positioned with z-[1] at the
+  call site), so text stays fully legible.
+*/
+.btn-gloss {
+  position: relative;
+  overflow: hidden;
+}
+.btn-gloss::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.32), rgba(255, 255, 255, 0) 48%);
+  pointer-events: none;
+}
+.btn-gloss::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -75%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+  transform: skewX(-18deg);
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .btn-gloss::after {
+    transition: left 650ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .btn-gloss:hover::after {
+    left: 130%;
+  }
+}
+
 @media print {
   .no-print { display: none !important; }
   body { background: #ffffff; }

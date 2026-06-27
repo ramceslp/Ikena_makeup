@@ -48,7 +48,7 @@ function formatPrice(price) {
           :key="product.id"
           v-reveal="i"
           data-product-card
-          class="group flex flex-col bg-surface rounded-2xl overflow-hidden border border-blush-canvas/30 hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-1 transition-all duration-300"
+          class="group flex flex-col bg-surface rounded-2xl overflow-hidden border border-blush-canvas/30 shadow-md shadow-primary/5 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-1 transition-all duration-300"
         >
           <!-- Thumbnail -->
           <router-link :to="`/products/${product.slug}`" class="block relative aspect-video bg-blush-canvas/10 overflow-hidden">

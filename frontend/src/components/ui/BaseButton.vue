@@ -14,7 +14,7 @@ const base =
 
 const variants = {
   primary:
-    'bg-apricot-glow text-deep-marsala shadow-lg shadow-apricot-glow/20 hover:-translate-y-0.5',
+    'btn-gloss bg-apricot-glow text-deep-marsala shadow-lg shadow-apricot-glow/20 hover:-translate-y-0.5',
   outline:
     'border-2 border-primary text-primary hover:bg-primary hover:text-on-primary',
   solid: 'bg-primary text-on-primary hover:shadow-xl',
@@ -30,6 +30,8 @@ const classes = computed(() => [base, variants[props.variant], sizes[props.size]
 
 <template>
   <button :type="type" :class="classes">
-    <slot />
+    <span class="relative z-[1] inline-flex items-center gap-2">
+      <slot />
+    </span>
   </button>
 </template>

@@ -48,7 +48,7 @@ function formatPrice(price) {
           :key="course.id"
           v-reveal="i"
           data-course-card
-          class="group flex flex-col bg-surface rounded-2xl overflow-hidden border border-blush-canvas/30 hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-1 transition-all duration-300 cursor-pointer"
+          class="group flex flex-col bg-surface rounded-2xl overflow-hidden border border-blush-canvas/30 shadow-md shadow-primary/5 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-1 transition-all duration-300 cursor-pointer"
           @click="$router.push(`/courses/${course.slug}`)"
         >
           <!-- Thumbnail -->
