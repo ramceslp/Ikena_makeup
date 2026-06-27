@@ -10,7 +10,14 @@ const props = defineProps({
 
 const emit = defineEmits(['slot-selected'])
 
-const selectedId = ref(null)
+const selectedKey = ref(null)
+
+// A recurring weekly slot produces many occurrences that all share the same
+// `id` (the ServiceSlot row id) but differ by date. The unique identity of an
+// occurrence is id + date + time — comparing by `id` alone would mark them all.
+function occurrenceKey(slot) {
+  return `${slot.id}-${slot.date_label}-${slot.start_time}`
+}
 
 function isDisabled(slot) {
   return slot.is_blocked || slot.capacity_remaining <= 0
@@ -18,7 +25,7 @@ function isDisabled(slot) {
 
 function selectSlot(slot) {
   if (isDisabled(slot)) return
-  selectedId.value = slot.id
+  selectedKey.value = occurrenceKey(slot)
   emit('slot-selected', {
     id: slot.id,
     scheduled_date: slot.date_label,
@@ -51,17 +58,17 @@ function formatDateLabel(dateLabel) {
     <div v-else class="grid grid-cols-2 sm:grid-cols-3 gap-3">
       <button
         v-for="slot in slots"
-        :key="slot.id"
+        :key="occurrenceKey(slot)"
         type="button"
         data-slot-card
-        :data-slot-selected="selectedId === slot.id ? 'true' : undefined"
+        :data-slot-selected="selectedKey === occurrenceKey(slot) ? 'true' : undefined"
         :disabled="isDisabled(slot)"
         @click="selectSlot(slot)"
         class="flex flex-col items-center justify-center gap-1 rounded-xl border p-3 transition-all"
         :class="[
           isDisabled(slot)
             ? 'opacity-40 cursor-not-allowed bg-surface-container border-blush-canvas/20'
-            : selectedId === slot.id
+            : selectedKey === occurrenceKey(slot)
               ? 'border-primary bg-primary/10 text-primary ring-2 ring-primary'
               : 'border-blush-canvas/30 bg-surface hover:border-primary hover:bg-primary/5 cursor-pointer',
         ]"

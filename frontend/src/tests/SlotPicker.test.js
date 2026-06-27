@@ -85,4 +85,21 @@ describe('SlotPicker.vue', () => {
 
     expect(wrapper.emitted('slot-selected')).toBeFalsy()
   })
+
+  it('marks only the clicked occurrence when several share the same slot id (recurring weekly slot)', async () => {
+    // A recurring weekly slot yields many occurrences with the SAME id but
+    // different dates. Clicking one must NOT mark the others.
+    const recurring = [
+      { id: 7, date_label: '2026-07-04', start_time: '10:00', capacity_remaining: 1, is_blocked: false },
+      { id: 7, date_label: '2026-07-11', start_time: '10:00', capacity_remaining: 1, is_blocked: false },
+      { id: 7, date_label: '2026-07-18', start_time: '10:00', capacity_remaining: 1, is_blocked: false },
+    ]
+    const wrapper = mount(SlotPicker, { props: { slots: recurring } })
+    const cards = wrapper.findAll('[data-slot-card]')
+    await cards[1].trigger('click')
+
+    expect(cards[0].attributes('data-slot-selected')).toBeFalsy()
+    expect(cards[1].attributes('data-slot-selected')).toBe('true')
+    expect(cards[2].attributes('data-slot-selected')).toBeFalsy()
+  })
 })
