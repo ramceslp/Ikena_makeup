@@ -98,7 +98,7 @@ describe('AdminProductEdit.vue — load + update + image ops', () => {
     expect(wrapper.findAll('[data-existing-image]')).toHaveLength(2)
   })
 
-  it('calls updateProduct with id and a FormData containing _method=PATCH', async () => {
+  it('calls updateProduct with id and a plain POST FormData (no _method spoof)', async () => {
     const wrapper = await mountEdit()
     await flushPromises()
 
@@ -112,7 +112,9 @@ describe('AdminProductEdit.vue — load + update + image ops', () => {
     const [calledId, calledFormData] = updateSpy.mock.calls[0]
     expect(calledId).toBe('1')
     expect(calledFormData).toBeInstanceOf(FormData)
-    expect(calledFormData.get('_method')).toBe('PATCH')
+    // The update route is POST, not PATCH — spoofing _method=PATCH made the
+    // router reject it with 405. No spoof: a plain POST matches the route.
+    expect(calledFormData.get('_method')).toBeNull()
     expect(calledFormData.get('title')).toBe('Labial Rojo')
   })
 

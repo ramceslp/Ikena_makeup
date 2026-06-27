@@ -58,8 +58,9 @@ function onFileChange(e) {
 
 function buildFormData() {
   const fd = new FormData()
-  // Laravel route is PATCH; multipart must be POSTed with method spoofing.
-  fd.append('_method', 'PATCH')
+  // The admin update route is registered as POST (not PATCH), so we POST the
+  // multipart body directly. Adding _method=PATCH spoofs the verb and the
+  // router rejects it with a 405 — keep this a plain POST.
   fd.append('title', form.value.title)
   fd.append('price', form.value.price)
   fd.append('stock_qty', form.value.stock_qty)

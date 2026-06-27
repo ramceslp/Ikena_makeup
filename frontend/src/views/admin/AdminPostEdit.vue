@@ -67,7 +67,8 @@ function onCoverChange(e) {
 
 function buildFormData() {
   const fd = new FormData()
-  fd.append('_method', 'PATCH')
+  // The admin update route is registered as POST (not PATCH); spoofing
+  // _method=PATCH makes the router reject the request with a 405. Plain POST.
   fd.append('title', form.value.title)
   fd.append('slug', form.value.slug)
   fd.append('excerpt', form.value.excerpt ?? '')

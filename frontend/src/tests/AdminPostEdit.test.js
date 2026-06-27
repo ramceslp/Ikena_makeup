@@ -109,7 +109,7 @@ describe('AdminPostEdit.vue — edit form', () => {
     expect(wrapper.find('input[name="slug"]').element.value).toBe('post-a-editar')
   })
 
-  it('calls updatePost with FormData containing _method=PATCH on submit', async () => {
+  it('calls updatePost with a plain POST FormData (no _method spoof) on submit', async () => {
     api.get.mockResolvedValueOnce({ data: { data: fakePost } })
 
     const store = usePostsStore()
@@ -125,7 +125,8 @@ describe('AdminPostEdit.vue — edit form', () => {
     expect(updateSpy).toHaveBeenCalledTimes(1)
     const [calledId, calledFd] = updateSpy.mock.calls[0]
     expect(calledFd).toBeInstanceOf(FormData)
-    expect(calledFd.get('_method')).toBe('PATCH')
+    // The update route is POST, not PATCH — spoofing _method=PATCH triggered a 405.
+    expect(calledFd.get('_method')).toBeNull()
   })
 
   it('calls uploadCover when a cover file is selected and form submitted', async () => {
