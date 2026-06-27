@@ -36,7 +36,7 @@ function availabilityLabel(type) {
 <template>
   <RouterLink
     :to="`/services/${service.slug}`"
-    class="group flex flex-col bg-surface-muted rounded-2xl overflow-hidden border border-blush-canvas/30 transition-all duration-500 hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-0.5 no-underline"
+    class="group flex flex-col bg-surface-muted rounded-2xl overflow-hidden border border-blush-canvas/30 shadow-md shadow-primary/5 transition-all duration-500 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-0.5 no-underline"
   >
     <!-- Thumbnail -->
     <div class="relative aspect-[16/9] overflow-hidden bg-surface-container">

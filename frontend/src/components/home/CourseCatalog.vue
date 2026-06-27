@@ -52,7 +52,7 @@ defineEmits(['retry', 'page-change'])
 
       <!-- Grid -->
       <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12">
-        <CourseCard v-for="course in courses" :key="course.id" :course="course" />
+        <CourseCard v-for="(course, i) in courses" :key="course.id" v-reveal="i % 3" :course="course" />
       </div>
 
       <!-- Pagination -->

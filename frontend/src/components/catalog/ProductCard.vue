@@ -24,7 +24,7 @@ function addToCart() {
 </script>
 
 <template>
-  <div class="group flex flex-col bg-surface-muted rounded-2xl overflow-hidden border border-blush-canvas/30 transition-all duration-500 hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-0.5">
+  <div class="group flex flex-col bg-surface-muted rounded-2xl overflow-hidden border border-blush-canvas/30 shadow-md shadow-primary/5 transition-all duration-500 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-0.5">
     <!-- Thumbnail -->
     <RouterLink :to="`/products/${product.slug}`" class="block relative aspect-[16/9] overflow-hidden bg-surface-container">
       <img

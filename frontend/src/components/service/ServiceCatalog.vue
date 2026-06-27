@@ -52,7 +52,7 @@ defineEmits(['retry', 'page-change'])
 
       <!-- Grid -->
       <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12">
-        <ServiceCard v-for="service in services" :key="service.id" :service="service" />
+        <ServiceCard v-for="(service, i) in services" :key="service.id" v-reveal="i % 3" :service="service" />
       </div>
 
       <!-- Pagination -->
