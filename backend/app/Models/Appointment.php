@@ -16,6 +16,7 @@ class Appointment extends Model
         'order_id',
         'scheduled_date',
         'scheduled_time',
+        'scheduled_end_time',  // DM-001: denormalized end time for overlap queries (added Slice 1)
         'slot_key',
         'whatsapp',
         'payment_mode',
