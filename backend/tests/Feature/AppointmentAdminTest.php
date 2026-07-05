@@ -2,10 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\AgendaBlock;
 use App\Models\Appointment;
 use App\Models\Order;
 use App\Models\Service;
-use App\Models\ServiceSlot;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -253,6 +253,13 @@ class AppointmentAdminTest extends TestCase
         $this->assertNotNull($updated->cancelled_at);
     }
 
+    /**
+     * BOOK-006: cancelling an appointment excludes it from venue-wide overlap
+     * counts, freeing capacity for that interval so a second user can book it.
+     *
+     * Uses a cap=1 AgendaBlock so the second booking would be rejected
+     * (409 cap_exceeded) unless the cancel truly freed the capacity.
+     */
     public function test_cancel_frees_slot_so_same_slot_can_be_rebooked(): void
     {
         $admin   = $this->makeAdmin();
@@ -260,43 +267,57 @@ class AppointmentAdminTest extends TestCase
         $user1   = $this->makeUser();
         $user2   = $this->makeUser();
 
-        // Create a recurring slot for today's day
-        ServiceSlot::factory()->create([
-            'service_id'  => $service->id,
-            'day_of_week' => Carbon::today()->dayOfWeek,
-            'start_time'  => '10:00',
-            'is_blocked'  => false,
+        // Venue-wide agenda block for today's weekday, hard cap = 1.
+        AgendaBlock::factory()->create([
+            'day_of_week'       => Carbon::today()->dayOfWeek,
+            'specific_date'     => null,
+            'open_time'         => '09:00',
+            'close_time'        => '18:00',
+            'concurrency_limit' => 1,
+            'soft_threshold'    => null,
+            'is_blocked'        => false,
         ]);
+
+        $date = Carbon::today()->format('Y-m-d');
 
         // User1 books via API
         Sanctum::actingAs($user1);
-        $slotsRes = $this->getJson("/api/services/{$service->id}/available-slots");
-        $slot     = $slotsRes->json('data.0');
-
         $firstBooking = $this->postJson('/api/bookings', [
             'service_id'     => $service->id,
-            'scheduled_date' => $slot['date_label'],
-            'scheduled_time' => $slot['start_time'],
+            'scheduled_date' => $date,
+            'scheduled_time' => '10:00',
             'whatsapp'       => '+593099900001',
         ]);
         $firstBooking->assertStatus(201);
 
         $appointment = Appointment::where('user_id', $user1->id)->first();
 
+        // At cap=1, a second booking for the same interval is rejected while
+        // user1's appointment is still active.
+        Sanctum::actingAs($user2);
+        $this->postJson('/api/bookings', [
+            'service_id'     => $service->id,
+            'scheduled_date' => $date,
+            'scheduled_time' => '10:00',
+            'whatsapp'       => '+593099900002',
+        ])->assertStatus(409);
+
         // Admin cancels user1's appointment
         Sanctum::actingAs($admin);
         $this->patchJson("/api/admin/appointments/{$appointment->id}/cancel")
              ->assertStatus(200);
 
-        // Slot must be freed — slot_key is now null
+        // Slot must be freed — slot_key is now null and status is cancelled,
+        // which excludes it from the resolver's overlap count.
         $this->assertNull($appointment->fresh()->slot_key);
+        $this->assertEquals('cancelled', $appointment->fresh()->status);
 
-        // User2 can now book the same slot
+        // User2 can now book the same interval — capacity was freed.
         Sanctum::actingAs($user2);
         $secondBooking = $this->postJson('/api/bookings', [
             'service_id'     => $service->id,
-            'scheduled_date' => $slot['date_label'],
-            'scheduled_time' => $slot['start_time'],
+            'scheduled_date' => $date,
+            'scheduled_time' => '10:00',
             'whatsapp'       => '+593099900002',
         ]);
         $secondBooking->assertStatus(201);
