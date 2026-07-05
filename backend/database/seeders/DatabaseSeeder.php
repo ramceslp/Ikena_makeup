@@ -36,6 +36,13 @@ class DatabaseSeeder extends Seeder
         $this->call(ServiceSlotSeeder::class);
 
         // ---------------------------------------------------------------
+        // 0d. Venue agenda blocks (venue-wide, replaces per-service slots
+        // for the new concurrency model — legacy ServiceSlotSeeder above
+        // is retained until Slice 5 cleanup)
+        // ---------------------------------------------------------------
+        $this->call(AgendaBlockSeeder::class);
+
+        // ---------------------------------------------------------------
         // 1. Instructor
         // ---------------------------------------------------------------
         $instructor = User::updateOrCreate(
