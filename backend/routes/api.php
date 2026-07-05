@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\CourseReviewController;
 use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ServiceController;
+use App\Http\Controllers\Api\Admin\AgendaBlockController as AdminAgendaBlockController;
 use App\Http\Controllers\Api\Admin\AppointmentController as AdminAppointmentController;
 use App\Http\Controllers\Api\Admin\CertificateSettingController as AdminCertificateSettingController;
 use App\Http\Controllers\Api\Admin\PostController as AdminPostController;
@@ -156,6 +157,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/appointments', [AdminAppointmentController::class, 'index']);
         Route::patch('/appointments/{appointment}/mark-paid', [AdminAppointmentController::class, 'markPaid']);
         Route::patch('/appointments/{appointment}/cancel', [AdminAppointmentController::class, 'cancel']);
+
+        // Venue agenda block CRUD (VAGA-001)
+        Route::get('/agenda', [AdminAgendaBlockController::class, 'index']);
+        Route::post('/agenda', [AdminAgendaBlockController::class, 'store']);
+        Route::get('/agenda/{block}', [AdminAgendaBlockController::class, 'show']);
+        Route::patch('/agenda/{block}', [AdminAgendaBlockController::class, 'update']);
+        Route::delete('/agenda/{block}', [AdminAgendaBlockController::class, 'destroy']);
     });
 
     // Instructor authoring routes
