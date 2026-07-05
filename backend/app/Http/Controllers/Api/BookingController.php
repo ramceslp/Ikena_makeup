@@ -5,13 +5,14 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreBookingRequest;
 use App\Http\Resources\SlotResource;
+use App\Models\AgendaBlock;
 use App\Models\Appointment;
 use App\Models\Order;
 use App\Models\Service;
 use App\Services\Booking\DepositCalculator;
-use App\Services\Booking\SlotAvailabilityResolver;
+use App\Services\Booking\VenueAvailabilityResolver;
 use App\Services\Payments\Contracts\PaymentGatewayInterface;
-use Illuminate\Database\UniqueConstraintViolationException;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -19,9 +20,9 @@ use Illuminate\Support\Str;
 class BookingController extends Controller
 {
     public function __construct(
-        private readonly SlotAvailabilityResolver $resolver,
-        private readonly DepositCalculator        $calculator,
-        private readonly PaymentGatewayInterface  $gateway,
+        private readonly VenueAvailabilityResolver $resolver,
+        private readonly DepositCalculator         $calculator,
+        private readonly PaymentGatewayInterface   $gateway,
     ) {}
 
     /**
@@ -55,13 +56,23 @@ class BookingController extends Controller
      *
      * Create a booking (appointment + deposit order) for the authenticated user.
      *
-     * Flow (all inside a DB transaction):
-     *  1. Insert Appointment with slot_key set.
-     *  2. On UniqueConstraintViolationException → rollback → 409 (no orphan order).
-     *  3. Compute deposit via DepositCalculator.
-     *  4. Create Order (appointment_id set, course_id null).
-     *  5. Update appointment.order_id back-reference.
-     *  6. Kick off gateway checkout → return 201 with gateway payload.
+     * Flow (all inside a DB transaction, BOOK-001/002/003/005):
+     *  1. Resolve the matching AgendaBlock (already validated to exist by
+     *     StoreBookingRequest) to get the effective concurrency_limit/soft_threshold.
+     *  2. Recount venue-wide overlap for [scheduled_time, scheduled_end_time).
+     *     On MySQL, the recount query is executed with lockForUpdate() to
+     *     serialize concurrent writers; SQLite (tests / current prod) relies on
+     *     the transaction's optimistic recount, matching the documented tradeoff
+     *     in the design (see VenueAvailabilityResolver).
+     *  3. If overlap_count >= effective_limit → return 409 cap_exceeded (BOOK-002/BOOK-005).
+     *  4. Otherwise insert the Appointment with scheduled_end_time (DM-001),
+     *     create the deposit Order, and kick off gateway checkout.
+     *  5. Response includes is_near_capacity/warning_message when the soft
+     *     threshold has been reached (BOOK-003).
+     *
+     * NOTE: The slot_key UNIQUE constraint has been dropped (DM-002) — multiple
+     * appointments MAY share the same service/date/time up to concurrency_limit.
+     * slot_key is retained only as an audit field.
      */
     public function store(StoreBookingRequest $request): JsonResponse
     {
@@ -69,89 +80,135 @@ class BookingController extends Controller
         $user    = $request->user();
 
         $scheduledDate = $request->input('scheduled_date');
-        $scheduledTime = $request->input('scheduled_time');
+        $scheduledTime = substr($request->input('scheduled_time'), 0, 5);
         $whatsapp      = $request->input('whatsapp');
 
-        $depositCents = $this->calculator->cents($service);
+        $depositCents     = $this->calculator->cents($service);
+        $durationMinutes  = (int) $service->duration_hours * 60;
+        $scheduledEndTime = $this->addMinutes($scheduledTime, $durationMinutes);
 
         $slotKey = Appointment::makeSlotKey($service->id, $scheduledDate, $scheduledTime);
 
-        // Pre-check slot availability inside a lock to detect collisions before the INSERT.
-        // This approach works correctly in both MySQL and SQLite (the latter does not reliably
-        // roll back only the savepoint on a unique constraint violation in a nested transaction,
-        // which would invalidate the outer RefreshDatabase transaction wrapper in tests).
-        $slotTaken = Appointment::where('slot_key', $slotKey)->exists();
+        // Resolve the AgendaBlock covering this date/time to read its effective caps.
+        // StoreBookingRequest already validated a matching, non-overflowing block exists.
+        $requestedDay = Carbon::parse($scheduledDate)->dayOfWeek;
+        $block = AgendaBlock::where('is_blocked', false)
+            ->where(function ($q) use ($requestedDay, $scheduledDate) {
+                $q->where('day_of_week', $requestedDay)
+                  ->orWhereDate('specific_date', $scheduledDate);
+            })
+            ->get()
+            ->first(function (AgendaBlock $candidate) use ($scheduledTime) {
+                $open  = substr($candidate->open_time, 0, 5);
+                $close = substr($candidate->close_time, 0, 5);
 
-        if ($slotTaken) {
+                return $scheduledTime >= $open && $scheduledTime < $close;
+            });
+
+        if (! $block) {
+            // Defensive — should be unreachable since StoreBookingRequest validated this.
             return response()->json([
                 'message' => 'This slot is no longer available. Please choose another time.',
             ], 409);
         }
 
-        try {
-            $result = DB::transaction(function () use (
-                $service, $user, $scheduledDate, $scheduledTime, $whatsapp, $depositCents, $slotKey
-            ) {
-                // Step 1: insert appointment (may still throw on slot_key UNIQUE violation
-                // due to race condition; caught below for atomicity guarantee)
-                $appointment = Appointment::create([
-                    'service_id'          => $service->id,
-                    'user_id'             => $user->id,
-                    'order_id'            => null, // updated after order is created
-                    'scheduled_date'      => $scheduledDate,
-                    'scheduled_time'      => $scheduledTime,
-                    'slot_key'            => $slotKey,
-                    'whatsapp'            => $whatsapp,
-                    'payment_mode'        => 'gateway',
-                    'deposit_amount_cents' => $depositCents,
-                    'status'              => 'pending',
-                ]);
+        $effectiveLimit = $block->concurrency_limit
+            ?? (int) config('booking.venue.default_concurrency_limit');
+        $softThreshold = $block->soft_threshold
+            ?? config('booking.venue.default_soft_threshold');
 
-                // Step 2: create the deposit Order (triggers XOR guard — must pass)
-                $order = Order::create([
-                    'user_id'               => $user->id,
-                    'course_id'             => null,
-                    'appointment_id'        => $appointment->id,
-                    'client_transaction_id' => 'ORD-' . Str::uuid(),
-                    'gateway'               => $this->gateway->name(),
-                    'amount_cents'          => $depositCents,
-                    'currency'              => 'USD',
-                    'status'                => 'pending',
-                ]);
+        $result = DB::transaction(function () use (
+            $service, $user, $scheduledDate, $scheduledTime, $scheduledEndTime,
+            $whatsapp, $depositCents, $slotKey, $effectiveLimit, $softThreshold
+        ) {
+            // BOOK-002/BOOK-005 — recount venue-wide overlap inside the transaction.
+            $overlapQuery = DB::table('appointments')
+                ->where('status', '!=', 'cancelled')
+                ->whereDate('scheduled_date', $scheduledDate)
+                ->where('scheduled_time', '<', $scheduledEndTime)
+                ->where('scheduled_end_time', '>', $scheduledTime);
 
-                // Step 3: link order back to appointment
-                $appointment->update(['order_id' => $order->id]);
+            // lockForUpdate() serializes concurrent writers on MySQL (InnoDB row locks).
+            // SQLite (tests / current prod default) does not support row-level locks the
+            // same way, so this branch is a no-op there — optimistic recount is the
+            // documented tradeoff for that driver (see design "Architecture Decisions" #4).
+            if (DB::connection()->getDriverName() === 'mysql') {
+                $overlapQuery->lockForUpdate();
+            }
 
-                // Step 4: initiate gateway checkout
-                $order->setRelation('appointment', $appointment);
-                $session = $this->gateway->createCheckout($order);
+            $overlapCount = $overlapQuery->count();
 
-                return [
-                    'order'   => $order,
-                    'session' => $session,
-                ];
-            });
-        } catch (UniqueConstraintViolationException) {
-            // REGRESSION GUARD: Race-condition catch — transaction is fully rolled back by
-            // the DB engine so no orphan order exists. This path is exercised on MySQL
-            // (InnoDB savepoint rollback on unique violation). It CANNOT be reliably tested
-            // on SQLite :memory: because SQLite's savepoint behavior on nested unique
-            // violations poisons the outer RefreshDatabase transaction wrapper (the entire
-            // outer transaction is aborted, not just the inner savepoint). The pre-check
-            // `Appointment::where('slot_key', $key)->exists()` above covers the common
-            // collision scenario in tests. Do NOT remove this catch without a MySQL
-            // integration test confirming the race-condition 409 still works.
+            if ($overlapCount >= $effectiveLimit) {
+                return null; // signals cap_exceeded to the caller
+            }
+
+            $appointment = Appointment::create([
+                'service_id'           => $service->id,
+                'user_id'              => $user->id,
+                'order_id'             => null, // updated after order is created
+                'scheduled_date'       => $scheduledDate,
+                'scheduled_time'       => $scheduledTime,
+                'scheduled_end_time'   => $scheduledEndTime,
+                'slot_key'             => $slotKey,
+                'whatsapp'             => $whatsapp,
+                'payment_mode'         => 'gateway',
+                'deposit_amount_cents' => $depositCents,
+                'status'               => 'pending',
+            ]);
+
+            $order = Order::create([
+                'user_id'               => $user->id,
+                'course_id'             => null,
+                'appointment_id'        => $appointment->id,
+                'client_transaction_id' => 'ORD-' . Str::uuid(),
+                'gateway'               => $this->gateway->name(),
+                'amount_cents'          => $depositCents,
+                'currency'              => 'USD',
+                'status'                => 'pending',
+            ]);
+
+            $appointment->update(['order_id' => $order->id]);
+
+            $order->setRelation('appointment', $appointment);
+            $session = $this->gateway->createCheckout($order);
+
+            return [
+                'order'            => $order,
+                'session'          => $session,
+                'is_near_capacity' => $softThreshold !== null && $overlapCount >= $softThreshold,
+            ];
+        });
+
+        if ($result === null) {
             return response()->json([
-                'message' => 'This slot is no longer available. Please choose another time.',
+                'message' => 'This time slot has reached capacity. Please choose another time.',
+                'code'    => 'cap_exceeded',
             ], 409);
         }
 
         return response()->json([
             'data' => [
-                'order_id' => $result['order']->id,
-                'provider' => $result['session']->provider,
-                'config'   => $result['session']->config,
+                'order_id'         => $result['order']->id,
+                'provider'         => $result['session']->provider,
+                'config'           => $result['session']->config,
+                'is_near_capacity' => $result['is_near_capacity'],
+                'warning_message'  => $result['is_near_capacity']
+                    ? config('booking.venue.warning_message')
+                    : null,
             ],
         ], 201);
+    }
+
+    /**
+     * Add $minutes to a 'HH:MM' time string, returning a zero-padded 'HH:MM' result.
+     * Minute-based integer arithmetic avoids midnight-wrap ambiguity from Carbon
+     * formatting (see StoreBookingRequest for the matching validation-side logic).
+     */
+    private function addMinutes(string $time, int $minutes): string
+    {
+        [$hour, $minute] = array_map('intval', explode(':', $time));
+        $total = $hour * 60 + $minute + $minutes;
+
+        return sprintf('%02d:%02d', intdiv($total, 60), $total % 60);
     }
 }

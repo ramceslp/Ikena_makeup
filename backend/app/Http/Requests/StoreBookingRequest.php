@@ -2,8 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Models\AgendaBlock;
 use App\Models\Service;
-use App\Models\ServiceSlot;
 use Carbon\Carbon;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -12,12 +12,12 @@ use Illuminate\Foundation\Http\FormRequest;
  *
  * `scheduled_date` and `scheduled_time` MUST be expressed as America/Guayaquil
  * local wall-clock time (UTC-5, no DST). This matches the timezone used when
- * defining ServiceSlots and when computing slot availability windows in
- * SlotAvailabilityResolver. Sending UTC or any other timezone offset will
- * result in mismatched slot lookups and a 422 "slot not available" response.
+ * defining AgendaBlocks and when computing venue availability windows in
+ * VenueAvailabilityResolver. Sending UTC or any other timezone offset will
+ * result in mismatched agenda lookups and a 422 "slot not available" response.
  *
  * The server performs NO timezone conversion on these fields — it stores exactly
- * what is sent and compares it directly against slot definitions.
+ * what is sent and compares it directly against agenda block definitions.
  */
 class StoreBookingRequest extends FormRequest
 {
@@ -42,11 +42,15 @@ class StoreBookingRequest extends FormRequest
      * Checks:
      *  1. The service is published.
      *  2. The service has availability_type = by_appointment.
-     *  3. The requested date/time maps to an active (non-blocked) slot definition.
-     *     NOTE: We do NOT exclude already-booked slots here — the DB unique index
-     *     on slot_key handles collision detection (UniqueConstraintViolationException → 409).
-     *     This means a second booking attempt will pass validation and hit the DB,
-     *     which returns the 409 conflict response from the controller.
+     *  3. The requested date/time is covered by an active (non-blocked) venue
+     *     AgendaBlock (recurring day_of_week or specific_date).
+     *  4. BOOK-004 — the requested time + service.duration_hours does not
+     *     exceed the matching AgendaBlock's close_time.
+     *
+     *     NOTE: We do NOT reject on current capacity here — cap enforcement
+     *     (overlap recount against concurrency_limit) happens inside
+     *     BookingController::store()'s DB transaction (BOOK-002/BOOK-005),
+     *     which returns 409 cap_exceeded when the venue is full.
      */
     public function withValidator(\Illuminate\Validation\Validator $validator): void
     {
@@ -74,16 +78,13 @@ class StoreBookingRequest extends FormRequest
                 return;
             }
 
-            // Verify the requested date/time matches an active (non-blocked) slot definition.
-            // We check against the slot DEFINITIONS only (recurring day or specific date),
-            // not against current availability — slot collision is handled by the DB unique index.
             $requestedDate = $this->input('scheduled_date');
             $requestedTime = substr($this->input('scheduled_time'), 0, 5);
             $requestedDay  = Carbon::parse($requestedDate)->dayOfWeek;
 
             $tz      = config('booking.timezone');
             $today   = Carbon::now($tz)->startOfDay();
-            $horizon = $today->copy()->addDays(60);
+            $horizon = $today->copy()->addDays((int) config('booking.venue.look_ahead_days'));
             $reqDate = Carbon::parse($requestedDate, $tz)->startOfDay();
 
             // Within window?
@@ -93,18 +94,39 @@ class StoreBookingRequest extends FormRequest
                 return;
             }
 
-            // Does an active slot definition cover this date/time?
-            $slotExists = ServiceSlot::where('service_id', $service->id)
-                ->where('is_blocked', false)
-                ->where('start_time', 'LIKE', $requestedTime . '%')
+            // Find the active AgendaBlock whose [open_time, close_time) window
+            // covers the requested time, matching either the recurring
+            // day_of_week or the specific_date.
+            $block = AgendaBlock::where('is_blocked', false)
                 ->where(function ($q) use ($requestedDay, $requestedDate) {
                     $q->where('day_of_week', $requestedDay)
-                      ->orWhere('specific_date', $requestedDate);
+                      ->orWhereDate('specific_date', $requestedDate);
                 })
-                ->exists();
+                ->get()
+                ->first(function (AgendaBlock $candidate) use ($requestedTime) {
+                    $open  = substr($candidate->open_time, 0, 5);
+                    $close = substr($candidate->close_time, 0, 5);
 
-            if (! $slotExists) {
+                    return $requestedTime >= $open && $requestedTime < $close;
+                });
+
+            if (! $block) {
                 $v->errors()->add('scheduled_date', 'The requested slot is not available for this service.');
+
+                return;
+            }
+
+            // BOOK-004 — reject when scheduled_time + duration_hours overflows close_time.
+            // Minute-based integer arithmetic avoids any Carbon midnight-wrap ambiguity.
+            [$startHour, $startMinute] = array_map('intval', explode(':', $requestedTime));
+            $startMinutes = $startHour * 60 + $startMinute;
+            $endMinutes   = $startMinutes + ((int) $service->duration_hours * 60);
+
+            [$closeHour, $closeMinute] = array_map('intval', explode(':', substr($block->close_time, 0, 5)));
+            $closeMinutes = $closeHour * 60 + $closeMinute;
+
+            if ($endMinutes > $closeMinutes) {
+                $v->errors()->add('scheduled_time', 'The requested duration exceeds the venue availability window.');
             }
         });
     }

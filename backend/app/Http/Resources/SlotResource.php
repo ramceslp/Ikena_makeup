@@ -14,9 +14,10 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * those fields may be absent from the underlying data — they are included only
  * when present.
  *
- * The resource accepts EITHER a ServiceSlot Eloquent model OR an associative
- * array from SlotAvailabilityResolver (with keys: slot_id, date_label,
- * start_time, capacity_remaining). A wrapper static factory handles the array case.
+ * The resource accepts EITHER a ServiceSlot Eloquent model (legacy admin slot
+ * CRUD, retained for rollback until Slice 5 cleanup) OR an associative array
+ * from VenueAvailabilityResolver (with keys: slot_id, date_label, start_time,
+ * capacity_remaining, is_near_capacity, warning_message).
  */
 class SlotResource extends JsonResource
 {
@@ -36,12 +37,15 @@ class SlotResource extends JsonResource
         }
 
         // When resource wraps a resolver occurrence array
-        // Keys: slot_id, date_label, start_time, capacity_remaining
+        // Keys: slot_id, date_label, start_time, capacity_remaining,
+        //       is_near_capacity, warning_message (VAVL-003, additive/back-compatible)
         return [
             'id'                 => $this->resource['slot_id'],
             'date_label'         => $this->resource['date_label'],
             'start_time'         => $this->resource['start_time'],
             'capacity_remaining' => $this->resource['capacity_remaining'],
+            'is_near_capacity'   => $this->resource['is_near_capacity'] ?? false,
+            'warning_message'    => $this->resource['warning_message'] ?? null,
         ];
     }
 }
