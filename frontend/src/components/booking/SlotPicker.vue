@@ -12,9 +12,10 @@ const emit = defineEmits(['slot-selected'])
 
 const selectedKey = ref(null)
 
-// A recurring weekly slot produces many occurrences that all share the same
-// `id` (the ServiceSlot row id) but differ by date. The unique identity of an
-// occurrence is id + date + time — comparing by `id` alone would mark them all.
+// A recurring weekly agenda block produces many occurrences that all share
+// the same `id` (the AgendaBlock row id) but differ by date. The unique
+// identity of an occurrence is id + date + time — comparing by `id` alone
+// would mark them all.
 function occurrenceKey(slot) {
   return `${slot.id}-${slot.date_label}-${slot.start_time}`
 }

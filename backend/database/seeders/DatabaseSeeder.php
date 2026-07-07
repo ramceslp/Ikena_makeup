@@ -30,15 +30,14 @@ class DatabaseSeeder extends Seeder
         $this->call(ProductSeeder::class);
 
         // ---------------------------------------------------------------
-        // 0c. Services + their booking slots (depend on categories)
+        // 0c. Services (depend on categories)
         // ---------------------------------------------------------------
         $this->call(ServiceSeeder::class);
-        $this->call(ServiceSlotSeeder::class);
 
         // ---------------------------------------------------------------
-        // 0d. Venue agenda blocks (venue-wide, replaces per-service slots
-        // for the new concurrency model — legacy ServiceSlotSeeder above
-        // is retained until Slice 5 cleanup)
+        // 0d. Venue agenda blocks (venue-wide bookable windows + concurrency
+        // caps — replaces the legacy per-service ServiceSlotSeeder, removed
+        // in the venue-agenda-concurrency Slice 5 cleanup)
         // ---------------------------------------------------------------
         $this->call(AgendaBlockSeeder::class);
 

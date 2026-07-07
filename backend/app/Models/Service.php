@@ -48,11 +48,6 @@ class Service extends Model
         return $this->belongsTo(Category::class);
     }
 
-    public function slots(): HasMany
-    {
-        return $this->hasMany(ServiceSlot::class);
-    }
-
     public function appointments(): HasMany
     {
         return $this->hasMany(Appointment::class);
