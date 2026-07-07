@@ -10,7 +10,7 @@ export const useBookingStore = defineStore('booking', {
     // Admin state
     appointments: [],
     appointmentsMeta: null,
-    slots: [],
+    agendaBlocks: [],
   }),
 
   actions: {
@@ -89,25 +89,38 @@ export const useBookingStore = defineStore('booking', {
       return response.data.data
     },
 
-    // ── Admin: slot CRUD ────────────────────────────────────────────────────
+    // ── Admin: venue agenda block CRUD (VAGA-001) ───────────────────────────
 
-    async fetchSlots(serviceId) {
-      const response = await api.get(`/admin/services/${serviceId}/slots`)
-      this.slots = response.data.data
+    async fetchAgendaBlocks() {
+      this.isLoading = true
+      this.bookingError = null
+      try {
+        const response = await api.get('/admin/agenda')
+        this.agendaBlocks = response.data.data
+      } catch (err) {
+        this.bookingError = err.response?.data?.message || 'Error al cargar la agenda del local'
+      } finally {
+        this.isLoading = false
+      }
     },
 
-    async createSlot(serviceId, data) {
-      const response = await api.post(`/admin/services/${serviceId}/slots`, data)
+    // Create/update/delete intentionally let validation errors (e.g. 422
+    // overlap/XOR) propagate to the caller — the admin form needs the raw
+    // error response to render field-level messages, unlike the public
+    // booking flow which translates errors into user-facing copy itself.
+
+    async createAgendaBlock(data) {
+      const response = await api.post('/admin/agenda', data)
       return response.data.data
     },
 
-    async updateSlot(serviceId, slotId, data) {
-      const response = await api.patch(`/admin/services/${serviceId}/slots/${slotId}`, data)
+    async updateAgendaBlock(blockId, data) {
+      const response = await api.patch(`/admin/agenda/${blockId}`, data)
       return response.data.data
     },
 
-    async deleteSlot(serviceId, slotId) {
-      await api.delete(`/admin/services/${serviceId}/slots/${slotId}`)
+    async deleteAgendaBlock(blockId) {
+      await api.delete(`/admin/agenda/${blockId}`)
     },
   },
 })

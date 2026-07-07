@@ -60,12 +60,13 @@ describe('NavBar — unified admin menu', () => {
     expect(adminHrefs(wrapper)).toHaveLength(0)
   })
 
-  it('opens the dropdown with exactly the four admin sections', async () => {
+  it('opens the dropdown with exactly the admin sections', async () => {
     const wrapper = mountAs({ name: 'Admin', role: 'admin' })
 
     await wrapper.find('[data-admin-menu-trigger]').trigger('click')
 
     expect(adminHrefs(wrapper).sort()).toEqual([
+      '/admin/agenda',
       '/admin/appointments',
       '/admin/certificate',
       '/admin/noticias',

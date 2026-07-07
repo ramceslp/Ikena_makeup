@@ -2,10 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\AgendaBlock;
 use App\Models\Appointment;
 use App\Models\Order;
 use App\Models\Service;
-use App\Models\ServiceSlot;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -18,6 +18,11 @@ use Tests\TestCase;
  * Tests for:
  *  - GET /api/services/{serviceId}/available-slots  (public)
  *  - POST /api/bookings                             (auth required)
+ *
+ * Rewritten for the venue-agenda-concurrency change: bookable availability is
+ * now defined by venue-wide AgendaBlocks (open_time/close_time + concurrency
+ * caps) resolved via VenueAvailabilityResolver, instead of per-service
+ * ServiceSlot rows. Covers BOOK-001–005 and DM-002.
  *
  * All use SQLite :memory: and PAYMENT_DRIVER=fake.
  */
@@ -40,28 +45,75 @@ class BookingTest extends TestCase
     }
 
     /**
-     * Create a published by_appointment service with a recurring slot for every day.
+     * Create a published by_appointment service.
      */
-    private function makeBookableService(float $price = 100.00, int $depositPct = 30): array
+    private function makeService(float $price = 100.00, int $depositPct = 30, int $durationHours = 1): Service
     {
-        $service = Service::factory()->create([
+        return Service::factory()->create([
             'availability_type'  => 'by_appointment',
             'is_published'       => true,
             'price'              => $price,
             'deposit_percentage' => $depositPct,
+            'duration_hours'     => $durationHours,
         ]);
+    }
 
-        // A slot for every day of the week so we always have available dates
-        $slot = ServiceSlot::factory()->create([
-            'service_id'    => $service->id,
-            'day_of_week'   => Carbon::today()->dayOfWeek, // today's day → next occurrence is today or next week
-            'specific_date' => null,
-            'start_time'    => '10:00',
-            'capacity'      => 1,
-            'is_blocked'    => false,
+    /**
+     * Create a venue-wide AgendaBlock covering today's weekday, wide open window
+     * by default (09:00–18:00) so tests have room to place candidate times.
+     */
+    private function makeBlockForToday(array $overrides = []): AgendaBlock
+    {
+        return AgendaBlock::factory()->create(array_merge([
+            'day_of_week'       => Carbon::today()->dayOfWeek,
+            'specific_date'     => null,
+            'open_time'         => '09:00',
+            'close_time'        => '18:00',
+            'concurrency_limit' => 2,
+            'soft_threshold'    => null,
+            'is_blocked'        => false,
+        ], $overrides));
+    }
+
+    /**
+     * Create a published by_appointment service plus a matching AgendaBlock for today.
+     *
+     * @return array{0: Service, 1: AgendaBlock}
+     */
+    private function makeBookableService(
+        float $price = 100.00,
+        int $depositPct = 30,
+        int $durationHours = 1,
+        array $blockOverrides = []
+    ): array {
+        $service = $this->makeService($price, $depositPct, $durationHours);
+        $block   = $this->makeBlockForToday($blockOverrides);
+
+        return [$service, $block];
+    }
+
+    /**
+     * Directly insert a non-cancelled appointment occupying [start, end) on the
+     * given date, bypassing the API. Used to seed venue-wide overlap counts.
+     */
+    private function makeExistingAppointment(
+        string $date,
+        string $startTime,
+        string $endTime,
+        string $status = 'pending'
+    ): Appointment {
+        return Appointment::factory()->create([
+            'scheduled_date'      => $date,
+            'scheduled_time'      => $startTime,
+            'scheduled_end_time'  => $endTime,
+            'status'              => $status,
+            'slot_key'            => null,
         ]);
+    }
 
-        return [$service, $slot];
+    private function today(): string
+    {
+        return Carbon::today()->format('Y-m-d');
     }
 
     // -------------------------------------------------------------------------
@@ -76,7 +128,7 @@ class BookingTest extends TestCase
 
         $response->assertStatus(200)
                  ->assertJsonStructure([
-                     'data' => [['id', 'date_label', 'start_time', 'capacity_remaining']],
+                     'data' => [['id', 'date_label', 'start_time', 'capacity_remaining', 'is_near_capacity', 'warning_message']],
                  ]);
     }
 
@@ -106,7 +158,7 @@ class BookingTest extends TestCase
 
     public function test_available_slots_slot_resource_includes_date_label_and_capacity_remaining(): void
     {
-        [$service, $slot] = $this->makeBookableService();
+        [$service] = $this->makeBookableService();
 
         $response = $this->getJson("/api/services/{$service->id}/available-slots");
 
@@ -116,7 +168,26 @@ class BookingTest extends TestCase
         $this->assertArrayHasKey('date_label', $firstSlot);
         $this->assertArrayHasKey('capacity_remaining', $firstSlot);
         $this->assertMatchesRegularExpression('/\d{4}-\d{2}-\d{2}/', $firstSlot['date_label']);
-        $this->assertEquals(1, $firstSlot['capacity_remaining']);
+        $this->assertEquals(2, $firstSlot['capacity_remaining']);
+    }
+
+    /**
+     * VAVL-003 wired through SlotResource: occurrence entries expose
+     * is_near_capacity / warning_message, false/null when no soft_threshold is set.
+     */
+    public function test_available_slots_includes_is_near_capacity_and_warning_message_fields(): void
+    {
+        [$service] = $this->makeBookableService(blockOverrides: ['soft_threshold' => null]);
+
+        $response = $this->getJson("/api/services/{$service->id}/available-slots");
+
+        $response->assertStatus(200);
+
+        $firstSlot = $response->json('data.0');
+        $this->assertArrayHasKey('is_near_capacity', $firstSlot);
+        $this->assertArrayHasKey('warning_message', $firstSlot);
+        $this->assertFalse($firstSlot['is_near_capacity']);
+        $this->assertNull($firstSlot['warning_message']);
     }
 
     // -------------------------------------------------------------------------
@@ -169,12 +240,12 @@ class BookingTest extends TestCase
         ])->assertStatus(422);
     }
 
-    public function test_booking_returns_422_when_slot_does_not_exist(): void
+    public function test_booking_returns_422_when_no_agenda_block_covers_requested_time(): void
     {
         $user = $this->makeUser();
         Sanctum::actingAs($user);
 
-        // No slots created for this service
+        // No AgendaBlock created for this service's venue at all.
         $service = Service::factory()->create([
             'availability_type' => 'by_appointment',
             'is_published'      => true,
@@ -189,7 +260,7 @@ class BookingTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
-    // POST /api/bookings — 201 success with correct deposit
+    // BOOK-001 — Booking accepted below hard cap; scheduled_end_time stored
     // -------------------------------------------------------------------------
 
     public function test_booking_success_creates_appointment_and_order_with_correct_deposit(): void
@@ -198,26 +269,22 @@ class BookingTest extends TestCase
         Sanctum::actingAs($user);
 
         // price=100, deposit_percentage=30 → deposit = 100 * 30/100 * 100 = 3000 cents
-        [$service, $slot] = $this->makeBookableService(100.00, 30);
-
-        // Get an available slot date
-        $slotsResponse = $this->getJson("/api/services/{$service->id}/available-slots");
-        $slotsResponse->assertStatus(200);
-        $availableSlot = $slotsResponse->json('data.0');
-
-        $this->assertNotNull($availableSlot, 'Expected at least one available slot');
+        [$service] = $this->makeBookableService(100.00, 30);
 
         $response = $this->postJson('/api/bookings', [
             'service_id'     => $service->id,
-            'scheduled_date' => $availableSlot['date_label'],
-            'scheduled_time' => $availableSlot['start_time'],
+            'scheduled_date' => $this->today(),
+            'scheduled_time' => '10:00',
             'whatsapp'       => '+593099912345',
         ]);
 
         $response->assertStatus(201)
                  ->assertJsonStructure([
-                     'data' => ['order_id', 'provider', 'config'],
+                     'data' => ['order_id', 'provider', 'config', 'is_near_capacity', 'warning_message'],
                  ]);
+
+        $response->assertJsonPath('data.is_near_capacity', false);
+        $response->assertJsonPath('data.warning_message', null);
 
         // Appointment must exist
         $this->assertDatabaseHas('appointments', [
@@ -242,15 +309,12 @@ class BookingTest extends TestCase
         Sanctum::actingAs($user);
 
         // price=200, deposit_percentage=25 → 200 * 25/100 * 100 = 5000 cents
-        [$service, $slot] = $this->makeBookableService(200.00, 25);
-
-        $slotsResponse = $this->getJson("/api/services/{$service->id}/available-slots");
-        $availableSlot = $slotsResponse->json('data.0');
+        [$service] = $this->makeBookableService(200.00, 25);
 
         $response = $this->postJson('/api/bookings', [
             'service_id'     => $service->id,
-            'scheduled_date' => $availableSlot['date_label'],
-            'scheduled_time' => $availableSlot['start_time'],
+            'scheduled_date' => $this->today(),
+            'scheduled_time' => '10:00',
             'whatsapp'       => '+593099912345',
         ]);
 
@@ -263,119 +327,238 @@ class BookingTest extends TestCase
         ]);
     }
 
+    /**
+     * DM-001 / BOOK-001: scheduled_end_time = scheduled_time + service.duration_hours.
+     */
+    public function test_booking_stores_scheduled_end_time_equal_to_start_plus_duration(): void
+    {
+        $user = $this->makeUser();
+        Sanctum::actingAs($user);
+
+        [$service] = $this->makeBookableService(durationHours: 2);
+
+        $response = $this->postJson('/api/bookings', [
+            'service_id'     => $service->id,
+            'scheduled_date' => $this->today(),
+            'scheduled_time' => '10:00',
+            'whatsapp'       => '+593099912345',
+        ]);
+
+        $response->assertStatus(201);
+
+        $appointment = Appointment::where('service_id', $service->id)->first();
+        $this->assertNotNull($appointment);
+        $this->assertSame('12:00', substr($appointment->scheduled_end_time, 0, 5));
+    }
+
     // -------------------------------------------------------------------------
-    // POST /api/bookings — 409 slot collision, no orphan order
+    // BOOK-002 — Hard cap rejection / acceptance at cap-1
     // -------------------------------------------------------------------------
 
-    public function test_booking_returns_409_on_slot_collision_and_no_orphan_order(): void
+    public function test_booking_returns_409_cap_exceeded_when_at_hard_cap(): void
+    {
+        $user = $this->makeUser();
+        Sanctum::actingAs($user);
+
+        [$service] = $this->makeBookableService(blockOverrides: ['concurrency_limit' => 2]);
+
+        $date = $this->today();
+
+        // 2 non-cancelled appointments already overlap [10:00, 11:00) venue-wide.
+        $this->makeExistingAppointment($date, '10:00', '11:00', 'pending');
+        $this->makeExistingAppointment($date, '10:00', '11:00', 'confirmed');
+
+        $response = $this->postJson('/api/bookings', [
+            'service_id'     => $service->id,
+            'scheduled_date' => $date,
+            'scheduled_time' => '10:00',
+            'whatsapp'       => '+593099912345',
+        ]);
+
+        $response->assertStatus(409)
+                 ->assertJsonPath('code', 'cap_exceeded');
+
+        // No new appointment created for this service.
+        $this->assertEquals(0, Appointment::where('service_id', $service->id)->count());
+        $this->assertEquals(0, Order::where('user_id', $user->id)->count());
+    }
+
+    public function test_booking_succeeds_at_cap_minus_one(): void
+    {
+        $user = $this->makeUser();
+        Sanctum::actingAs($user);
+
+        [$service] = $this->makeBookableService(blockOverrides: ['concurrency_limit' => 2]);
+
+        $date = $this->today();
+
+        // 1 existing overlapping appointment → overlap_count=1 < limit=2
+        $this->makeExistingAppointment($date, '10:00', '11:00', 'pending');
+
+        $response = $this->postJson('/api/bookings', [
+            'service_id'     => $service->id,
+            'scheduled_date' => $date,
+            'scheduled_time' => '10:00',
+            'whatsapp'       => '+593099912345',
+        ]);
+
+        $response->assertStatus(201);
+        $this->assertEquals(1, Appointment::where('service_id', $service->id)->count());
+    }
+
+    // -------------------------------------------------------------------------
+    // BOOK-003 — Soft threshold booking succeeds with warning flag
+    // -------------------------------------------------------------------------
+
+    public function test_booking_includes_warning_when_soft_threshold_reached(): void
+    {
+        $user = $this->makeUser();
+        Sanctum::actingAs($user);
+
+        [$service] = $this->makeBookableService(blockOverrides: [
+            'concurrency_limit' => 3,
+            'soft_threshold'    => 1,
+        ]);
+
+        $date = $this->today();
+
+        // 1 existing overlapping appointment → overlap_count=1 >= soft_threshold=1, < limit=3
+        $this->makeExistingAppointment($date, '10:00', '11:00', 'pending');
+
+        $response = $this->postJson('/api/bookings', [
+            'service_id'     => $service->id,
+            'scheduled_date' => $date,
+            'scheduled_time' => '10:00',
+            'whatsapp'       => '+593099912345',
+        ]);
+
+        $response->assertStatus(201)
+                 ->assertJsonPath('data.is_near_capacity', true)
+                 ->assertJsonPath('data.warning_message', config('booking.venue.warning_message'));
+    }
+
+    // -------------------------------------------------------------------------
+    // BOOK-004 — Duration overflow rejection / exact-fit boundary
+    // -------------------------------------------------------------------------
+
+    public function test_booking_returns_422_when_duration_exceeds_close_time(): void
+    {
+        $user = $this->makeUser();
+        Sanctum::actingAs($user);
+
+        [$service] = $this->makeBookableService(durationHours: 2, blockOverrides: [
+            'open_time'  => '09:00',
+            'close_time' => '12:00',
+        ]);
+
+        // 11:00 + 2h = 13:00 > close_time 12:00
+        $this->postJson('/api/bookings', [
+            'service_id'     => $service->id,
+            'scheduled_date' => $this->today(),
+            'scheduled_time' => '11:00',
+            'whatsapp'       => '+593099912345',
+        ])->assertStatus(422);
+
+        $this->assertEquals(0, Appointment::where('service_id', $service->id)->count());
+    }
+
+    public function test_booking_accepted_when_duration_exactly_fits_close_time(): void
+    {
+        $user = $this->makeUser();
+        Sanctum::actingAs($user);
+
+        [$service] = $this->makeBookableService(durationHours: 2, blockOverrides: [
+            'open_time'  => '09:00',
+            'close_time' => '12:00',
+        ]);
+
+        // 10:00 + 2h = 12:00 == close_time 12:00 → boundary is valid
+        $response = $this->postJson('/api/bookings', [
+            'service_id'     => $service->id,
+            'scheduled_date' => $this->today(),
+            'scheduled_time' => '10:00',
+            'whatsapp'       => '+593099912345',
+        ]);
+
+        $response->assertStatus(201);
+
+        $appointment = Appointment::where('service_id', $service->id)->first();
+        $this->assertSame('12:00', substr($appointment->scheduled_end_time, 0, 5));
+    }
+
+    // -------------------------------------------------------------------------
+    // BOOK-005 — Race safety (sequential simulation at cap=1)
+    // -------------------------------------------------------------------------
+
+    public function test_sequential_requests_at_cap_one_second_request_is_rejected(): void
     {
         $user1 = $this->makeUser();
         $user2 = $this->makeUser();
 
-        [$service, $slot] = $this->makeBookableService();
+        [$service] = $this->makeBookableService(blockOverrides: ['concurrency_limit' => 1]);
 
-        // Get available slot
-        $slotsResponse = $this->getJson("/api/services/{$service->id}/available-slots");
-        $slotsResponse->assertStatus(200);
-        $availableSlot = $slotsResponse->json('data.0');
-        $this->assertNotNull($availableSlot, 'Expected at least one available slot for 409 test');
+        $date = $this->today();
 
-        $slotDate = $availableSlot['date_label'];
-        $slotTime = $availableSlot['start_time'];
-
-        // User 1 books successfully
         Sanctum::actingAs($user1);
         $first = $this->postJson('/api/bookings', [
             'service_id'     => $service->id,
-            'scheduled_date' => $slotDate,
-            'scheduled_time' => $slotTime,
+            'scheduled_date' => $date,
+            'scheduled_time' => '10:00',
             'whatsapp'       => '+593099900001',
         ]);
         $first->assertStatus(201);
 
-        // User 2 tries to book the same slot → 409
         Sanctum::actingAs($user2);
         $second = $this->postJson('/api/bookings', [
             'service_id'     => $service->id,
-            'scheduled_date' => $slotDate,
-            'scheduled_time' => $slotTime,
+            'scheduled_date' => $date,
+            'scheduled_time' => '10:00',
             'whatsapp'       => '+593099900002',
         ]);
-        $second->assertStatus(409);
+        $second->assertStatus(409)
+               ->assertJsonPath('code', 'cap_exceeded');
 
-        // Assert NO order was created for user2 at all
-        $this->assertEquals(
-            0,
-            Order::where('user_id', $user2->id)->count(),
-            'No orphan order should have been created for the second (colliding) user'
-        );
-
-        // Exactly 1 appointment for this slot (only user1's)
-        $totalAppts = Appointment::where('service_id', $service->id)->count();
-        $this->assertEquals(
-            1,
-            $totalAppts,
-            "Expected 1 appointment for service_id={$service->id}, got {$totalAppts}"
-        );
+        $this->assertEquals(1, Appointment::where('service_id', $service->id)->count());
+        $this->assertEquals(0, Order::where('user_id', $user2->id)->count());
     }
 
     // -------------------------------------------------------------------------
-    // FIX 7 — UniqueConstraintViolationException catch path pin
-    //
-    // Context: the pre-check (exists()) path is tested above. The catch block
-    // inside DB::transaction handles race-condition collisions on MySQL (InnoDB).
-    // SQLite does not reliably support savepoint-level rollback on unique violations
-    // within a RefreshDatabase outer transaction, so we cannot force the catch
-    // path to fire on SQLite without poisoning the outer transaction wrapper.
-    //
-    // This test pins the *code contract* of the catch path by asserting the 409
-    // response via the pre-check path (same response shape) and documents that
-    // the catch block is tested on MySQL only. The REGRESSION GUARD comment on
-    // the catch block in BookingController::store() is the complementary guard.
+    // DM-002 — slot_key UNIQUE constraint removed
     // -------------------------------------------------------------------------
 
-    public function test_409_catch_path_response_shape_matches_pre_check_path(): void
+    public function test_two_bookings_same_service_date_time_both_succeed_when_capacity_allows(): void
     {
         $user1 = $this->makeUser();
         $user2 = $this->makeUser();
 
-        [$service] = $this->makeBookableService();
+        [$service] = $this->makeBookableService(blockOverrides: ['concurrency_limit' => 2]);
 
-        $slotsResponse = $this->getJson("/api/services/{$service->id}/available-slots");
-        $slotsResponse->assertStatus(200);
-        $availableSlot = $slotsResponse->json('data.0');
-        $this->assertNotNull($availableSlot);
+        $date = $this->today();
 
-        $slotDate = $availableSlot['date_label'];
-        $slotTime = $availableSlot['start_time'];
-
-        // User1 takes the slot
         Sanctum::actingAs($user1);
-        $this->postJson('/api/bookings', [
+        $first = $this->postJson('/api/bookings', [
             'service_id'     => $service->id,
-            'scheduled_date' => $slotDate,
-            'scheduled_time' => $slotTime,
+            'scheduled_date' => $date,
+            'scheduled_time' => '10:00',
             'whatsapp'       => '+593099900001',
-        ])->assertStatus(201);
+        ]);
+        $first->assertStatus(201);
 
-        // User2's request hits the pre-check → 409 (same response shape the catch block returns)
-        // NOTE: on MySQL, a true race condition would bypass the pre-check and the catch block
-        // would return an identical 409 response. This test pins the response contract for both
-        // paths. The catch block cannot be directly exercised on SQLite :memory:; see
-        // REGRESSION GUARD comment in BookingController::store().
         Sanctum::actingAs($user2);
-        $response = $this->postJson('/api/bookings', [
+        $second = $this->postJson('/api/bookings', [
             'service_id'     => $service->id,
-            'scheduled_date' => $slotDate,
-            'scheduled_time' => $slotTime,
+            'scheduled_date' => $date,
+            'scheduled_time' => '10:00',
             'whatsapp'       => '+593099900002',
         ]);
+        $second->assertStatus(201);
 
-        $response->assertStatus(409)
-                 ->assertJsonStructure(['message'])
-                 ->assertJsonPath('message', 'This slot is no longer available. Please choose another time.');
-
-        // No orphan order for user2
-        $this->assertEquals(0, Order::where('user_id', $user2->id)->count());
+        // whereDate() is required here (not plain where()) because scheduled_date
+        // is a 'date'-cast Eloquent attribute stored with a time component on
+        // SQLite — see VenueAvailabilityResolver::overlapCount() for the same convention.
+        $this->assertEquals(2, Appointment::where('service_id', $service->id)
+            ->whereDate('scheduled_date', $date)
+            ->where('scheduled_time', '10:00')
+            ->count());
     }
 }

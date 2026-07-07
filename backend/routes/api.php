@@ -12,12 +12,12 @@ use App\Http\Controllers\Api\CourseReviewController;
 use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ServiceController;
+use App\Http\Controllers\Api\Admin\AgendaBlockController as AdminAgendaBlockController;
 use App\Http\Controllers\Api\Admin\AppointmentController as AdminAppointmentController;
 use App\Http\Controllers\Api\Admin\CertificateSettingController as AdminCertificateSettingController;
 use App\Http\Controllers\Api\Admin\PostController as AdminPostController;
 use App\Http\Controllers\Api\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\Api\Admin\ServiceController as AdminServiceController;
-use App\Http\Controllers\Api\Admin\ServiceSlotController as AdminServiceSlotController;
 use App\Http\Controllers\Api\Instructor\CourseController as InstructorCourseController;
 use App\Http\Controllers\Api\Instructor\DashboardController as InstructorDashboardController;
 use App\Http\Controllers\Api\Instructor\LessonController as InstructorLessonController;
@@ -114,12 +114,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/services/{service}/images/{image}', [AdminServiceController::class, 'destroyImage']);
         Route::patch('/services/{service}/images/reorder', [AdminServiceController::class, 'reorderImages']);
 
-        // Service slot CRUD
-        Route::get('/services/{service}/slots', [AdminServiceSlotController::class, 'index']);
-        Route::post('/services/{service}/slots', [AdminServiceSlotController::class, 'store']);
-        Route::patch('/services/{service}/slots/{slot}', [AdminServiceSlotController::class, 'update']);
-        Route::delete('/services/{service}/slots/{slot}', [AdminServiceSlotController::class, 'destroy']);
-
         // Products CRUD
         Route::get('/products', [AdminProductController::class, 'index']);
         Route::post('/products', [AdminProductController::class, 'store']);
@@ -156,6 +150,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/appointments', [AdminAppointmentController::class, 'index']);
         Route::patch('/appointments/{appointment}/mark-paid', [AdminAppointmentController::class, 'markPaid']);
         Route::patch('/appointments/{appointment}/cancel', [AdminAppointmentController::class, 'cancel']);
+
+        // Venue agenda block CRUD (VAGA-001)
+        Route::get('/agenda', [AdminAgendaBlockController::class, 'index']);
+        Route::post('/agenda', [AdminAgendaBlockController::class, 'store']);
+        Route::get('/agenda/{block}', [AdminAgendaBlockController::class, 'show']);
+        Route::patch('/agenda/{block}', [AdminAgendaBlockController::class, 'update']);
+        Route::delete('/agenda/{block}', [AdminAgendaBlockController::class, 'destroy']);
     });
 
     // Instructor authoring routes
