@@ -50,6 +50,7 @@ const AdminPostEdit = () => import('../views/admin/AdminPostEdit.vue')
 // Booking admin
 const AdminServiceSlots = () => import('../views/admin/AdminServiceSlots.vue')
 const AdminAppointments = () => import('../views/admin/AdminAppointments.vue')
+const AdminAgendaBlocks = () => import('../views/admin/AdminAgendaBlocks.vue')
 
 // Certificate branding — admin
 const AdminCertificateSettings = () => import('../views/admin/AdminCertificateSettings.vue')
@@ -266,6 +267,12 @@ const routes = [
     path: '/admin/appointments',
     name: 'AdminAppointments',
     component: AdminAppointments,
+    meta: { requiresAdmin: true },
+  },
+  {
+    path: '/admin/agenda',
+    name: 'AdminAgendaBlocks',
+    component: AdminAgendaBlocks,
     meta: { requiresAdmin: true },
   },
 

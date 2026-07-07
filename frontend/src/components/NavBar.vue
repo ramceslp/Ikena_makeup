@@ -20,6 +20,7 @@ const adminLinks = [
   { to: '/admin/products', label: 'Productos' },
   { to: '/admin/noticias', label: 'Noticias' },
   { to: '/admin/appointments', label: 'Citas' },
+  { to: '/admin/agenda', label: 'Agenda del local' },
   { to: '/admin/certificate', label: 'Certificados' },
 ]
 
