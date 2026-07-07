@@ -86,6 +86,53 @@ describe('SlotPicker.vue', () => {
     expect(wrapper.emitted('slot-selected')).toBeFalsy()
   })
 
+  it('renders a near-capacity warning badge with warning_message when is_near_capacity is true', () => {
+    const nearCapacitySlot = {
+      id: 8,
+      date_label: '2026-07-10',
+      start_time: '11:00',
+      capacity_remaining: 1,
+      is_blocked: false,
+      is_near_capacity: true,
+      warning_message: 'Alta demanda — quedan pocos horarios',
+    }
+    const wrapper = mount(SlotPicker, { props: { slots: [nearCapacitySlot] } })
+
+    expect(wrapper.find('[data-near-capacity-badge]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('Alta demanda — quedan pocos horarios')
+  })
+
+  it('does not render the near-capacity badge when is_near_capacity is false', () => {
+    const normalSlot = {
+      id: 9,
+      date_label: '2026-07-10',
+      start_time: '12:00',
+      capacity_remaining: 2,
+      is_blocked: false,
+      is_near_capacity: false,
+      warning_message: null,
+    }
+    const wrapper = mount(SlotPicker, { props: { slots: [normalSlot] } })
+
+    expect(wrapper.find('[data-near-capacity-badge]').exists()).toBe(false)
+  })
+
+  it('an available near-capacity slot remains clickable and still emits slot-selected', async () => {
+    const nearCapacitySlot = {
+      id: 8,
+      date_label: '2026-07-10',
+      start_time: '11:00',
+      capacity_remaining: 1,
+      is_blocked: false,
+      is_near_capacity: true,
+      warning_message: 'Alta demanda — quedan pocos horarios',
+    }
+    const wrapper = mount(SlotPicker, { props: { slots: [nearCapacitySlot] } })
+    await wrapper.find('[data-slot-card]').trigger('click')
+
+    expect(wrapper.emitted('slot-selected')).toBeTruthy()
+  })
+
   it('marks only the clicked occurrence when several share the same slot id (recurring weekly slot)', async () => {
     // A recurring weekly slot yields many occurrences with the SAME id but
     // different dates. Clicking one must NOT mark the others.

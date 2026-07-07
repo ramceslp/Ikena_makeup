@@ -83,6 +83,14 @@ function formatDateLabel(dateLabel) {
         <span v-if="isDisabled(slot)" class="font-label-sm text-label-sm text-outline">
           {{ slot.is_blocked ? 'Bloqueado' : 'Completo' }}
         </span>
+        <span
+          v-else-if="slot.is_near_capacity"
+          data-near-capacity-badge
+          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-tertiary-container text-on-tertiary-container font-label-sm text-label-sm"
+        >
+          <span class="material-symbols-outlined text-[12px]" aria-hidden="true">warning</span>
+          {{ slot.warning_message }}
+        </span>
       </button>
     </div>
   </div>
