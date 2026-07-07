@@ -256,59 +256,6 @@ describe('booking store — cancelAppointment (admin)', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Admin — fetchSlots / createSlot / updateSlot / deleteSlot
-// ---------------------------------------------------------------------------
-
-describe('booking store — slot admin actions', () => {
-  beforeEach(() => {
-    setActivePinia(createPinia())
-    vi.clearAllMocks()
-  })
-
-  it('fetchSlots GETs /admin/services/{serviceId}/slots', async () => {
-    const fakeSlots = [{ id: 1, start_time: '10:00', day_of_week: 1 }]
-    api.get.mockResolvedValueOnce({ data: { data: fakeSlots } })
-
-    const store = useBookingStore()
-    await store.fetchSlots(2)
-
-    expect(api.get).toHaveBeenCalledWith('/admin/services/2/slots')
-    expect(store.slots).toEqual(fakeSlots)
-  })
-
-  it('createSlot POSTs to /admin/services/{serviceId}/slots', async () => {
-    const newSlot = { id: 10, start_time: '14:00', day_of_week: 3 }
-    api.post.mockResolvedValueOnce({ data: { data: newSlot } })
-
-    const store = useBookingStore()
-    const result = await store.createSlot(2, { start_time: '14:00', day_of_week: 3 })
-
-    expect(api.post).toHaveBeenCalledWith('/admin/services/2/slots', { start_time: '14:00', day_of_week: 3 })
-    expect(result).toEqual(newSlot)
-  })
-
-  it('updateSlot PATCHes /admin/services/{serviceId}/slots/{slotId}', async () => {
-    const updated = { id: 10, is_blocked: true }
-    api.patch.mockResolvedValueOnce({ data: { data: updated } })
-
-    const store = useBookingStore()
-    const result = await store.updateSlot(2, 10, { is_blocked: true })
-
-    expect(api.patch).toHaveBeenCalledWith('/admin/services/2/slots/10', { is_blocked: true })
-    expect(result).toEqual(updated)
-  })
-
-  it('deleteSlot DELETEs /admin/services/{serviceId}/slots/{slotId}', async () => {
-    api.delete.mockResolvedValueOnce({})
-
-    const store = useBookingStore()
-    await store.deleteSlot(2, 10)
-
-    expect(api.delete).toHaveBeenCalledWith('/admin/services/2/slots/10')
-  })
-})
-
-// ---------------------------------------------------------------------------
 // Admin — venue agenda block CRUD (VAGA-001, Slice 4)
 // ---------------------------------------------------------------------------
 

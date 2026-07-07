@@ -10,7 +10,6 @@ export const useBookingStore = defineStore('booking', {
     // Admin state
     appointments: [],
     appointmentsMeta: null,
-    slots: [],
     agendaBlocks: [],
   }),
 
@@ -88,27 +87,6 @@ export const useBookingStore = defineStore('booking', {
     async cancelAppointment(id) {
       const response = await api.patch(`/admin/appointments/${id}/cancel`)
       return response.data.data
-    },
-
-    // ── Admin: slot CRUD ────────────────────────────────────────────────────
-
-    async fetchSlots(serviceId) {
-      const response = await api.get(`/admin/services/${serviceId}/slots`)
-      this.slots = response.data.data
-    },
-
-    async createSlot(serviceId, data) {
-      const response = await api.post(`/admin/services/${serviceId}/slots`, data)
-      return response.data.data
-    },
-
-    async updateSlot(serviceId, slotId, data) {
-      const response = await api.patch(`/admin/services/${serviceId}/slots/${slotId}`, data)
-      return response.data.data
-    },
-
-    async deleteSlot(serviceId, slotId) {
-      await api.delete(`/admin/services/${serviceId}/slots/${slotId}`)
     },
 
     // ── Admin: venue agenda block CRUD (VAGA-001) ───────────────────────────
