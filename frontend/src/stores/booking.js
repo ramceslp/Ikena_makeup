@@ -11,6 +11,7 @@ export const useBookingStore = defineStore('booking', {
     appointments: [],
     appointmentsMeta: null,
     slots: [],
+    agendaBlocks: [],
   }),
 
   actions: {
@@ -108,6 +109,40 @@ export const useBookingStore = defineStore('booking', {
 
     async deleteSlot(serviceId, slotId) {
       await api.delete(`/admin/services/${serviceId}/slots/${slotId}`)
+    },
+
+    // ── Admin: venue agenda block CRUD (VAGA-001) ───────────────────────────
+
+    async fetchAgendaBlocks() {
+      this.isLoading = true
+      this.bookingError = null
+      try {
+        const response = await api.get('/admin/agenda')
+        this.agendaBlocks = response.data.data
+      } catch (err) {
+        this.bookingError = err.response?.data?.message || 'Error al cargar la agenda del local'
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    // Create/update/delete intentionally let validation errors (e.g. 422
+    // overlap/XOR) propagate to the caller — the admin form needs the raw
+    // error response to render field-level messages, unlike the public
+    // booking flow which translates errors into user-facing copy itself.
+
+    async createAgendaBlock(data) {
+      const response = await api.post('/admin/agenda', data)
+      return response.data.data
+    },
+
+    async updateAgendaBlock(blockId, data) {
+      const response = await api.patch(`/admin/agenda/${blockId}`, data)
+      return response.data.data
+    },
+
+    async deleteAgendaBlock(blockId) {
+      await api.delete(`/admin/agenda/${blockId}`)
     },
   },
 })
