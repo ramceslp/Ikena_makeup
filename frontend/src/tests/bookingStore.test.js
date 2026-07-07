@@ -307,3 +307,96 @@ describe('booking store — slot admin actions', () => {
     expect(api.delete).toHaveBeenCalledWith('/admin/services/2/slots/10')
   })
 })
+
+// ---------------------------------------------------------------------------
+// Admin — venue agenda block CRUD (VAGA-001, Slice 4)
+// ---------------------------------------------------------------------------
+
+describe('booking store — agenda block admin actions', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+  })
+
+  it('fetchAgendaBlocks GETs /admin/agenda and populates agendaBlocks', async () => {
+    const fakeBlocks = [
+      { id: 1, day_of_week: 1, specific_date: null, open_time: '09:00', close_time: '18:00', concurrency_limit: 3, soft_threshold: 2, is_blocked: false },
+    ]
+    api.get.mockResolvedValueOnce({ data: { data: fakeBlocks } })
+
+    const store = useBookingStore()
+    await store.fetchAgendaBlocks()
+
+    expect(api.get).toHaveBeenCalledWith('/admin/agenda')
+    expect(store.agendaBlocks).toEqual(fakeBlocks)
+  })
+
+  it('fetchAgendaBlocks sets bookingError on API failure', async () => {
+    api.get.mockRejectedValueOnce({ response: { data: { message: 'Error de servidor' } } })
+
+    const store = useBookingStore()
+    await store.fetchAgendaBlocks()
+
+    expect(store.agendaBlocks).toEqual([])
+    expect(store.bookingError).toBe('Error de servidor')
+  })
+
+  it('createAgendaBlock POSTs to /admin/agenda', async () => {
+    const newBlock = { id: 5, day_of_week: 2, open_time: '09:00', close_time: '12:00', concurrency_limit: 2, soft_threshold: null, is_blocked: false }
+    api.post.mockResolvedValueOnce({ data: { data: newBlock } })
+
+    const store = useBookingStore()
+    const result = await store.createAgendaBlock({
+      day_of_week: 2,
+      open_time: '09:00',
+      close_time: '12:00',
+      concurrency_limit: 2,
+    })
+
+    expect(api.post).toHaveBeenCalledWith('/admin/agenda', {
+      day_of_week: 2,
+      open_time: '09:00',
+      close_time: '12:00',
+      concurrency_limit: 2,
+    })
+    expect(result).toEqual(newBlock)
+  })
+
+  it('createAgendaBlock throws on validation failure (e.g. overlap 422) without swallowing the error', async () => {
+    const error = { response: { status: 422, data: { message: 'overlapping block', errors: {} } } }
+    api.post.mockRejectedValueOnce(error)
+
+    const store = useBookingStore()
+    await expect(
+      store.createAgendaBlock({ day_of_week: 1, open_time: '09:00', close_time: '12:00' }),
+    ).rejects.toBe(error)
+  })
+
+  it('updateAgendaBlock PATCHes /admin/agenda/{blockId}', async () => {
+    const updated = { id: 5, close_time: '17:00' }
+    api.patch.mockResolvedValueOnce({ data: { data: updated } })
+
+    const store = useBookingStore()
+    const result = await store.updateAgendaBlock(5, { close_time: '17:00' })
+
+    expect(api.patch).toHaveBeenCalledWith('/admin/agenda/5', { close_time: '17:00' })
+    expect(result).toEqual(updated)
+  })
+
+  it('updateAgendaBlock throws on validation failure without swallowing the error', async () => {
+    const error = { response: { status: 422, data: { message: 'overlapping block' } } }
+    api.patch.mockRejectedValueOnce(error)
+
+    const store = useBookingStore()
+    await expect(store.updateAgendaBlock(5, { close_time: '08:00' })).rejects.toBe(error)
+  })
+
+  it('deleteAgendaBlock DELETEs /admin/agenda/{blockId}', async () => {
+    api.delete.mockResolvedValueOnce({})
+
+    const store = useBookingStore()
+    await store.deleteAgendaBlock(5)
+
+    expect(api.delete).toHaveBeenCalledWith('/admin/agenda/5')
+  })
+})
