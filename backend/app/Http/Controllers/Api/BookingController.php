@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\AvailableSlotsRequest;
 use App\Http\Requests\StoreBookingRequest;
 use App\Http\Resources\SlotResource;
 use App\Models\AgendaBlock;
@@ -21,27 +22,39 @@ class BookingController extends Controller
 {
     public function __construct(
         private readonly VenueAvailabilityResolver $resolver,
-        private readonly DepositCalculator         $calculator,
-        private readonly PaymentGatewayInterface   $gateway,
+        private readonly DepositCalculator $calculator,
+        private readonly PaymentGatewayInterface $gateway,
     ) {}
 
     /**
      * GET /api/services/{serviceId}/available-slots
+     * GET /api/services/{serviceId}/available-slots?date=YYYY-MM-DD
      *
      * Returns available slot occurrences for a published by_appointment service.
      * This endpoint is PUBLIC — no authentication required.
+     *
+     * Without `date`: returns the full look-ahead window as a flat array
+     * (unchanged, backward-compatible behavior).
+     * With `date`: returns only that day's occurrences (calendar picker's
+     * time-selection step). AvailableSlotsRequest validates `date` is a
+     * well-formed 'Y-m-d' string within the bookable window — malformed or
+     * out-of-range values short-circuit with a 422 before this method runs.
      */
-    public function availableSlots(int $serviceId): JsonResponse
+    public function availableSlots(AvailableSlotsRequest $request, int $serviceId): JsonResponse
     {
         $service = Service::where('id', $serviceId)
-                          ->where('is_published', true)
-                          ->firstOrFail();
+            ->where('is_published', true)
+            ->firstOrFail();
 
         if ($service->availability_type !== 'by_appointment') {
             return response()->json(['data' => []]);
         }
 
-        $occurrences = $this->resolver->resolve($service);
+        $date = $request->validated('date');
+
+        $occurrences = $date !== null
+            ? $this->resolver->resolveDay($service, $date)
+            : $this->resolver->resolve($service);
 
         // Wrap each occurrence array in SlotResource (array path in toArray)
         $data = collect($occurrences)
@@ -49,6 +62,32 @@ class BookingController extends Controller
             ->values();
 
         return response()->json(['data' => $data]);
+    }
+
+    /**
+     * GET /api/services/{serviceId}/available-days
+     *
+     * Returns one lightweight { date, available_count } row per calendar day
+     * in the look-ahead window that has an active AgendaBlock — the calendar
+     * picker's day-selection step. Days the venue is closed on (no matching
+     * AgendaBlock) are omitted; fully booked days are included with
+     * available_count: 0. See VenueAvailabilityResolver::resolveDaySummary()
+     * for the full contract. This endpoint is PUBLIC — no authentication
+     * required.
+     */
+    public function availableDays(int $serviceId): JsonResponse
+    {
+        $service = Service::where('id', $serviceId)
+            ->where('is_published', true)
+            ->firstOrFail();
+
+        if ($service->availability_type !== 'by_appointment') {
+            return response()->json(['data' => []]);
+        }
+
+        $summary = $this->resolver->resolveDaySummary($service);
+
+        return response()->json(['data' => $summary]);
     }
 
     /**
@@ -77,14 +116,14 @@ class BookingController extends Controller
     public function store(StoreBookingRequest $request): JsonResponse
     {
         $service = Service::findOrFail($request->validated()['service_id']);
-        $user    = $request->user();
+        $user = $request->user();
 
         $scheduledDate = $request->input('scheduled_date');
         $scheduledTime = substr($request->input('scheduled_time'), 0, 5);
-        $whatsapp      = $request->input('whatsapp');
+        $whatsapp = $request->input('whatsapp');
 
-        $depositCents     = $this->calculator->cents($service);
-        $durationMinutes  = (int) $service->duration_hours * 60;
+        $depositCents = $this->calculator->cents($service);
+        $durationMinutes = (int) $service->duration_hours * 60;
         $scheduledEndTime = $this->addMinutes($scheduledTime, $durationMinutes);
 
         $slotKey = Appointment::makeSlotKey($service->id, $scheduledDate, $scheduledTime);
@@ -95,11 +134,11 @@ class BookingController extends Controller
         $block = AgendaBlock::where('is_blocked', false)
             ->where(function ($q) use ($requestedDay, $scheduledDate) {
                 $q->where('day_of_week', $requestedDay)
-                  ->orWhereDate('specific_date', $scheduledDate);
+                    ->orWhereDate('specific_date', $scheduledDate);
             })
             ->get()
             ->first(function (AgendaBlock $candidate) use ($scheduledTime) {
-                $open  = substr($candidate->open_time, 0, 5);
+                $open = substr($candidate->open_time, 0, 5);
                 $close = substr($candidate->close_time, 0, 5);
 
                 return $scheduledTime >= $open && $scheduledTime < $close;
@@ -143,28 +182,28 @@ class BookingController extends Controller
             }
 
             $appointment = Appointment::create([
-                'service_id'           => $service->id,
-                'user_id'              => $user->id,
-                'order_id'             => null, // updated after order is created
-                'scheduled_date'       => $scheduledDate,
-                'scheduled_time'       => $scheduledTime,
-                'scheduled_end_time'   => $scheduledEndTime,
-                'slot_key'             => $slotKey,
-                'whatsapp'             => $whatsapp,
-                'payment_mode'         => 'gateway',
+                'service_id' => $service->id,
+                'user_id' => $user->id,
+                'order_id' => null, // updated after order is created
+                'scheduled_date' => $scheduledDate,
+                'scheduled_time' => $scheduledTime,
+                'scheduled_end_time' => $scheduledEndTime,
+                'slot_key' => $slotKey,
+                'whatsapp' => $whatsapp,
+                'payment_mode' => 'gateway',
                 'deposit_amount_cents' => $depositCents,
-                'status'               => 'pending',
+                'status' => 'pending',
             ]);
 
             $order = Order::create([
-                'user_id'               => $user->id,
-                'course_id'             => null,
-                'appointment_id'        => $appointment->id,
-                'client_transaction_id' => 'ORD-' . Str::uuid(),
-                'gateway'               => $this->gateway->name(),
-                'amount_cents'          => $depositCents,
-                'currency'              => 'USD',
-                'status'                => 'pending',
+                'user_id' => $user->id,
+                'course_id' => null,
+                'appointment_id' => $appointment->id,
+                'client_transaction_id' => 'ORD-'.Str::uuid(),
+                'gateway' => $this->gateway->name(),
+                'amount_cents' => $depositCents,
+                'currency' => 'USD',
+                'status' => 'pending',
             ]);
 
             $appointment->update(['order_id' => $order->id]);
@@ -173,8 +212,8 @@ class BookingController extends Controller
             $session = $this->gateway->createCheckout($order);
 
             return [
-                'order'            => $order,
-                'session'          => $session,
+                'order' => $order,
+                'session' => $session,
                 'is_near_capacity' => $softThreshold !== null && $overlapCount >= $softThreshold,
             ];
         });
@@ -182,17 +221,17 @@ class BookingController extends Controller
         if ($result === null) {
             return response()->json([
                 'message' => 'This time slot has reached capacity. Please choose another time.',
-                'code'    => 'cap_exceeded',
+                'code' => 'cap_exceeded',
             ], 409);
         }
 
         return response()->json([
             'data' => [
-                'order_id'         => $result['order']->id,
-                'provider'         => $result['session']->provider,
-                'config'           => $result['session']->config,
+                'order_id' => $result['order']->id,
+                'provider' => $result['session']->provider,
+                'config' => $result['session']->config,
                 'is_near_capacity' => $result['is_near_capacity'],
-                'warning_message'  => $result['is_near_capacity']
+                'warning_message' => $result['is_near_capacity']
                     ? config('booking.venue.warning_message')
                     : null,
             ],

@@ -50,11 +50,11 @@ class BookingTest extends TestCase
     private function makeService(float $price = 100.00, int $depositPct = 30, int $durationHours = 1): Service
     {
         return Service::factory()->create([
-            'availability_type'  => 'by_appointment',
-            'is_published'       => true,
-            'price'              => $price,
+            'availability_type' => 'by_appointment',
+            'is_published' => true,
+            'price' => $price,
             'deposit_percentage' => $depositPct,
-            'duration_hours'     => $durationHours,
+            'duration_hours' => $durationHours,
         ]);
     }
 
@@ -65,13 +65,13 @@ class BookingTest extends TestCase
     private function makeBlockForToday(array $overrides = []): AgendaBlock
     {
         return AgendaBlock::factory()->create(array_merge([
-            'day_of_week'       => Carbon::today()->dayOfWeek,
-            'specific_date'     => null,
-            'open_time'         => '09:00',
-            'close_time'        => '18:00',
+            'day_of_week' => Carbon::today()->dayOfWeek,
+            'specific_date' => null,
+            'open_time' => '09:00',
+            'close_time' => '18:00',
             'concurrency_limit' => 2,
-            'soft_threshold'    => null,
-            'is_blocked'        => false,
+            'soft_threshold' => null,
+            'is_blocked' => false,
         ], $overrides));
     }
 
@@ -87,7 +87,7 @@ class BookingTest extends TestCase
         array $blockOverrides = []
     ): array {
         $service = $this->makeService($price, $depositPct, $durationHours);
-        $block   = $this->makeBlockForToday($blockOverrides);
+        $block = $this->makeBlockForToday($blockOverrides);
 
         return [$service, $block];
     }
@@ -103,11 +103,11 @@ class BookingTest extends TestCase
         string $status = 'pending'
     ): Appointment {
         return Appointment::factory()->create([
-            'scheduled_date'      => $date,
-            'scheduled_time'      => $startTime,
-            'scheduled_end_time'  => $endTime,
-            'status'              => $status,
-            'slot_key'            => null,
+            'scheduled_date' => $date,
+            'scheduled_time' => $startTime,
+            'scheduled_end_time' => $endTime,
+            'status' => $status,
+            'slot_key' => null,
         ]);
     }
 
@@ -127,33 +127,33 @@ class BookingTest extends TestCase
         $response = $this->getJson("/api/services/{$service->id}/available-slots");
 
         $response->assertStatus(200)
-                 ->assertJsonStructure([
-                     'data' => [['id', 'date_label', 'start_time', 'capacity_remaining', 'is_near_capacity', 'warning_message']],
-                 ]);
+            ->assertJsonStructure([
+                'data' => [['id', 'date_label', 'start_time', 'capacity_remaining', 'is_near_capacity', 'warning_message']],
+            ]);
     }
 
     public function test_available_slots_returns_404_for_unpublished_service(): void
     {
         $service = Service::factory()->create([
-            'is_published'      => false,
+            'is_published' => false,
             'availability_type' => 'by_appointment',
         ]);
 
         $this->getJson("/api/services/{$service->id}/available-slots")
-             ->assertStatus(404);
+            ->assertStatus(404);
     }
 
     public function test_available_slots_returns_empty_for_immediate_type_service(): void
     {
         $service = Service::factory()->create([
             'availability_type' => 'immediate',
-            'is_published'      => true,
+            'is_published' => true,
         ]);
 
         $response = $this->getJson("/api/services/{$service->id}/available-slots");
 
         $response->assertStatus(200)
-                 ->assertJsonPath('data', []);
+            ->assertJsonPath('data', []);
     }
 
     public function test_available_slots_slot_resource_includes_date_label_and_capacity_remaining(): void
@@ -191,13 +191,122 @@ class BookingTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
+    // GET /api/services/{serviceId}/available-slots?date=YYYY-MM-DD
+    // -------------------------------------------------------------------------
+
+    public function test_available_slots_date_param_returns_slots_for_single_day(): void
+    {
+        [$service] = $this->makeBookableService();
+        $date = $this->today();
+
+        $response = $this->getJson("/api/services/{$service->id}/available-slots?date={$date}");
+
+        $response->assertStatus(200)
+            ->assertJsonStructure([
+                'data' => [['id', 'date_label', 'start_time', 'capacity_remaining', 'is_near_capacity', 'warning_message']],
+            ]);
+
+        $dateLabels = collect($response->json('data'))->pluck('date_label')->unique()->values();
+        $this->assertEquals([$date], $dateLabels->all());
+    }
+
+    /**
+     * Backward-compatibility guard: the day-scoped resolver path must produce
+     * the exact same occurrences as the corresponding slice of the full-window
+     * path, proving resolve() and resolveDay() share one implementation.
+     */
+    public function test_available_slots_date_param_matches_full_window_subset_for_that_date(): void
+    {
+        [$service] = $this->makeBookableService();
+        $date = $this->today();
+
+        $full = $this->getJson("/api/services/{$service->id}/available-slots")->json('data');
+        $scoped = $this->getJson("/api/services/{$service->id}/available-slots?date={$date}")->json('data');
+
+        $fullForDate = collect($full)->where('date_label', $date)->values()->all();
+
+        $this->assertNotEmpty($scoped);
+        $this->assertEquals($fullForDate, $scoped);
+    }
+
+    public function test_available_slots_date_param_malformed_returns_422(): void
+    {
+        [$service] = $this->makeBookableService();
+
+        $this->getJson("/api/services/{$service->id}/available-slots?date=not-a-date")
+            ->assertStatus(422);
+    }
+
+    public function test_available_slots_date_param_out_of_range_future_returns_422(): void
+    {
+        [$service] = $this->makeBookableService();
+
+        // Horizon is exclusive: today + look_ahead_days is the first out-of-range day.
+        $lookAheadDays = (int) config('booking.venue.look_ahead_days');
+        $outOfRange = Carbon::today()->addDays($lookAheadDays)->format('Y-m-d');
+
+        $this->getJson("/api/services/{$service->id}/available-slots?date={$outOfRange}")
+            ->assertStatus(422);
+    }
+
+    public function test_available_slots_date_param_past_date_returns_422(): void
+    {
+        [$service] = $this->makeBookableService();
+        $past = Carbon::yesterday()->format('Y-m-d');
+
+        $this->getJson("/api/services/{$service->id}/available-slots?date={$past}")
+            ->assertStatus(422);
+    }
+
+    /**
+     * Batched overlap counting must preserve the half-open interval semantics:
+     * existing.start < proposed_end AND existing.end > proposed_start.
+     * An appointment that merely touches the candidate's boundary (ends exactly
+     * when the candidate starts) must NOT reduce capacity_remaining.
+     */
+    public function test_available_slots_date_param_touching_boundary_appointment_does_not_reduce_capacity(): void
+    {
+        [$service] = $this->makeBookableService(durationHours: 1, blockOverrides: ['concurrency_limit' => 1]);
+        $date = $this->today();
+
+        // Ends exactly at 10:00, when the candidate [10:00, 11:00) starts — no overlap.
+        $this->makeExistingAppointment($date, '09:00', '10:00', 'pending');
+
+        $response = $this->getJson("/api/services/{$service->id}/available-slots?date={$date}");
+        $response->assertStatus(200);
+
+        $slotAt10 = collect($response->json('data'))->firstWhere('start_time', '10:00');
+        $this->assertNotNull($slotAt10);
+        $this->assertEquals(1, $slotAt10['capacity_remaining']);
+    }
+
+    /**
+     * A genuinely overlapping appointment must reduce capacity_remaining by
+     * exactly the number of overlapping intervals (batched-count parity check).
+     */
+    public function test_available_slots_date_param_overlapping_appointment_reduces_capacity(): void
+    {
+        [$service] = $this->makeBookableService(durationHours: 1, blockOverrides: ['concurrency_limit' => 2]);
+        $date = $this->today();
+
+        // Overlaps candidate [10:00, 11:00) with [10:30, 11:30).
+        $this->makeExistingAppointment($date, '10:30', '11:30', 'pending');
+
+        $response = $this->getJson("/api/services/{$service->id}/available-slots?date={$date}");
+        $slotAt10 = collect($response->json('data'))->firstWhere('start_time', '10:00');
+
+        $this->assertNotNull($slotAt10);
+        $this->assertEquals(1, $slotAt10['capacity_remaining']);
+    }
+
+    // -------------------------------------------------------------------------
     // POST /api/bookings — 401 unauthenticated
     // -------------------------------------------------------------------------
 
     public function test_booking_requires_authentication(): void
     {
         $this->postJson('/api/bookings', [])
-             ->assertStatus(401);
+            ->assertStatus(401);
     }
 
     // -------------------------------------------------------------------------
@@ -211,14 +320,14 @@ class BookingTest extends TestCase
 
         $service = Service::factory()->create([
             'availability_type' => 'immediate',
-            'is_published'      => true,
+            'is_published' => true,
         ]);
 
         $this->postJson('/api/bookings', [
-            'service_id'     => $service->id,
+            'service_id' => $service->id,
             'scheduled_date' => now()->addDays(7)->format('Y-m-d'),
             'scheduled_time' => '10:00',
-            'whatsapp'       => '+593099912345',
+            'whatsapp' => '+593099912345',
         ])->assertStatus(422);
     }
 
@@ -229,14 +338,14 @@ class BookingTest extends TestCase
 
         $service = Service::factory()->create([
             'availability_type' => 'by_appointment',
-            'is_published'      => false,
+            'is_published' => false,
         ]);
 
         $this->postJson('/api/bookings', [
-            'service_id'     => $service->id,
+            'service_id' => $service->id,
             'scheduled_date' => now()->addDays(7)->format('Y-m-d'),
             'scheduled_time' => '10:00',
-            'whatsapp'       => '+593099912345',
+            'whatsapp' => '+593099912345',
         ])->assertStatus(422);
     }
 
@@ -248,14 +357,14 @@ class BookingTest extends TestCase
         // No AgendaBlock created for this service's venue at all.
         $service = Service::factory()->create([
             'availability_type' => 'by_appointment',
-            'is_published'      => true,
+            'is_published' => true,
         ]);
 
         $this->postJson('/api/bookings', [
-            'service_id'     => $service->id,
+            'service_id' => $service->id,
             'scheduled_date' => now()->addDays(7)->format('Y-m-d'),
             'scheduled_time' => '10:00',
-            'whatsapp'       => '+593099912345',
+            'whatsapp' => '+593099912345',
         ])->assertStatus(422);
     }
 
@@ -272,16 +381,16 @@ class BookingTest extends TestCase
         [$service] = $this->makeBookableService(100.00, 30);
 
         $response = $this->postJson('/api/bookings', [
-            'service_id'     => $service->id,
+            'service_id' => $service->id,
             'scheduled_date' => $this->today(),
             'scheduled_time' => '10:00',
-            'whatsapp'       => '+593099912345',
+            'whatsapp' => '+593099912345',
         ]);
 
         $response->assertStatus(201)
-                 ->assertJsonStructure([
-                     'data' => ['order_id', 'provider', 'config', 'is_near_capacity', 'warning_message'],
-                 ]);
+            ->assertJsonStructure([
+                'data' => ['order_id', 'provider', 'config', 'is_near_capacity', 'warning_message'],
+            ]);
 
         $response->assertJsonPath('data.is_near_capacity', false);
         $response->assertJsonPath('data.warning_message', null);
@@ -289,17 +398,17 @@ class BookingTest extends TestCase
         // Appointment must exist
         $this->assertDatabaseHas('appointments', [
             'service_id' => $service->id,
-            'user_id'    => $user->id,
-            'status'     => 'pending',
+            'user_id' => $user->id,
+            'status' => 'pending',
         ]);
 
         // Order must have correct deposit
         $orderId = $response->json('data.order_id');
         $this->assertDatabaseHas('orders', [
-            'id'             => $orderId,
-            'amount_cents'   => 3000,
+            'id' => $orderId,
+            'amount_cents' => 3000,
             'appointment_id' => Appointment::where('service_id', $service->id)->value('id'),
-            'course_id'      => null,
+            'course_id' => null,
         ]);
     }
 
@@ -312,17 +421,17 @@ class BookingTest extends TestCase
         [$service] = $this->makeBookableService(200.00, 25);
 
         $response = $this->postJson('/api/bookings', [
-            'service_id'     => $service->id,
+            'service_id' => $service->id,
             'scheduled_date' => $this->today(),
             'scheduled_time' => '10:00',
-            'whatsapp'       => '+593099912345',
+            'whatsapp' => '+593099912345',
         ]);
 
         $response->assertStatus(201);
 
         $orderId = $response->json('data.order_id');
         $this->assertDatabaseHas('orders', [
-            'id'           => $orderId,
+            'id' => $orderId,
             'amount_cents' => 5000,
         ]);
     }
@@ -338,10 +447,10 @@ class BookingTest extends TestCase
         [$service] = $this->makeBookableService(durationHours: 2);
 
         $response = $this->postJson('/api/bookings', [
-            'service_id'     => $service->id,
+            'service_id' => $service->id,
             'scheduled_date' => $this->today(),
             'scheduled_time' => '10:00',
-            'whatsapp'       => '+593099912345',
+            'whatsapp' => '+593099912345',
         ]);
 
         $response->assertStatus(201);
@@ -369,14 +478,14 @@ class BookingTest extends TestCase
         $this->makeExistingAppointment($date, '10:00', '11:00', 'confirmed');
 
         $response = $this->postJson('/api/bookings', [
-            'service_id'     => $service->id,
+            'service_id' => $service->id,
             'scheduled_date' => $date,
             'scheduled_time' => '10:00',
-            'whatsapp'       => '+593099912345',
+            'whatsapp' => '+593099912345',
         ]);
 
         $response->assertStatus(409)
-                 ->assertJsonPath('code', 'cap_exceeded');
+            ->assertJsonPath('code', 'cap_exceeded');
 
         // No new appointment created for this service.
         $this->assertEquals(0, Appointment::where('service_id', $service->id)->count());
@@ -396,10 +505,10 @@ class BookingTest extends TestCase
         $this->makeExistingAppointment($date, '10:00', '11:00', 'pending');
 
         $response = $this->postJson('/api/bookings', [
-            'service_id'     => $service->id,
+            'service_id' => $service->id,
             'scheduled_date' => $date,
             'scheduled_time' => '10:00',
-            'whatsapp'       => '+593099912345',
+            'whatsapp' => '+593099912345',
         ]);
 
         $response->assertStatus(201);
@@ -417,7 +526,7 @@ class BookingTest extends TestCase
 
         [$service] = $this->makeBookableService(blockOverrides: [
             'concurrency_limit' => 3,
-            'soft_threshold'    => 1,
+            'soft_threshold' => 1,
         ]);
 
         $date = $this->today();
@@ -426,15 +535,15 @@ class BookingTest extends TestCase
         $this->makeExistingAppointment($date, '10:00', '11:00', 'pending');
 
         $response = $this->postJson('/api/bookings', [
-            'service_id'     => $service->id,
+            'service_id' => $service->id,
             'scheduled_date' => $date,
             'scheduled_time' => '10:00',
-            'whatsapp'       => '+593099912345',
+            'whatsapp' => '+593099912345',
         ]);
 
         $response->assertStatus(201)
-                 ->assertJsonPath('data.is_near_capacity', true)
-                 ->assertJsonPath('data.warning_message', config('booking.venue.warning_message'));
+            ->assertJsonPath('data.is_near_capacity', true)
+            ->assertJsonPath('data.warning_message', config('booking.venue.warning_message'));
     }
 
     // -------------------------------------------------------------------------
@@ -447,16 +556,16 @@ class BookingTest extends TestCase
         Sanctum::actingAs($user);
 
         [$service] = $this->makeBookableService(durationHours: 2, blockOverrides: [
-            'open_time'  => '09:00',
+            'open_time' => '09:00',
             'close_time' => '12:00',
         ]);
 
         // 11:00 + 2h = 13:00 > close_time 12:00
         $this->postJson('/api/bookings', [
-            'service_id'     => $service->id,
+            'service_id' => $service->id,
             'scheduled_date' => $this->today(),
             'scheduled_time' => '11:00',
-            'whatsapp'       => '+593099912345',
+            'whatsapp' => '+593099912345',
         ])->assertStatus(422);
 
         $this->assertEquals(0, Appointment::where('service_id', $service->id)->count());
@@ -468,16 +577,16 @@ class BookingTest extends TestCase
         Sanctum::actingAs($user);
 
         [$service] = $this->makeBookableService(durationHours: 2, blockOverrides: [
-            'open_time'  => '09:00',
+            'open_time' => '09:00',
             'close_time' => '12:00',
         ]);
 
         // 10:00 + 2h = 12:00 == close_time 12:00 → boundary is valid
         $response = $this->postJson('/api/bookings', [
-            'service_id'     => $service->id,
+            'service_id' => $service->id,
             'scheduled_date' => $this->today(),
             'scheduled_time' => '10:00',
-            'whatsapp'       => '+593099912345',
+            'whatsapp' => '+593099912345',
         ]);
 
         $response->assertStatus(201);
@@ -501,22 +610,22 @@ class BookingTest extends TestCase
 
         Sanctum::actingAs($user1);
         $first = $this->postJson('/api/bookings', [
-            'service_id'     => $service->id,
+            'service_id' => $service->id,
             'scheduled_date' => $date,
             'scheduled_time' => '10:00',
-            'whatsapp'       => '+593099900001',
+            'whatsapp' => '+593099900001',
         ]);
         $first->assertStatus(201);
 
         Sanctum::actingAs($user2);
         $second = $this->postJson('/api/bookings', [
-            'service_id'     => $service->id,
+            'service_id' => $service->id,
             'scheduled_date' => $date,
             'scheduled_time' => '10:00',
-            'whatsapp'       => '+593099900002',
+            'whatsapp' => '+593099900002',
         ]);
         $second->assertStatus(409)
-               ->assertJsonPath('code', 'cap_exceeded');
+            ->assertJsonPath('code', 'cap_exceeded');
 
         $this->assertEquals(1, Appointment::where('service_id', $service->id)->count());
         $this->assertEquals(0, Order::where('user_id', $user2->id)->count());
@@ -537,19 +646,19 @@ class BookingTest extends TestCase
 
         Sanctum::actingAs($user1);
         $first = $this->postJson('/api/bookings', [
-            'service_id'     => $service->id,
+            'service_id' => $service->id,
             'scheduled_date' => $date,
             'scheduled_time' => '10:00',
-            'whatsapp'       => '+593099900001',
+            'whatsapp' => '+593099900001',
         ]);
         $first->assertStatus(201);
 
         Sanctum::actingAs($user2);
         $second = $this->postJson('/api/bookings', [
-            'service_id'     => $service->id,
+            'service_id' => $service->id,
             'scheduled_date' => $date,
             'scheduled_time' => '10:00',
-            'whatsapp'       => '+593099900002',
+            'whatsapp' => '+593099900002',
         ]);
         $second->assertStatus(201);
 

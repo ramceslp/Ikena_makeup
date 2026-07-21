@@ -22,9 +22,6 @@ const isBookable = computed(
   () => service.value?.availability_type === 'by_appointment',
 )
 
-const availableSlots = computed(() => bookingStore.availableSlots)
-const slotsLoading = computed(() => bookingStore.isLoading)
-
 const selectedSlot = ref(null)
 
 function availabilityLabel(type) {
@@ -45,6 +42,13 @@ function onSlotSelected(slot) {
   bookingStore.bookingError = null
 }
 
+// SlotPicker emits this when its own local selection goes stale — either the
+// user switched days, or the store just processed a 409 slot conflict. In
+// both cases the previously selected slot is no longer valid here either.
+function onSelectionCleared() {
+  selectedSlot.value = null
+}
+
 function onBookingSuccess(result) {
   // BookingForm handles redirect; this can emit analytics / show a toast if needed
   void result
@@ -53,9 +57,8 @@ function onBookingSuccess(result) {
 onMounted(async () => {
   try {
     await servicesStore.fetchService(route.params.slug)
-    if (isBookable.value && service.value) {
-      await bookingStore.fetchAvailableSlots(service.value.id)
-    }
+    // SlotPicker fetches its own day-summary calendar once it mounts
+    // (it only mounts when isBookable is true, see template below).
   } catch {
     // 404 redirect handled by error state
   }
@@ -124,14 +127,13 @@ onMounted(async () => {
             <h2 class="font-title-md text-title-md text-on-surface mb-3">
               Selecciona un horario
             </h2>
-            <!-- Slot loading indicator -->
-            <div v-if="slotsLoading" class="flex items-center gap-2 py-4 text-on-surface-variant">
-              <span class="material-symbols-outlined animate-spin text-[18px]" aria-hidden="true">refresh</span>
-              <span class="font-body-sm text-body-sm">Cargando horarios…</span>
-            </div>
-            <!-- Slot picker -->
-            <div v-else data-slot-picker>
-              <SlotPicker :slots="availableSlots" @slot-selected="onSlotSelected" />
+            <!-- Slot picker (manages its own day-summary + day-slot loading state) -->
+            <div data-slot-picker>
+              <SlotPicker
+                :service-id="service.id"
+                @slot-selected="onSlotSelected"
+                @selection-cleared="onSelectionCleared"
+              />
             </div>
           </div>
 
