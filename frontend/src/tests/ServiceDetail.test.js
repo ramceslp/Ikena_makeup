@@ -3,6 +3,7 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import ServiceGallery from '../components/service/ServiceGallery.vue'
+import SlotPicker from '../components/booking/SlotPicker.vue'
 
 vi.mock('../services/api.js', () => ({
   default: {
@@ -175,7 +176,7 @@ describe('ServiceDetail.vue — booking section integration', () => {
 
   it('renders SlotPicker and BookingForm for by_appointment service', async () => {
     api.get.mockResolvedValueOnce({ data: { data: byAppointmentService } })
-    // fetchAvailableSlots
+    // SlotPicker fetches its own day-summary calendar on mount now
     api.get.mockResolvedValueOnce({ data: { data: [] } })
 
     const wrapper = mountServiceDetail()
@@ -183,6 +184,7 @@ describe('ServiceDetail.vue — booking section integration', () => {
 
     expect(wrapper.find('[data-booking-section]').exists()).toBe(true)
     expect(wrapper.find('[data-slot-picker]').exists()).toBe(true)
+    expect(api.get).toHaveBeenCalledWith('/services/1/available-days')
   })
 
   it('does NOT render booking section for immediate service', async () => {
@@ -196,11 +198,36 @@ describe('ServiceDetail.vue — booking section integration', () => {
 
   it('no longer shows "próximamente" disabled button for by_appointment service', async () => {
     api.get.mockResolvedValueOnce({ data: { data: byAppointmentService } })
+    // SlotPicker fetches its own day-summary calendar on mount now
     api.get.mockResolvedValueOnce({ data: { data: [] } })
 
     const wrapper = mountServiceDetail()
     await flushPromises()
 
     expect(wrapper.text()).not.toContain('próximamente')
+  })
+
+  it('clears selectedSlot (disabling submit) when SlotPicker signals its selection went stale', async () => {
+    api.get.mockResolvedValueOnce({ data: { data: byAppointmentService } })
+    api.get.mockResolvedValueOnce({ data: { data: [] } })
+
+    const wrapper = mountServiceDetail()
+    await flushPromises()
+
+    const picker = wrapper.findComponent(SlotPicker)
+    await picker.vm.$emit('slot-selected', {
+      id: 1,
+      scheduled_date: '2026-07-21',
+      scheduled_time: '10:00',
+    })
+    await wrapper.vm.$nextTick()
+
+    const submitBtn = wrapper.find('[data-submit-btn]')
+    expect(submitBtn.attributes('disabled')).toBeUndefined()
+
+    await picker.vm.$emit('selection-cleared')
+    await wrapper.vm.$nextTick()
+
+    expect(submitBtn.attributes('disabled')).toBeDefined()
   })
 })

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { flushPromises } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
 
 vi.mock('../services/api.js', () => ({
@@ -18,33 +19,32 @@ import api from '../services/api.js'
 import { useBookingStore } from '../stores/booking.js'
 
 // ---------------------------------------------------------------------------
-// fetchAvailableSlots
+// fetchAvailableDays
 // ---------------------------------------------------------------------------
 
-describe('booking store — fetchAvailableSlots', () => {
+describe('booking store — fetchAvailableDays', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
   })
 
-  it('fetchAvailableSlots populates availableSlots from API response', async () => {
-    const fakeSlots = [
-      { id: 1, date_label: '2026-07-04', start_time: '10:00', capacity_remaining: 1 },
-      { id: 2, date_label: '2026-07-07', start_time: '14:00', capacity_remaining: 1 },
-      { id: 3, date_label: '2026-07-11', start_time: '10:00', capacity_remaining: 1 },
+  it('fetchAvailableDays populates availableDays from API response', async () => {
+    const fakeDays = [
+      { date: '2026-07-21', available_count: 5 },
+      { date: '2026-07-22', available_count: 0 },
     ]
-    api.get.mockResolvedValueOnce({ data: { data: fakeSlots } })
+    api.get.mockResolvedValueOnce({ data: { data: fakeDays } })
 
     const store = useBookingStore()
-    await store.fetchAvailableSlots(1)
+    await store.fetchAvailableDays(1)
 
-    expect(api.get).toHaveBeenCalledWith('/services/1/available-slots')
-    expect(store.availableSlots).toEqual(fakeSlots)
-    expect(store.isLoading).toBe(false)
-    expect(store.bookingError).toBeNull()
+    expect(api.get).toHaveBeenCalledWith('/services/1/available-days')
+    expect(store.availableDays).toEqual(fakeDays)
+    expect(store.isDaysLoading).toBe(false)
+    expect(store.daysError).toBeNull()
   })
 
-  it('fetchAvailableSlots sets isLoading true during fetch then false after', async () => {
+  it('fetchAvailableDays sets isDaysLoading true during fetch then false after', async () => {
     let loadingDuringCall = false
     api.get.mockImplementationOnce(async () => {
       loadingDuringCall = true
@@ -52,23 +52,120 @@ describe('booking store — fetchAvailableSlots', () => {
     })
 
     const store = useBookingStore()
-    await store.fetchAvailableSlots(1)
+    await store.fetchAvailableDays(1)
 
     expect(loadingDuringCall).toBe(true)
-    expect(store.isLoading).toBe(false)
+    expect(store.isDaysLoading).toBe(false)
   })
 
-  it('fetchAvailableSlots sets bookingError on API failure', async () => {
+  it('fetchAvailableDays sets daysError on API failure', async () => {
     api.get.mockRejectedValueOnce({
       response: { data: { message: 'Servicio no encontrado' } },
     })
 
     const store = useBookingStore()
-    await store.fetchAvailableSlots(99)
+    await store.fetchAvailableDays(99)
 
-    expect(store.availableSlots).toEqual([])
-    expect(store.bookingError).toBe('Servicio no encontrado')
-    expect(store.isLoading).toBe(false)
+    expect(store.availableDays).toEqual([])
+    expect(store.daysError).toBe('Servicio no encontrado')
+    expect(store.isDaysLoading).toBe(false)
+  })
+
+  it('fetchAvailableDays ignores a stale response that resolves after a newer request has started', async () => {
+    let resolveFirst
+    api.get.mockImplementationOnce(() => new Promise((resolve) => { resolveFirst = resolve }))
+    const freshDays = [{ date: '2026-08-01', available_count: 4 }]
+    api.get.mockResolvedValueOnce({ data: { data: freshDays } })
+
+    const store = useBookingStore()
+    const firstCall = store.fetchAvailableDays(1) // in-flight, will resolve LAST
+    const secondCall = store.fetchAvailableDays(1) // fired before the first settles
+    await secondCall
+
+    // Resolve the stale first request only after the second has already landed.
+    const staleDays = [{ date: '2026-06-01', available_count: 9 }]
+    resolveFirst({ data: { data: staleDays } })
+    await firstCall
+
+    expect(store.availableDays).toEqual(freshDays)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// fetchDaySlots
+// ---------------------------------------------------------------------------
+
+describe('booking store — fetchDaySlots', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+  })
+
+  it('fetchDaySlots GETs available-slots with a date param and populates daySlots', async () => {
+    const fakeSlots = [
+      { id: 1, date_label: '2026-07-21', start_time: '10:00', capacity_remaining: 1 },
+    ]
+    api.get.mockResolvedValueOnce({ data: { data: fakeSlots } })
+
+    const store = useBookingStore()
+    await store.fetchDaySlots(1, '2026-07-21')
+
+    expect(api.get).toHaveBeenCalledWith('/services/1/available-slots', {
+      params: { date: '2026-07-21' },
+    })
+    expect(store.daySlots).toEqual(fakeSlots)
+    expect(store.isDaySlotsLoading).toBe(false)
+    expect(store.daySlotsError).toBeNull()
+  })
+
+  it('fetchDaySlots sets isDaySlotsLoading true during fetch then false after', async () => {
+    let loadingDuringCall = false
+    api.get.mockImplementationOnce(async () => {
+      loadingDuringCall = true
+      return { data: { data: [] } }
+    })
+
+    const store = useBookingStore()
+    await store.fetchDaySlots(1, '2026-07-21')
+
+    expect(loadingDuringCall).toBe(true)
+    expect(store.isDaySlotsLoading).toBe(false)
+  })
+
+  it('fetchDaySlots sets daySlotsError on API failure (e.g. 422 invalid date)', async () => {
+    api.get.mockRejectedValueOnce({
+      response: { data: { message: 'La fecha no es válida' } },
+    })
+
+    const store = useBookingStore()
+    await store.fetchDaySlots(1, 'bad-date')
+
+    expect(store.daySlots).toEqual([])
+    expect(store.daySlotsError).toBe('La fecha no es válida')
+    expect(store.isDaySlotsLoading).toBe(false)
+  })
+
+  it('fetchDaySlots ignores a stale response that resolves after a newer request has started (race)', async () => {
+    // Simulates: user clicks day A, then day B before A's response lands.
+    let resolveDayA
+    api.get.mockImplementationOnce(() => new Promise((resolve) => { resolveDayA = resolve }))
+    const dayBSlots = [{ id: 2, date_label: '2026-07-22', start_time: '09:00', capacity_remaining: 1 }]
+    api.get.mockResolvedValueOnce({ data: { data: dayBSlots } })
+
+    const store = useBookingStore()
+    const callA = store.fetchDaySlots(1, '2026-07-21') // in-flight, will resolve LAST
+    const callB = store.fetchDaySlots(1, '2026-07-22') // fired before A settles
+    await callB
+
+    // Day A's (stale) response lands after day B's — ordinary network jitter.
+    const dayASlots = [{ id: 1, date_label: '2026-07-21', start_time: '10:00', capacity_remaining: 1 }]
+    resolveDayA({ data: { data: dayASlots } })
+    await callA
+
+    // daySlots must still reflect the LATEST request (day B), not the stale
+    // day A response that landed after it — otherwise the picker shows day
+    // A's times under day B's heading and the user can submit a mismatched date.
+    expect(store.daySlots).toEqual(dayBSlots)
   })
 })
 
@@ -111,7 +208,8 @@ describe('booking store — createBooking', () => {
   it('createBooking on 409 sets bookingError and keeps lastBookingResult null', async () => {
     const error = { response: { status: 409, data: { message: 'Slot already taken' } } }
     api.post.mockRejectedValueOnce(error)
-    // fetchAvailableSlots re-fetch after 409
+    // re-fetch of the selected day's slots, then the day summary, after 409
+    api.get.mockResolvedValueOnce({ data: { data: [] } })
     api.get.mockResolvedValueOnce({ data: { data: [] } })
 
     const store = useBookingStore()
@@ -127,25 +225,60 @@ describe('booking store — createBooking', () => {
     expect(result).toBeNull()
   })
 
-  it('createBooking on 409 re-fetches available slots for the service', async () => {
+  it('createBooking on 409 re-fetches the submitted day\'s slots and the day summary', async () => {
     const error = { response: { status: 409, data: {} } }
     api.post.mockRejectedValueOnce(error)
-    // Mock the re-fetch
+    // Mock the re-fetch: fetchDaySlots first, then fetchAvailableDays
     const freshSlots = [{ id: 5, date_label: '2026-07-10', start_time: '11:00', capacity_remaining: 1 }]
+    const freshDays = [{ date: '2026-07-10', available_count: 0 }]
     api.get.mockResolvedValueOnce({ data: { data: freshSlots } })
+    api.get.mockResolvedValueOnce({ data: { data: freshDays } })
 
     const store = useBookingStore()
     await store.createBooking({
       service_id: 7,
+      scheduled_date: '2026-07-10',
+      scheduled_time: '11:00',
+      whatsapp: '+5930999',
+    })
+
+    // Must re-fetch the same day that was just attempted (a day can become
+    // fully booked after this failure, so the summary is refreshed too).
+    expect(api.get).toHaveBeenCalledWith('/services/7/available-slots', {
+      params: { date: '2026-07-10' },
+    })
+    expect(api.get).toHaveBeenCalledWith('/services/7/available-days')
+    expect(store.daySlots).toEqual(freshSlots)
+    expect(store.availableDays).toEqual(freshDays)
+  })
+
+  it('createBooking on 409 increments slotConflictVersion so watchers can clear stale local selections', async () => {
+    const error = { response: { status: 409, data: {} } }
+    api.post.mockRejectedValueOnce(error)
+    api.get.mockResolvedValueOnce({ data: { data: [] } })
+    api.get.mockResolvedValueOnce({ data: { data: [] } })
+
+    const store = useBookingStore()
+    expect(store.slotConflictVersion).toBe(0)
+
+    await store.createBooking({
+      service_id: 1,
       scheduled_date: '2026-07-04',
       scheduled_time: '10:00',
       whatsapp: '+5930999',
     })
 
-    // Must have called GET /services/7/available-slots after the 409
-    expect(api.get).toHaveBeenCalledWith('/services/7/available-slots')
-    // The fresh slots replace the stale list
-    expect(store.availableSlots).toEqual(freshSlots)
+    expect(store.slotConflictVersion).toBe(1)
+  })
+
+  it('createBooking on 422/401 does NOT increment slotConflictVersion (only a real conflict clears the selection)', async () => {
+    const error = { response: { status: 422, data: { message: 'El servicio no acepta reservas.' } } }
+    api.post.mockRejectedValueOnce(error)
+
+    const store = useBookingStore()
+    await store.createBooking({ service_id: 1, scheduled_date: '2026-07-04', scheduled_time: '10:00', whatsapp: '+5930999' })
+
+    expect(store.slotConflictVersion).toBe(0)
   })
 
   it('createBooking on 422 sets bookingError with server message', async () => {
