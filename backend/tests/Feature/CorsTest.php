@@ -64,4 +64,22 @@ class CorsTest extends TestCase
 
         $response->assertHeader('Access-Control-Allow-Origin', 'ionic://localhost');
     }
+
+    public function test_disallowed_origin_does_not_receive_allow_origin_header(): void
+    {
+        $response = $this->withHeaders([
+            'Origin' => 'https://evil.example',
+        ])->getJson('/api/categories');
+
+        $response->assertHeaderMissing('Access-Control-Allow-Origin');
+    }
+
+    public function test_allowed_origin_does_not_receive_allow_credentials_header(): void
+    {
+        $response = $this->withHeaders([
+            'Origin' => 'http://localhost',
+        ])->getJson('/api/categories');
+
+        $response->assertHeaderMissing('Access-Control-Allow-Credentials');
+    }
 }
