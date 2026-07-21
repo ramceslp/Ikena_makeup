@@ -110,14 +110,14 @@ class BookingController extends Controller
 
         try {
             $result = ($this->createBooking)($user, $serviceId, $scheduledDate, $scheduledTime, $whatsapp);
-        } catch (BookingSlotUnavailableException) {
+        } catch (BookingSlotUnavailableException $e) {
             // Defensive — should be unreachable since StoreBookingRequest validated this.
             return response()->json([
-                'message' => 'This slot is no longer available. Please choose another time.',
+                'message' => $e->getMessage(),
             ], 409);
-        } catch (BookingCapacityExceededException) {
+        } catch (BookingCapacityExceededException $e) {
             return response()->json([
-                'message' => 'This time slot has reached capacity. Please choose another time.',
+                'message' => $e->getMessage(),
                 'code' => 'cap_exceeded',
             ], 409);
         }
