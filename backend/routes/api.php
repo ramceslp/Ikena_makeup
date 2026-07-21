@@ -1,5 +1,11 @@
 <?php
 
+use App\Http\Controllers\Api\Admin\AgendaBlockController as AdminAgendaBlockController;
+use App\Http\Controllers\Api\Admin\AppointmentController as AdminAppointmentController;
+use App\Http\Controllers\Api\Admin\CertificateSettingController as AdminCertificateSettingController;
+use App\Http\Controllers\Api\Admin\PostController as AdminPostController;
+use App\Http\Controllers\Api\Admin\ProductController as AdminProductController;
+use App\Http\Controllers\Api\Admin\ServiceController as AdminServiceController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\CartCheckoutController;
@@ -9,15 +15,6 @@ use App\Http\Controllers\Api\CertificateSettingController;
 use App\Http\Controllers\Api\CheckoutController;
 use App\Http\Controllers\Api\CourseController;
 use App\Http\Controllers\Api\CourseReviewController;
-use App\Http\Controllers\Api\PostController;
-use App\Http\Controllers\Api\ProductController;
-use App\Http\Controllers\Api\ServiceController;
-use App\Http\Controllers\Api\Admin\AgendaBlockController as AdminAgendaBlockController;
-use App\Http\Controllers\Api\Admin\AppointmentController as AdminAppointmentController;
-use App\Http\Controllers\Api\Admin\CertificateSettingController as AdminCertificateSettingController;
-use App\Http\Controllers\Api\Admin\PostController as AdminPostController;
-use App\Http\Controllers\Api\Admin\ProductController as AdminProductController;
-use App\Http\Controllers\Api\Admin\ServiceController as AdminServiceController;
 use App\Http\Controllers\Api\Instructor\CourseController as InstructorCourseController;
 use App\Http\Controllers\Api\Instructor\DashboardController as InstructorDashboardController;
 use App\Http\Controllers\Api\Instructor\LessonController as InstructorLessonController;
@@ -25,8 +22,11 @@ use App\Http\Controllers\Api\Instructor\SectionController as InstructorSectionCo
 use App\Http\Controllers\Api\Instructor\SubmissionController as InstructorSubmissionController;
 use App\Http\Controllers\Api\LessonController;
 use App\Http\Controllers\Api\MyCourseController;
+use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\PracticeSubmissionController;
+use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\ServiceController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -57,6 +57,7 @@ Route::get('/posts', [PostController::class, 'index']);
 Route::get('/posts/latest', [PostController::class, 'latest']);
 Route::get('/posts/featured', [PostController::class, 'featured']);
 Route::get('/posts/{slug}', [PostController::class, 'show']);
+Route::get('/services/{serviceId}/available-days', [BookingController::class, 'availableDays']);
 Route::get('/services/{serviceId}/available-slots', [BookingController::class, 'availableSlots']);
 Route::get('/courses/{course:slug}/reviews', [CourseReviewController::class, 'index'])
     ->middleware('auth.optional');
