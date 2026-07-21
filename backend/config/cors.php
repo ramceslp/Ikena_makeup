@@ -35,7 +35,7 @@ return [
     // e.g. 5173 -> 5174 when one is busy). Only active when APP_ENV=local —
     // this convenience pattern stays dev-only.
     'allowed_origins_patterns' => env('APP_ENV') === 'local'
-        ? ['/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/']
+        ? ['/^http:\/\/(localhost|127\.0\.0\.1):\d+$/']
         : [],
 
     'allowed_headers' => ['*'],
