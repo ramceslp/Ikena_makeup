@@ -24,6 +24,7 @@ class Appointment extends Model
         'status',
         'cancelled_by_id',
         'cancelled_at',
+        'reminder_sent_at',
     ];
 
     protected function casts(): array
@@ -31,6 +32,7 @@ class Appointment extends Model
         return [
             'scheduled_date'      => 'date',
             'cancelled_at'        => 'datetime',
+            'reminder_sent_at'    => 'datetime',
             'deposit_amount_cents' => 'integer',
         ];
     }
