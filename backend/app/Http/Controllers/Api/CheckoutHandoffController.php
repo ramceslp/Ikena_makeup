@@ -77,9 +77,7 @@ class CheckoutHandoffController extends Controller
 
     public function redeem(RedeemCheckoutHandoffRequest $request): JsonResponse
     {
-        $tokenHash = hash('sha256', $request->validated()['token']);
-
-        $handoff = CheckoutHandoff::where('token_hash', $tokenHash)->first();
+        $handoff = CheckoutHandoff::byToken($request->validated()['token'])->first();
 
         if (! $handoff) {
             return response()->json(['message' => 'Unknown or invalid checkout link.'], 404);
@@ -98,9 +96,13 @@ class CheckoutHandoffController extends Controller
         // Atomic single-use claim — the real concurrency guard. The checks
         // above are a fast-fail UX path; even if two redeem requests race
         // past them, only one of these guarded UPDATEs can affect a row.
+        // The expires_at condition is enforced here too (not just via the
+        // earlier read above) so a request arriving in the last instants
+        // before expiry can't slip through and claim a technically-expired token.
         $claimed = DB::table('checkout_handoffs')
             ->where('id', $handoff->id)
             ->whereNull('consumed_at')
+            ->where('expires_at', '>', now())
             ->update(['consumed_at' => now(), 'updated_at' => now()]);
 
         if ($claimed === 0) {
