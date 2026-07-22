@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Course;
+use App\Models\Enrollment;
 use App\Models\Lesson;
 use App\Models\Section;
 use App\Models\User;
@@ -196,6 +197,64 @@ class CourseCatalogTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
+    // GET /api/courses — checkout-confirm-scoped token must be ignored
+    // (OptionalSanctum leak fix — a checkout-confirm-scoped token must not
+    // authenticate the requester on optional-auth routes; it must behave
+    // exactly like an anonymous request, never like the bound user).
+    // -------------------------------------------------------------------------
+
+    public function test_catalog_ignores_checkout_confirm_scoped_token_and_returns_anonymous_shape(): void
+    {
+        $course = $this->createCourseWithLesson();
+
+        $student = User::factory()->create();
+        Enrollment::create([
+            'user_id'    => $student->id,
+            'course_id'  => $course->id,
+            'price_paid' => $course->price,
+        ]);
+
+        $scopedToken = $student->createToken(
+            'checkout-confirm',
+            ['checkout-confirm'],
+            now()->addMinutes(15),
+        )->plainTextToken;
+
+        $response = $this->withHeader('Authorization', "Bearer {$scopedToken}")
+            ->getJson('/api/courses');
+
+        $response->assertStatus(200);
+
+        // Same shape as a fully anonymous request — is_enrolled absent, even
+        // though the token's bound user IS enrolled in this course.
+        $item = $response->json('data.0');
+        $this->assertArrayNotHasKey('is_enrolled', $item);
+    }
+
+    public function test_catalog_still_personalizes_with_a_normal_full_access_token(): void
+    {
+        $course = $this->createCourseWithLesson();
+
+        $student = User::factory()->create();
+        Enrollment::create([
+            'user_id'    => $student->id,
+            'course_id'  => $course->id,
+            'price_paid' => $course->price,
+        ]);
+
+        $normalToken = $student->createToken('api')->plainTextToken;
+
+        $response = $this->withHeader('Authorization', "Bearer {$normalToken}")
+            ->getJson('/api/courses');
+
+        $response->assertStatus(200);
+
+        $item = $response->json('data.0');
+        $this->assertArrayHasKey('is_enrolled', $item);
+        $this->assertTrue($item['is_enrolled']);
+    }
+
+    // -------------------------------------------------------------------------
     // GET /api/courses/{slug} — Course Detail
     // -------------------------------------------------------------------------
 
@@ -265,5 +324,58 @@ class CourseCatalogTest extends TestCase
 
         $response = $this->getJson('/api/courses/hidden-course');
         $response->assertStatus(404);
+    }
+
+    // -------------------------------------------------------------------------
+    // GET /api/courses/{slug} — checkout-confirm-scoped token must be ignored
+    // (OptionalSanctum leak fix).
+    // -------------------------------------------------------------------------
+
+    public function test_course_detail_ignores_checkout_confirm_scoped_token_and_returns_anonymous_shape(): void
+    {
+        $course = $this->createCourseWithLesson(['slug' => 'scoped-token-course']);
+
+        $student = User::factory()->create();
+        Enrollment::create([
+            'user_id'    => $student->id,
+            'course_id'  => $course->id,
+            'price_paid' => $course->price,
+        ]);
+
+        $scopedToken = $student->createToken(
+            'checkout-confirm',
+            ['checkout-confirm'],
+            now()->addMinutes(15),
+        )->plainTextToken;
+
+        $response = $this->withHeader('Authorization', "Bearer {$scopedToken}")
+            ->getJson('/api/courses/scoped-token-course');
+
+        $response->assertStatus(200);
+
+        // Same shape as a fully anonymous request — is_enrolled false and
+        // my_review null, even though the token's bound user IS enrolled.
+        $this->assertFalse($response->json('data.is_enrolled'));
+        $this->assertNull($response->json('data.my_review'));
+    }
+
+    public function test_course_detail_still_personalizes_with_a_normal_full_access_token(): void
+    {
+        $course = $this->createCourseWithLesson(['slug' => 'full-token-course']);
+
+        $student = User::factory()->create();
+        Enrollment::create([
+            'user_id'    => $student->id,
+            'course_id'  => $course->id,
+            'price_paid' => $course->price,
+        ]);
+
+        $normalToken = $student->createToken('api')->plainTextToken;
+
+        $response = $this->withHeader('Authorization', "Bearer {$normalToken}")
+            ->getJson('/api/courses/full-token-course');
+
+        $response->assertStatus(200);
+        $this->assertTrue($response->json('data.is_enrolled'));
     }
 }
