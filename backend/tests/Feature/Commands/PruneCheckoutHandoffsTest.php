@@ -41,16 +41,28 @@ class PruneCheckoutHandoffsTest extends TestCase
         $this->assertDatabaseMissing('checkout_handoffs', ['id' => $expired->id]);
     }
 
-    public function test_prunes_consumed_row_even_if_not_yet_expired(): void
+    public function test_prunes_consumed_row_older_than_24_hour_grace_period_even_if_not_expired(): void
     {
         $consumed = $this->makeHandoff([
             'expires_at' => now()->addMinutes(10),
-            'consumed_at' => now(),
+            'consumed_at' => now()->subHours(25),
         ]);
 
         $this->artisan('checkout-handoffs:prune')->assertExitCode(0);
 
         $this->assertDatabaseMissing('checkout_handoffs', ['id' => $consumed->id]);
+    }
+
+    public function test_recently_consumed_row_survives_one_prune_run(): void
+    {
+        $consumed = $this->makeHandoff([
+            'expires_at' => now()->addMinutes(10),
+            'consumed_at' => now()->subHours(1),
+        ]);
+
+        $this->artisan('checkout-handoffs:prune')->assertExitCode(0);
+
+        $this->assertDatabaseHas('checkout_handoffs', ['id' => $consumed->id]);
     }
 
     public function test_leaves_unconsumed_unexpired_row_alone(): void
