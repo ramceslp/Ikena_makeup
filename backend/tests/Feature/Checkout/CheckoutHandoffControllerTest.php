@@ -594,6 +594,72 @@ class CheckoutHandoffControllerTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
+    // 409 vs 410 disambiguation on the atomic-claim race window (fix #3)
+    // -------------------------------------------------------------------------
+
+    public function test_redeem_returns_410_not_409_when_token_expires_in_the_gap_before_the_atomic_claim(): void
+    {
+        $user = $this->makeUser();
+        $product = $this->makeProduct();
+
+        [$plaintext, $handoff] = $this->seedHandoff($user, 'product_cart', [
+            'items' => [['product_id' => $product->id, 'quantity' => 1]],
+        ], ['expires_at' => now()->addMinute()]);
+
+        // Force the narrow race window: the in-memory row read by
+        // CheckoutHandoff::byToken(...)->first() (and its expiry check) sees
+        // a still-valid token, but by the time the atomic claim's own
+        // `expires_at > now()` condition runs, the row has expired in the
+        // database. This makes the atomic UPDATE affect 0 rows for the
+        // "expired", not "already consumed", reason.
+        $expired = false;
+        DB::listen(function ($query) use (&$expired, $handoff) {
+            if (! $expired && str_contains($query->sql, 'token_hash')) {
+                $expired = true;
+                DB::table('checkout_handoffs')
+                    ->where('id', $handoff->id)
+                    ->update(['expires_at' => now()->subMinute()]);
+            }
+        });
+
+        $this->postJson('/api/checkout/handoff/redeem', ['token' => $plaintext])
+            ->assertStatus(410);
+
+        $this->assertDatabaseCount('orders', 0);
+
+        $handoff->refresh();
+        $this->assertNull($handoff->consumed_at);
+    }
+
+    public function test_redeem_still_returns_409_when_atomic_claim_fails_due_to_prior_consumption(): void
+    {
+        $user = $this->makeUser();
+        $product = $this->makeProduct();
+
+        [$plaintext, $handoff] = $this->seedHandoff($user, 'product_cart', [
+            'items' => [['product_id' => $product->id, 'quantity' => 1]],
+        ]);
+
+        // Simulate a genuine double-redeem race: the row is marked consumed
+        // between the earlier read-time checks and the atomic claim, without
+        // touching expires_at, so the correct disambiguation is still 409.
+        $consumed = false;
+        DB::listen(function ($query) use (&$consumed, $handoff) {
+            if (! $consumed && str_contains($query->sql, 'token_hash')) {
+                $consumed = true;
+                DB::table('checkout_handoffs')
+                    ->where('id', $handoff->id)
+                    ->update(['consumed_at' => now()]);
+            }
+        });
+
+        $this->postJson('/api/checkout/handoff/redeem', ['token' => $plaintext])
+            ->assertStatus(409);
+
+        $this->assertDatabaseCount('orders', 0);
+    }
+
+    // -------------------------------------------------------------------------
     // confirm_token scope — RejectScopedCheckoutToken middleware (fix #1)
     // -------------------------------------------------------------------------
 

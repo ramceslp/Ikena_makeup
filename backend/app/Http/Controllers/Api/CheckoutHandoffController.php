@@ -106,6 +106,19 @@ class CheckoutHandoffController extends Controller
             ->update(['consumed_at' => now(), 'updated_at' => now()]);
 
         if ($claimed === 0) {
+            // The atomic UPDATE affected 0 rows, but that doesn't tell us WHY:
+            // it could be a prior consumption (true 409) or the token expiring
+            // in the narrow gap between the read-time expiry check above and
+            // this UPDATE (true 410). Re-read the row's current state (a plain
+            // SELECT, not another atomic claim attempt) to disambiguate.
+            $current = DB::table('checkout_handoffs')->where('id', $handoff->id)->first();
+
+            if ($current && $current->consumed_at === null && now()->greaterThan($current->expires_at)) {
+                return response()->json([
+                    'message' => 'This checkout link has expired. Please restart checkout from the app.',
+                ], 410);
+            }
+
             return response()->json(['message' => 'This checkout link has already been used.'], 409);
         }
 
