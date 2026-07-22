@@ -432,6 +432,71 @@ class CheckoutHandoffControllerTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
+    // POST /api/checkout/handoff/redeem — business-rule re-validation (fix #2)
+    // -------------------------------------------------------------------------
+
+    public function test_redeem_appointment_unpublished_service_returns_422(): void
+    {
+        $user = $this->makeUser();
+        [$service] = $this->makeBookableService();
+        $service->update(['is_published' => false]);
+
+        [$plaintext] = $this->seedHandoff($user, 'appointment', [
+            'service_id' => $service->id,
+            'scheduled_date' => $this->today(),
+            'scheduled_time' => '10:00',
+            'whatsapp' => '+593999999999',
+        ]);
+
+        $this->postJson('/api/checkout/handoff/redeem', ['token' => $plaintext])
+            ->assertStatus(422);
+
+        $this->assertDatabaseCount('orders', 0);
+        $this->assertDatabaseCount('appointments', 0);
+    }
+
+    public function test_redeem_appointment_non_by_appointment_service_returns_422(): void
+    {
+        $user = $this->makeUser();
+        [$service] = $this->makeBookableService();
+        $service->update(['availability_type' => 'walk_in']);
+
+        [$plaintext] = $this->seedHandoff($user, 'appointment', [
+            'service_id' => $service->id,
+            'scheduled_date' => $this->today(),
+            'scheduled_time' => '10:00',
+            'whatsapp' => '+593999999999',
+        ]);
+
+        $this->postJson('/api/checkout/handoff/redeem', ['token' => $plaintext])
+            ->assertStatus(422);
+
+        $this->assertDatabaseCount('orders', 0);
+        $this->assertDatabaseCount('appointments', 0);
+    }
+
+    public function test_redeem_appointment_duration_overflow_returns_422(): void
+    {
+        $user = $this->makeUser();
+        // 2-hour service, block closes at 18:00 — a 17:00 start overflows to 19:00.
+        $service = $this->makeService(durationHours: 2);
+        $this->makeBlockForToday(['open_time' => '09:00', 'close_time' => '18:00']);
+
+        [$plaintext] = $this->seedHandoff($user, 'appointment', [
+            'service_id' => $service->id,
+            'scheduled_date' => $this->today(),
+            'scheduled_time' => '17:00',
+            'whatsapp' => '+593999999999',
+        ]);
+
+        $this->postJson('/api/checkout/handoff/redeem', ['token' => $plaintext])
+            ->assertStatus(422);
+
+        $this->assertDatabaseCount('orders', 0);
+        $this->assertDatabaseCount('appointments', 0);
+    }
+
+    // -------------------------------------------------------------------------
     // confirm_token scope — RejectScopedCheckoutToken middleware (fix #1)
     // -------------------------------------------------------------------------
 

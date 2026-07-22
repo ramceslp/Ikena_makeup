@@ -4,6 +4,7 @@ namespace App\Actions;
 
 use App\Exceptions\BookingCapacityExceededException;
 use App\Exceptions\BookingSlotUnavailableException;
+use App\Exceptions\ServiceUnavailableException;
 use App\Models\AgendaBlock;
 use App\Models\Appointment;
 use App\Models\Order;
@@ -37,7 +38,8 @@ class CreateBookingAction
     /**
      * @return array{order: Order, session: CheckoutSession, is_near_capacity: bool}
      *
-     * @throws BookingSlotUnavailableException no AgendaBlock covers the requested time (defensive — StoreBookingRequest should already reject this)
+     * @throws ServiceUnavailableException the service is unpublished, is not by_appointment, or the requested duration overflows the covering AgendaBlock's close_time (BOOK-004) — re-validated here because the checkout-handoff redeem endpoint calls this Action directly against a snapshot that may be up to 10 minutes stale, bypassing StoreBookingRequest::withValidator()
+     * @throws BookingSlotUnavailableException no AgendaBlock covers the requested time — genuinely reachable via the checkout-handoff redeem endpoint's stale snapshot, not just a defensive guard against /api/bookings
      * @throws BookingCapacityExceededException venue-wide concurrency cap reached for the requested window
      */
     public function __invoke(
@@ -49,6 +51,19 @@ class CreateBookingAction
     ): array {
         $service = Service::findOrFail($serviceId);
         $scheduledTime = substr($scheduledTime, 0, 5);
+
+        // Re-validate the same business rules StoreBookingRequest::withValidator()
+        // enforces at the direct /api/bookings HTTP boundary. This Action is also
+        // invoked by the checkout-handoff redeem endpoint (mobile-capacitor-setup
+        // PR2) against a snapshot that may be up to 10 minutes stale — the service
+        // could have been unpublished or had its availability_type changed since.
+        if (! $service->is_published) {
+            throw new ServiceUnavailableException('The service is not published.');
+        }
+
+        if ($service->availability_type !== 'by_appointment') {
+            throw new ServiceUnavailableException('This service does not accept appointments.');
+        }
 
         $depositCents = $this->calculator->cents($service);
         $durationMinutes = (int) $service->duration_hours * 60;
@@ -72,8 +87,22 @@ class CreateBookingAction
             });
 
         if (! $block) {
-            // Defensive — should be unreachable since StoreBookingRequest validated this.
+            // Genuinely reachable — not just defensive. StoreBookingRequest
+            // validates this for the direct /api/bookings path, but the
+            // checkout-handoff redeem endpoint calls this Action against a
+            // snapshot that may be up to 10 minutes stale (the covering
+            // AgendaBlock may have been removed/blocked since the handoff
+            // was created).
             throw new BookingSlotUnavailableException;
+        }
+
+        // BOOK-004 — reject when scheduledTime + duration overflows the
+        // covering AgendaBlock's close_time. Same rule StoreBookingRequest
+        // enforces at the HTTP boundary, re-validated here for the same
+        // stale-snapshot reason as above.
+        $closeTime = substr($block->close_time, 0, 5);
+        if ($scheduledEndTime > $closeTime) {
+            throw new ServiceUnavailableException('The requested duration exceeds the venue availability window.');
         }
 
         $effectiveLimit = $block->concurrency_limit

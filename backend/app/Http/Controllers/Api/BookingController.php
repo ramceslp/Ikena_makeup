@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Actions\CreateBookingAction;
 use App\Exceptions\BookingCapacityExceededException;
 use App\Exceptions\BookingSlotUnavailableException;
+use App\Exceptions\ServiceUnavailableException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AvailableSlotsRequest;
 use App\Http\Requests\StoreBookingRequest;
@@ -110,8 +111,15 @@ class BookingController extends Controller
 
         try {
             $result = ($this->createBooking)($user, $serviceId, $scheduledDate, $scheduledTime, $whatsapp);
+        } catch (ServiceUnavailableException $e) {
+            // Mirrors StoreBookingRequest::withValidator()'s 422 for the same
+            // business-rule failures, re-validated inside the Action itself.
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], 422);
         } catch (BookingSlotUnavailableException $e) {
-            // Defensive — should be unreachable since StoreBookingRequest validated this.
+            // Should be unreachable via this endpoint since StoreBookingRequest
+            // already validated this at the HTTP boundary.
             return response()->json([
                 'message' => $e->getMessage(),
             ], 409);

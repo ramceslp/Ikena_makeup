@@ -8,6 +8,7 @@ use App\Exceptions\BookingCapacityExceededException;
 use App\Exceptions\BookingSlotUnavailableException;
 use App\Exceptions\OutOfStockException;
 use App\Exceptions\ProductUnavailableException;
+use App\Exceptions\ServiceUnavailableException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\RedeemCheckoutHandoffRequest;
 use App\Http\Requests\StoreCheckoutHandoffRequest;
@@ -128,6 +129,11 @@ class CheckoutHandoffController extends Controller
                 'message' => 'Insufficient stock for one or more items.',
                 'product_id' => $e->productId,
             ], 409);
+        } catch (ServiceUnavailableException $e) {
+            // Mirrors StoreBookingRequest::withValidator()'s 422 for the same
+            // business-rule failures, re-validated inside CreateBookingAction
+            // because this snapshot may be up to 10 minutes stale.
+            return response()->json(['message' => $e->getMessage()], 422);
         } catch (BookingSlotUnavailableException $e) {
             return response()->json(['message' => $e->getMessage()], 409);
         } catch (BookingCapacityExceededException $e) {

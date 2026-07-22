@@ -8,11 +8,14 @@ use RuntimeException;
  * Thrown by CreateBookingAction when no AgendaBlock covers the requested
  * scheduled_date/scheduled_time.
  *
- * Defensive — StoreBookingRequest's withValidator already rejects this at
- * the HTTP boundary, so this should be unreachable via /api/bookings. It
- * exists so a caller without that same request-time validation (e.g. the
- * checkout-handoff redeem endpoint re-running a possibly-stale booking
- * snapshot) still gets a safe rejection instead of an unhandled null block.
+ * StoreBookingRequest's withValidator already rejects this at the HTTP
+ * boundary for the direct /api/bookings path, making it unreachable there
+ * under normal conditions. It is genuinely reachable, however, via the
+ * checkout-handoff redeem endpoint (mobile-capacitor-setup PR2), which
+ * invokes CreateBookingAction directly against a snapshot that may be up to
+ * 10 minutes stale — the covering AgendaBlock may have been removed or
+ * blocked since the handoff was created. This is no longer a purely
+ * defensive/theoretical guard.
  */
 class BookingSlotUnavailableException extends RuntimeException
 {
