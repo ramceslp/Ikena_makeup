@@ -56,6 +56,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Frontend URL
+    |--------------------------------------------------------------------------
+    |
+    | Base URL of the web frontend (the Vue SPA). Used to build fully
+    | qualified links back to it — e.g. the checkout-handoff resume URL
+    | the mobile app opens in the system/in-app Browser (see
+    | App\Http\Controllers\Api\CheckoutHandoffController).
+    |
+    */
+
+    'frontend_url' => env('FRONTEND_URL', 'http://localhost:5173'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |

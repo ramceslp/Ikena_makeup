@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\CertificateController;
 use App\Http\Controllers\Api\CertificateSettingController;
 use App\Http\Controllers\Api\CheckoutController;
+use App\Http\Controllers\Api\CheckoutHandoffController;
 use App\Http\Controllers\Api\CourseController;
 use App\Http\Controllers\Api\CourseReviewController;
 use App\Http\Controllers\Api\Instructor\CourseController as InstructorCourseController;
@@ -67,6 +68,11 @@ Route::get('/certificates/verify/{code}', [CertificateController::class, 'verify
 // for the certificate canvas. No auth — returns defaults when unseeded.
 Route::get('/certificate-settings', [CertificateSettingController::class, 'show']);
 
+// Checkout-handoff redeem — public because the browser opened from the app
+// is a separate, logged-out session (see CheckoutHandoffController::redeem
+// and design Decision 1, sdd/mobile-capacitor-setup/design.md).
+Route::post('/checkout/handoff/redeem', [CheckoutHandoffController::class, 'redeem']);
+
 // Protected routes — require Sanctum Bearer token
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
@@ -89,6 +95,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Cart checkout — product_cart orders (requires auth:sanctum)
     Route::post('/cart/checkout', [CartCheckoutController::class, 'store']);
+
+    // Checkout-handoff — snapshot cart/booking behind a single-use token for
+    // the mobile app to hand off to the web checkout flow (mobile-capacitor-setup PR2).
+    Route::post('/checkout/handoff', [CheckoutHandoffController::class, 'store']);
 
     Route::get('/lessons/{lesson}', [LessonController::class, 'show']);
     Route::post('/lessons/{lesson}/complete', [LessonController::class, 'complete']);
