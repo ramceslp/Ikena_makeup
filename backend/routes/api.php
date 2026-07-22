@@ -28,6 +28,7 @@ use App\Http\Controllers\Api\PracticeSubmissionController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\ServiceController;
+use App\Http\Middleware\RejectScopedCheckoutToken;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -74,7 +75,15 @@ Route::get('/certificate-settings', [CertificateSettingController::class, 'show'
 Route::post('/checkout/handoff/redeem', [CheckoutHandoffController::class, 'redeem']);
 
 // Protected routes — require Sanctum Bearer token
-Route::middleware('auth:sanctum')->group(function () {
+//
+// 'reject-scoped-checkout-token' is a deny-list guard (see
+// App\Http\Middleware\RejectScopedCheckoutToken) that rejects the scoped
+// 'checkout-confirm' Sanctum token minted by
+// CheckoutHandoffController::redeem() on every route in this group EXCEPT
+// POST /api/payments/confirm, which explicitly opts out below via
+// withoutMiddleware() — that route is the one action that token is allowed
+// to perform.
+Route::middleware(['auth:sanctum', RejectScopedCheckoutToken::class])->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
 
@@ -89,7 +98,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/courses/{slug}/enroll', [CourseController::class, 'enroll']);
 
     Route::post('/courses/{course:slug}/checkout', [CheckoutController::class, 'checkout']);
-    Route::post('/payments/confirm', [CheckoutController::class, 'confirm']);
+
+    // Excluded from 'reject-scoped-checkout-token' — this is the one route the
+    // scoped 'checkout-confirm' token minted by CheckoutHandoffController::redeem()
+    // is allowed to call.
+    Route::post('/payments/confirm', [CheckoutController::class, 'confirm'])
+        ->withoutMiddleware(RejectScopedCheckoutToken::class);
 
     Route::post('/bookings', [BookingController::class, 'store']);
 

@@ -3,6 +3,7 @@
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\EnsureUserIsInstructor;
 use App\Http\Middleware\OptionalSanctum;
+use App\Http\Middleware\RejectScopedCheckoutToken;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -25,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'instructor'    => EnsureUserIsInstructor::class,
             'admin'         => EnsureUserIsAdmin::class,
             'auth.optional' => OptionalSanctum::class,
+            'reject-scoped-checkout-token' => RejectScopedCheckoutToken::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

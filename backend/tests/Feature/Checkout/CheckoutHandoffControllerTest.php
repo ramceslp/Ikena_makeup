@@ -5,6 +5,7 @@ namespace Tests\Feature\Checkout;
 use App\Models\AgendaBlock;
 use App\Models\Appointment;
 use App\Models\CheckoutHandoff;
+use App\Models\Order;
 use App\Models\Product;
 use App\Models\Service;
 use App\Models\User;
@@ -272,10 +273,12 @@ class CheckoutHandoffControllerTest extends TestCase
         $this->assertNotNull($accessToken->expires_at);
         $this->assertTrue($accessToken->expires_at->between(now()->addMinutes(10), now()->addMinutes(20)));
 
+        // The confirm_token is scoped to checkout-confirm ONLY — it must not
+        // authenticate as the full user on unrelated auth:sanctum routes
+        // (see RejectScopedCheckoutToken and the dedicated scope tests below).
         $this->withHeader('Authorization', "Bearer {$confirmToken}")
             ->getJson('/api/me')
-            ->assertOk()
-            ->assertJsonPath('data.id', $user->id);
+            ->assertStatus(403);
     }
 
     // -------------------------------------------------------------------------
@@ -426,5 +429,88 @@ class CheckoutHandoffControllerTest extends TestCase
             ->assertStatus(409);
 
         $this->assertDatabaseCount('orders', 0);
+    }
+
+    // -------------------------------------------------------------------------
+    // confirm_token scope — RejectScopedCheckoutToken middleware (fix #1)
+    // -------------------------------------------------------------------------
+
+    private function redeemAndGetConfirmToken(): string
+    {
+        $user = $this->makeUser();
+        $product = $this->makeProduct(['stock_qty' => 10]);
+        [$plaintext] = $this->seedHandoff($user, 'product_cart', [
+            'items' => [['product_id' => $product->id, 'quantity' => 1]],
+        ]);
+
+        $response = $this->postJson('/api/checkout/handoff/redeem', ['token' => $plaintext]);
+        $response->assertStatus(201);
+
+        return $response->json('data.confirm_token');
+    }
+
+    public function test_confirm_token_is_rejected_by_me_route(): void
+    {
+        $confirmToken = $this->redeemAndGetConfirmToken();
+
+        $this->withHeader('Authorization', "Bearer {$confirmToken}")
+            ->getJson('/api/me')
+            ->assertStatus(403)
+            ->assertJson(['message' => 'This token cannot be used for this action.']);
+    }
+
+    public function test_confirm_token_is_rejected_by_profile_route(): void
+    {
+        $confirmToken = $this->redeemAndGetConfirmToken();
+
+        $this->withHeader('Authorization', "Bearer {$confirmToken}")
+            ->postJson('/api/profile', [])
+            ->assertStatus(403)
+            ->assertJson(['message' => 'This token cannot be used for this action.']);
+    }
+
+    public function test_confirm_token_is_rejected_by_cart_checkout_route(): void
+    {
+        $confirmToken = $this->redeemAndGetConfirmToken();
+
+        $this->withHeader('Authorization', "Bearer {$confirmToken}")
+            ->postJson('/api/cart/checkout', [])
+            ->assertStatus(403)
+            ->assertJson(['message' => 'This token cannot be used for this action.']);
+    }
+
+    public function test_confirm_token_still_succeeds_against_payments_confirm(): void
+    {
+        $user = $this->makeUser();
+        $product = $this->makeProduct(['stock_qty' => 10]);
+        [$plaintext] = $this->seedHandoff($user, 'product_cart', [
+            'items' => [['product_id' => $product->id, 'quantity' => 1]],
+        ]);
+
+        $redeemResponse = $this->postJson('/api/checkout/handoff/redeem', ['token' => $plaintext]);
+        $redeemResponse->assertStatus(201);
+
+        $confirmToken = $redeemResponse->json('data.confirm_token');
+        $orderId = $redeemResponse->json('data.order_id');
+        $order = Order::find($orderId);
+
+        $this->withHeader('Authorization', "Bearer {$confirmToken}")
+            ->postJson('/api/payments/confirm', [
+                'id' => 1,
+                'clientTransactionId' => $order->client_transaction_id,
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('data.status', 'paid');
+    }
+
+    public function test_normal_full_access_token_still_works_on_protected_routes(): void
+    {
+        $user = $this->makeUser();
+        $normalToken = $user->createToken('api')->plainTextToken;
+
+        $this->withHeader('Authorization', "Bearer {$normalToken}")
+            ->getJson('/api/me')
+            ->assertOk()
+            ->assertJsonPath('data.id', $user->id);
     }
 }
