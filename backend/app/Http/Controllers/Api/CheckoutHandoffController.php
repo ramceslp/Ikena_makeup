@@ -109,10 +109,11 @@ class CheckoutHandoffController extends Controller
             return response()->json(['message' => 'This checkout link has already been used.'], 409);
         }
 
-        $user = User::findOrFail($handoff->user_id);
         $payload = $handoff->payload;
 
         try {
+            $user = User::findOrFail($handoff->user_id);
+
             $result = $handoff->type === 'appointment'
                 ? ($this->createBooking)(
                     $user,
@@ -165,7 +166,7 @@ class CheckoutHandoffController extends Controller
 
             Log::error('Checkout handoff redeem failed: '.$e->getMessage(), [
                 'handoff_id' => $handoff->id,
-                'user_id' => $user->id,
+                'user_id' => $handoff->user_id,
                 'trace' => $e->getTraceAsString(),
             ]);
 

@@ -11,6 +11,8 @@ use App\Models\Service;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Laravel\Sanctum\PersonalAccessToken;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -553,6 +555,42 @@ class CheckoutHandoffControllerTest extends TestCase
 
         $this->assertDatabaseCount('orders', 0);
         $this->assertDatabaseCount('appointments', 0);
+    }
+
+    public function test_redeem_releases_claim_when_bound_user_lookup_fails(): void
+    {
+        $user = $this->makeUser();
+        $product = $this->makeProduct();
+
+        [$plaintext, $handoff] = $this->seedHandoff($user, 'product_cart', [
+            'items' => [['product_id' => $product->id, 'quantity' => 1]],
+        ]);
+
+        // Simulate the assumption behind cascadeOnDelete() breaking (e.g. FK
+        // constraints disabled, a raw bulk delete): the handoff row survives
+        // pointing at a user_id that no longer exists. The controller must
+        // not permanently burn the claim if User::findOrFail() then fails.
+        //
+        // NOTE: SQLite ignores `PRAGMA foreign_keys = OFF` while a
+        // transaction is active (which RefreshDatabase always has open), so
+        // that pragma can't be used here to simulate the disabled-FK case.
+        // Dropping the FK constraint itself is DDL, which SQLite DOES apply
+        // and roll back transactionally, so it reliably reproduces the
+        // "constraint isn't there to save us" scenario in tests.
+        Schema::table('checkout_handoffs', function ($table) {
+            $table->dropForeign(['user_id']);
+        });
+        DB::table('users')->where('id', $user->id)->delete();
+
+        $this->postJson('/api/checkout/handoff/redeem', ['token' => $plaintext])
+            ->assertStatus(500);
+
+        $this->assertDatabaseCount('orders', 0);
+
+        // Fix #2 — the claim is released (not permanently burned) even though
+        // the failure happened resolving the bound user, before the Action call.
+        $handoff->refresh();
+        $this->assertNull($handoff->consumed_at);
     }
 
     // -------------------------------------------------------------------------
