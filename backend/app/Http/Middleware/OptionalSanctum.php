@@ -22,7 +22,19 @@ class OptionalSanctum
     public function handle(Request $request, Closure $next): Response
     {
         if ($request->bearerToken() && ($user = Auth::guard('sanctum')->user())) {
-            Auth::setUser($user);
+            $token = $user->currentAccessToken();
+
+            // A short-lived, ability-scoped 'checkout-confirm' token (see
+            // RejectScopedCheckoutToken) must not authenticate the requester
+            // on these optional-auth routes — it is only allowed to perform
+            // POST /api/payments/confirm. Unlike auth:sanctum routes, there is
+            // no deny-list middleware here to reject it, and anonymous access
+            // is itself a valid, intended outcome on optional-auth routes, so
+            // the scoped token is simply ignored (treated as if no token was
+            // presented) rather than rejected with an error.
+            if (! $token || ! $token->can('checkout-confirm') || $token->can('*')) {
+                Auth::setUser($user);
+            }
         }
 
         return $next($request);

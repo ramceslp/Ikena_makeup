@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\CertificateController;
 use App\Http\Controllers\Api\CertificateSettingController;
 use App\Http\Controllers\Api\CheckoutController;
+use App\Http\Controllers\Api\CheckoutHandoffController;
 use App\Http\Controllers\Api\CourseController;
 use App\Http\Controllers\Api\CourseReviewController;
 use App\Http\Controllers\Api\Instructor\CourseController as InstructorCourseController;
@@ -27,6 +28,7 @@ use App\Http\Controllers\Api\PracticeSubmissionController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\ServiceController;
+use App\Http\Middleware\RejectScopedCheckoutToken;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -67,8 +69,21 @@ Route::get('/certificates/verify/{code}', [CertificateController::class, 'verify
 // for the certificate canvas. No auth — returns defaults when unseeded.
 Route::get('/certificate-settings', [CertificateSettingController::class, 'show']);
 
+// Checkout-handoff redeem — public because the browser opened from the app
+// is a separate, logged-out session (see CheckoutHandoffController::redeem
+// and design Decision 1, sdd/mobile-capacitor-setup/design.md).
+Route::post('/checkout/handoff/redeem', [CheckoutHandoffController::class, 'redeem']);
+
 // Protected routes — require Sanctum Bearer token
-Route::middleware('auth:sanctum')->group(function () {
+//
+// 'reject-scoped-checkout-token' is a deny-list guard (see
+// App\Http\Middleware\RejectScopedCheckoutToken) that rejects the scoped
+// 'checkout-confirm' Sanctum token minted by
+// CheckoutHandoffController::redeem() on every route in this group EXCEPT
+// POST /api/payments/confirm, which explicitly opts out below via
+// withoutMiddleware() — that route is the one action that token is allowed
+// to perform.
+Route::middleware(['auth:sanctum', RejectScopedCheckoutToken::class])->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
 
@@ -83,12 +98,21 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/courses/{slug}/enroll', [CourseController::class, 'enroll']);
 
     Route::post('/courses/{course:slug}/checkout', [CheckoutController::class, 'checkout']);
-    Route::post('/payments/confirm', [CheckoutController::class, 'confirm']);
+
+    // Excluded from 'reject-scoped-checkout-token' — this is the one route the
+    // scoped 'checkout-confirm' token minted by CheckoutHandoffController::redeem()
+    // is allowed to call.
+    Route::post('/payments/confirm', [CheckoutController::class, 'confirm'])
+        ->withoutMiddleware(RejectScopedCheckoutToken::class);
 
     Route::post('/bookings', [BookingController::class, 'store']);
 
     // Cart checkout — product_cart orders (requires auth:sanctum)
     Route::post('/cart/checkout', [CartCheckoutController::class, 'store']);
+
+    // Checkout-handoff — snapshot cart/booking behind a single-use token for
+    // the mobile app to hand off to the web checkout flow (mobile-capacitor-setup PR2).
+    Route::post('/checkout/handoff', [CheckoutHandoffController::class, 'store']);
 
     Route::get('/lessons/{lesson}', [LessonController::class, 'show']);
     Route::post('/lessons/{lesson}/complete', [LessonController::class, 'complete']);

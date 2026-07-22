@@ -5,6 +5,7 @@ namespace Tests\Unit\Actions;
 use App\Actions\CreateBookingAction;
 use App\Exceptions\BookingCapacityExceededException;
 use App\Exceptions\BookingSlotUnavailableException;
+use App\Exceptions\ServiceUnavailableException;
 use App\Models\AgendaBlock;
 use App\Models\Appointment;
 use App\Models\Order;
@@ -178,5 +179,51 @@ class CreateBookingActionTest extends TestCase
         $result = ($this->action())($user, $service->id, $date, '10:00', '+593099912345');
 
         $this->assertTrue($result['is_near_capacity']);
+    }
+
+    // -------------------------------------------------------------------------
+    // Re-validated business rules (fix #2) — mirrors StoreBookingRequest's
+    // withValidator() checks, exercised here because CreateBookingAction is
+    // called directly by the checkout-handoff redeem endpoint against a
+    // snapshot that may be up to 10 minutes stale.
+    // -------------------------------------------------------------------------
+
+    public function test_unpublished_service_throws_service_unavailable_exception(): void
+    {
+        $user = $this->makeUser();
+        [$service] = $this->makeBookableService();
+        $service->update(['is_published' => false]);
+
+        $this->expectException(ServiceUnavailableException::class);
+        $this->expectExceptionMessage('The service is not published.');
+
+        ($this->action())($user, $service->id, $this->today(), '10:00', '+593099912345');
+    }
+
+    public function test_non_by_appointment_service_throws_service_unavailable_exception(): void
+    {
+        $user = $this->makeUser();
+        [$service] = $this->makeBookableService();
+        $service->update(['availability_type' => 'walk_in']);
+
+        $this->expectException(ServiceUnavailableException::class);
+        $this->expectExceptionMessage('This service does not accept appointments.');
+
+        ($this->action())($user, $service->id, $this->today(), '10:00', '+593099912345');
+    }
+
+    public function test_duration_overflowing_close_time_throws_service_unavailable_exception(): void
+    {
+        $user = $this->makeUser();
+        // 2-hour service, block closes at 18:00 — a 17:00 start overflows to 19:00.
+        [$service] = $this->makeBookableService(durationHours: 2, blockOverrides: [
+            'open_time' => '09:00',
+            'close_time' => '18:00',
+        ]);
+
+        $this->expectException(ServiceUnavailableException::class);
+        $this->expectExceptionMessage('The requested duration exceeds the venue availability window.');
+
+        ($this->action())($user, $service->id, $this->today(), '17:00', '+593099912345');
     }
 }
