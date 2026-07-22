@@ -393,6 +393,36 @@ class CheckoutHandoffControllerTest extends TestCase
 
         $this->assertDatabaseCount('orders', 0);
         $this->assertDatabaseHas('products', ['id' => $product->id, 'stock_qty' => 1]);
+
+        // Fix #3 — the atomic claim must be released on business-exception
+        // failure so the customer's link is not permanently dead.
+        $handoff->refresh();
+        $this->assertNull($handoff->consumed_at);
+    }
+
+    public function test_redeem_after_transient_out_of_stock_failure_can_be_retried_with_same_token(): void
+    {
+        $user = $this->makeUser();
+        $product = $this->makeProduct(['stock_qty' => 1]);
+
+        [$plaintext, $handoff] = $this->seedHandoff($user, 'product_cart', [
+            'items' => [['product_id' => $product->id, 'quantity' => 5]],
+        ]);
+
+        $this->postJson('/api/checkout/handoff/redeem', ['token' => $plaintext])
+            ->assertStatus(409);
+        $this->assertDatabaseCount('orders', 0);
+
+        // Stock replenished (e.g. restocked) — retrying the SAME link must
+        // now succeed instead of being permanently dead.
+        $product->update(['stock_qty' => 10]);
+
+        $this->postJson('/api/checkout/handoff/redeem', ['token' => $plaintext])
+            ->assertStatus(201);
+
+        $this->assertDatabaseCount('orders', 1);
+        $handoff->refresh();
+        $this->assertNotNull($handoff->consumed_at);
     }
 
     public function test_redeem_unavailable_product_propagates_422(): void
@@ -402,12 +432,15 @@ class CheckoutHandoffControllerTest extends TestCase
         $productId = $product->id;
         $product->delete();
 
-        [$plaintext] = $this->seedHandoff($user, 'product_cart', [
+        [$plaintext, $handoff] = $this->seedHandoff($user, 'product_cart', [
             'items' => [['product_id' => $productId, 'quantity' => 1]],
         ]);
 
         $this->postJson('/api/checkout/handoff/redeem', ['token' => $plaintext])
             ->assertStatus(422);
+
+        $handoff->refresh();
+        $this->assertNull($handoff->consumed_at);
     }
 
     public function test_redeem_appointment_capacity_exceeded_propagates_409(): void
@@ -418,7 +451,7 @@ class CheckoutHandoffControllerTest extends TestCase
         // Fill the only slot with an existing overlapping appointment.
         $this->makeExistingAppointment($this->today(), '10:00', '11:00');
 
-        [$plaintext] = $this->seedHandoff($user, 'appointment', [
+        [$plaintext, $handoff] = $this->seedHandoff($user, 'appointment', [
             'service_id' => $service->id,
             'scheduled_date' => $this->today(),
             'scheduled_time' => '10:00',
@@ -429,6 +462,32 @@ class CheckoutHandoffControllerTest extends TestCase
             ->assertStatus(409);
 
         $this->assertDatabaseCount('orders', 0);
+
+        $handoff->refresh();
+        $this->assertNull($handoff->consumed_at);
+    }
+
+    public function test_redeem_unexpected_exception_returns_500_logs_and_releases_claim(): void
+    {
+        $user = $this->makeUser();
+
+        // service_id references a Service row that doesn't exist — mirrors an
+        // unexpected failure (e.g. a deleted Service) hitting Service::findOrFail()
+        // inside CreateBookingAction, which is NOT one of the typed business
+        // exceptions this controller otherwise catches.
+        [$plaintext, $handoff] = $this->seedHandoff($user, 'appointment', [
+            'service_id' => 999999,
+            'scheduled_date' => $this->today(),
+            'scheduled_time' => '10:00',
+            'whatsapp' => '+593999999999',
+        ]);
+
+        $this->postJson('/api/checkout/handoff/redeem', ['token' => $plaintext])
+            ->assertStatus(500);
+
+        $this->assertDatabaseCount('orders', 0);
+        $handoff->refresh();
+        $this->assertNull($handoff->consumed_at);
     }
 
     // -------------------------------------------------------------------------
