@@ -10,8 +10,8 @@ use Illuminate\Notifications\Events\NotificationFailed;
 use Kreait\Firebase\Exception\Messaging\InvalidArgument;
 use Kreait\Firebase\Exception\Messaging\NotFound;
 use Kreait\Firebase\Messaging\MessageTarget;
-use Kreait\Firebase\Messaging\MulticastSendReport;
 use Kreait\Firebase\Messaging\SendReport;
+use NotificationChannels\Fcm\FcmChannel;
 use Tests\TestCase;
 
 /**
@@ -27,6 +27,13 @@ use Tests\TestCase;
  * event (via the `event()` helper, not calling the listener class directly)
  * so this also proves Laravel's auto-discovery actually wires
  * InvalidateFcmDeviceToken up without any manual registration.
+ *
+ * The event shape here matches what
+ * NotificationChannels\Fcm\FcmChannel::dispatchFailedNotification() actually
+ * dispatches in production: `$channel` is the FQCN FcmChannel::class (never
+ * the bare string 'fcm'), and `data['report']` is a single
+ * Kreait\Firebase\Messaging\SendReport (not a MulticastSendReport) — one
+ * event is dispatched per failed item.
  */
 class InvalidateFcmDeviceTokenTest extends TestCase
 {
@@ -52,17 +59,15 @@ class InvalidateFcmDeviceTokenTest extends TestCase
     {
         $deviceToken = $this->makeDeviceToken('unregistered-token');
 
-        $report = MulticastSendReport::withItems([
-            SendReport::failure(
-                $this->tokenTarget('unregistered-token'),
-                NotFound::becauseTokenNotFound('unregistered-token'),
-            ),
-        ]);
+        $report = SendReport::failure(
+            $this->tokenTarget('unregistered-token'),
+            NotFound::becauseTokenNotFound('unregistered-token'),
+        );
 
         event(new NotificationFailed(
             $deviceToken->user,
             new BookingConfirmed($this->makeUnrelatedAppointment()),
-            'fcm',
+            FcmChannel::class,
             ['report' => $report],
         ));
 
@@ -73,17 +78,15 @@ class InvalidateFcmDeviceTokenTest extends TestCase
     {
         $deviceToken = $this->makeDeviceToken('malformed-token');
 
-        $report = MulticastSendReport::withItems([
-            SendReport::failure(
-                $this->tokenTarget('malformed-token'),
-                new InvalidArgument('The registration token is not a valid FCM registration token.'),
-            ),
-        ]);
+        $report = SendReport::failure(
+            $this->tokenTarget('malformed-token'),
+            new InvalidArgument('The registration token is not a valid FCM registration token.'),
+        );
 
         event(new NotificationFailed(
             $deviceToken->user,
             new BookingConfirmed($this->makeUnrelatedAppointment()),
-            'fcm',
+            FcmChannel::class,
             ['report' => $report],
         ));
 
@@ -95,18 +98,17 @@ class InvalidateFcmDeviceTokenTest extends TestCase
         $failing = $this->makeDeviceToken('failing-token');
         $succeeding = $this->makeDeviceToken('succeeding-token');
 
-        $report = MulticastSendReport::withItems([
-            SendReport::success($this->tokenTarget('succeeding-token'), ['name' => 'projects/x/messages/1']),
-            SendReport::failure(
-                $this->tokenTarget('failing-token'),
-                NotFound::becauseTokenNotFound('failing-token'),
-            ),
-        ]);
+        // FcmChannel dispatches one NotificationFailed event per failed item
+        // only — the succeeding item never produces an event at all.
+        $report = SendReport::failure(
+            $this->tokenTarget('failing-token'),
+            NotFound::becauseTokenNotFound('failing-token'),
+        );
 
         event(new NotificationFailed(
             $failing->user,
             new BookingConfirmed($this->makeUnrelatedAppointment()),
-            'fcm',
+            FcmChannel::class,
             ['report' => $report],
         ));
 
@@ -118,17 +120,34 @@ class InvalidateFcmDeviceTokenTest extends TestCase
     {
         $deviceToken = $this->makeDeviceToken('some-token');
 
-        $report = MulticastSendReport::withItems([
-            SendReport::failure(
-                $this->tokenTarget('some-token'),
-                NotFound::becauseTokenNotFound('some-token'),
-            ),
-        ]);
+        $report = SendReport::failure(
+            $this->tokenTarget('some-token'),
+            NotFound::becauseTokenNotFound('some-token'),
+        );
 
         event(new NotificationFailed(
             $deviceToken->user,
             new BookingConfirmed($this->makeUnrelatedAppointment()),
             'mail',
+            ['report' => $report],
+        ));
+
+        $this->assertDatabaseHas('device_tokens', ['id' => $deviceToken->id]);
+    }
+
+    public function test_ignores_successful_send_reports(): void
+    {
+        $deviceToken = $this->makeDeviceToken('succeeding-token');
+
+        $report = SendReport::success(
+            $this->tokenTarget('succeeding-token'),
+            ['name' => 'projects/x/messages/1'],
+        );
+
+        event(new NotificationFailed(
+            $deviceToken->user,
+            new BookingConfirmed($this->makeUnrelatedAppointment()),
+            FcmChannel::class,
             ['report' => $report],
         ));
 
