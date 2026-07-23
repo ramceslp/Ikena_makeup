@@ -19,4 +19,4 @@ Schedule::command('checkout-handoffs:prune')->hourly();
 // Send the "Appointment reminder" v1 push trigger for appointments ~24h out
 // (mobile-capacitor-setup PR3). Hourly cadence matches the command's
 // one-hour-wide window so consecutive runs tile with no gap or overlap.
-Schedule::command('appointments:send-reminders')->hourly();
+Schedule::command('appointments:send-reminders')->hourly()->withoutOverlapping();

@@ -6,6 +6,7 @@ use App\Models\Appointment;
 use App\Notifications\AppointmentReminder;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 
 /**
@@ -48,6 +49,7 @@ class SendAppointmentReminders extends Command
         // whereDate() wraps the column in a DATE() SQL function so the
         // comparison is driver-consistent.
         $candidates = Appointment::query()
+            ->with('user.deviceTokens')
             ->where('status', 'paid')
             ->whereNull('reminder_sent_at')
             ->whereDate('scheduled_date', '>=', $windowStart->toDateString())
@@ -62,11 +64,41 @@ class SendAppointmentReminders extends Command
                 $timezone,
             );
 
-            if ($scheduledAt->greaterThanOrEqualTo($windowStart) && $scheduledAt->lessThan($windowEnd)) {
-                Notification::send($appointment->user, new AppointmentReminder($appointment));
-                $appointment->update(['reminder_sent_at' => now()]);
-                $sent++;
+            if (! $scheduledAt->greaterThanOrEqualTo($windowStart) || ! $scheduledAt->lessThan($windowEnd)) {
+                continue;
             }
+
+            // Atomically claim this appointment before sending: an overlapping
+            // run (or a manual + scheduled trigger racing each other) must not
+            // both send the same reminder. Only proceed if this run's UPDATE
+            // actually flipped the row (affected rows = 1); a losing run sees
+            // 0 affected rows because reminder_sent_at is no longer NULL.
+            $claimed = Appointment::where('id', $appointment->id)
+                ->whereNull('reminder_sent_at')
+                ->update(['reminder_sent_at' => now()]);
+
+            if ($claimed === 0) {
+                continue;
+            }
+
+            try {
+                Notification::send($appointment->user, new AppointmentReminder($appointment));
+            } catch (\Throwable $e) {
+                // Sending failed (e.g. Firebase transport/API outage) after we
+                // already claimed the appointment above. Release the claim so
+                // a later run can retry, log for debugging, and move on to the
+                // next candidate instead of aborting the whole run.
+                Appointment::where('id', $appointment->id)->update(['reminder_sent_at' => null]);
+
+                Log::error('Appointment reminder send failed: '.$e->getMessage(), [
+                    'appointment_id' => $appointment->id,
+                    'trace' => $e->getTraceAsString(),
+                ]);
+
+                continue;
+            }
+
+            $sent++;
         }
 
         $this->info("Sent {$sent} appointment reminder(s).");

@@ -80,11 +80,17 @@ class User extends Authenticatable
      * calls this via `$notifiable->routeNotificationFor('fcm', ...)` and
      * multicasts the send across all returned tokens.
      *
+     * Reuses the `deviceTokens` relation when it has already been eager
+     * loaded (e.g. via `with('user.deviceTokens')`) to avoid an N+1 query
+     * per notified user; otherwise falls back to a fresh query.
+     *
      * @return array<int, string>
      */
     public function routeNotificationForFcm(): array
     {
-        return $this->deviceTokens()->pluck('token')->all();
+        return ($this->relationLoaded('deviceTokens') ? $this->deviceTokens : $this->deviceTokens()->get())
+            ->pluck('token')
+            ->all();
     }
 
     // -------------------------------------------------------------------------
