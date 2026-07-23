@@ -205,4 +205,155 @@ describe('CheckoutResume.vue', () => {
     expect(mockPost).not.toHaveBeenCalled()
     expect(wrapper.text().toLowerCase()).toMatch(/reinicia.*(app|aplicación)/)
   })
+
+  // ── Judgment Day fix #1 — failed confirm must NOT clear the session ───────
+
+  it('does not clear the stored session when confirmPayment fails, so a retry can reuse the confirm_token', async () => {
+    sessionStorage.setItem(
+      SESSION_KEY,
+      JSON.stringify({ confirm_token: 'scoped-token-xyz', order_id: 55 })
+    )
+    mockPost.mockRejectedValueOnce({
+      response: { status: 500, data: { message: 'Backend unavailable.' } },
+    })
+
+    await mountResume('/checkout/resume?id=PAYPHONE123&clientTransactionId=ORD-abc')
+    await flushPromises()
+
+    const stored = JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null')
+    expect(stored).not.toBeNull()
+    expect(stored.confirm_token).toBe('scoped-token-xyz')
+  })
+
+  it('still clears the stored session when confirmPayment succeeds', async () => {
+    sessionStorage.setItem(
+      SESSION_KEY,
+      JSON.stringify({ confirm_token: 'scoped-token-xyz', order_id: 55 })
+    )
+    mockPost.mockResolvedValueOnce({ data: { data: { status: 'paid', order_id: 55 } } })
+
+    await mountResume('/checkout/resume?id=PAYPHONE123&clientTransactionId=ORD-abc')
+    await flushPromises()
+
+    expect(sessionStorage.getItem(SESSION_KEY)).toBeNull()
+  })
+
+  // ── Judgment Day fix #2 — reload during 'payphone' phase must not replay redeem ──
+
+  it('clears the URL fragment after a successful redeem', async () => {
+    window.location.hash = '#token=abc123token'
+    mockPost.mockResolvedValueOnce({
+      data: {
+        data: {
+          order_id: 55,
+          provider: 'payphone',
+          config: { clientTransactionId: 'ORD-abc', amount: 1000 },
+          confirm_token: 'scoped-token-xyz',
+        },
+      },
+    })
+
+    await mountResume()
+    await flushPromises()
+
+    expect(window.location.hash).toBe('')
+  })
+
+  it('shows an "already started" message instead of re-redeeming when a session already exists and the URL has no token (accidental reload after replaceState)', async () => {
+    sessionStorage.setItem(
+      SESSION_KEY,
+      JSON.stringify({ confirm_token: 'scoped-token-xyz', order_id: 55 })
+    )
+
+    const wrapper = await mountResume()
+    await flushPromises()
+
+    expect(mockPost).not.toHaveBeenCalled()
+    expect(wrapper.text().toLowerCase()).toContain('ya se inició este proceso de pago')
+  })
+
+  it('attempts to redeem a NEW/different fragment token even when a stale session from a different order lingers', async () => {
+    window.location.hash = '#token=brandnewtoken'
+    sessionStorage.setItem(
+      SESSION_KEY,
+      JSON.stringify({ confirm_token: 'stale-token-from-another-order', order_id: 12 })
+    )
+    mockPost.mockResolvedValueOnce({
+      data: {
+        data: {
+          order_id: 99,
+          provider: 'payphone',
+          config: { clientTransactionId: 'ORD-new', amount: 2000 },
+          confirm_token: 'fresh-token-xyz',
+        },
+      },
+    })
+
+    await mountResume()
+    await flushPromises()
+
+    expect(mockPost).toHaveBeenCalledWith('/checkout/handoff/redeem', { token: 'brandnewtoken' })
+  })
+
+  // ── Judgment Day fix #3 — retry/back actions on error/expired states ──────
+
+  it('renders a "Reintentar" button in the error phase that reloads the page', async () => {
+    window.location.hash = '#token=abc123token'
+    mockPost.mockRejectedValueOnce({
+      response: { status: 500, data: { message: 'Backend unavailable.' } },
+    })
+
+    const reloadSpy = vi.fn()
+    const originalLocation = window.location
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: { ...originalLocation, reload: reloadSpy },
+    })
+
+    const wrapper = await mountResume()
+    await flushPromises()
+
+    const button = wrapper.findAll('button').find((b) => b.text().includes('Reintentar'))
+    expect(button).toBeTruthy()
+
+    await button.trigger('click')
+    expect(reloadSpy).toHaveBeenCalled()
+
+    Object.defineProperty(window, 'location', { configurable: true, value: originalLocation })
+  })
+
+  it('also renders a "Volver al inicio" link in the error phase, alongside "Reintentar", so the user is never trapped', async () => {
+    window.location.hash = '#token=abc123token'
+    mockPost.mockRejectedValueOnce({
+      response: { status: 500, data: { message: 'Backend unavailable.' } },
+    })
+
+    const wrapper = await mountResume()
+    await flushPromises()
+
+    const button = wrapper.findAll('button').find((b) => b.text().includes('Reintentar'))
+    const link = wrapper.findAll('a').find((a) => a.text().toLowerCase().includes('inicio'))
+
+    expect(button).toBeTruthy()
+    expect(link).toBeTruthy()
+    expect(link.attributes('href')).toBe('/')
+  })
+
+  it('renders a link back to the site in the expired phase instead of a retry button', async () => {
+    window.location.hash = '#token=expiredtoken'
+    mockPost.mockRejectedValueOnce({
+      response: {
+        status: 410,
+        data: { message: 'This checkout link has expired.' },
+      },
+    })
+
+    const wrapper = await mountResume()
+    await flushPromises()
+
+    const link = wrapper.findAll('a').find((a) => a.text().toLowerCase().includes('inicio'))
+    expect(link).toBeTruthy()
+    expect(link.attributes('href')).toBe('/')
+    expect(wrapper.findAll('button').some((b) => b.text().includes('Reintentar'))).toBe(false)
+  })
 })

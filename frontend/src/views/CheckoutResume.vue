@@ -134,6 +134,15 @@ async function redeemToken(token) {
       order_id: result.order_id,
     })
 
+    // Judgment Day fix — the fragment token is single-use on the backend.
+    // Clear it from the URL bar right after a successful redeem so an
+    // accidental reload during the 'payphone' phase can't replay it (which
+    // would hit the backend's single-use claim and 409, even though the
+    // confirm_token from THIS redeem is still valid and sitting in
+    // sessionStorage). replaceState avoids adding a history entry / a route
+    // change, so it doesn't retrigger onMounted.
+    window.history.replaceState(null, '', window.location.pathname + window.location.search)
+
     if (result.provider !== 'payphone') {
       phase.value = 'error'
       errorMessage.value =
@@ -189,6 +198,17 @@ function handleRedeemError(err) {
     : 'No se pudo cargar el proceso de pago. ' + RESTART_SUFFIX
 }
 
+// Judgment Day fix — the 'error' phase's "Reintentar" button reloads the
+// full page: safe post confirm-session fix above, because a failed confirm
+// no longer clears sessionStorage, so reloading with the same
+// ?id&clientTransactionId in the URL retries confirmPayment() using the
+// still-persisted confirm_token. `window` is not in Vue's template global
+// allowlist, so this is exposed as a plain function instead of referencing
+// `window` directly from the template.
+function reloadPage() {
+  window.location.reload()
+}
+
 // ── Confirm flow (return leg of the PayPhone redirect) ──────────────────────
 
 async function confirmPayment(id, clientTxId, confirmToken) {
@@ -200,12 +220,16 @@ async function confirmPayment(id, clientTxId, confirmToken) {
       { headers: { Authorization: `Bearer ${confirmToken}` } }
     )
     phase.value = 'success'
+    // Only clear the session on confirmed success. The backend's confirm
+    // endpoint is idempotent (retrying a failed call is safe), so a
+    // transient failure here (network blip, 5xx, timeout) must NOT destroy
+    // the confirm_token — the customer needs it to retry without restarting
+    // the whole checkout from the app.
+    clearSession()
   } catch (err) {
     phase.value = 'error'
     errorMessage.value =
       (err.response?.data?.message || 'No se pudo confirmar el pago.') + ' ' + RESTART_SUFFIX
-  } finally {
-    clearSession()
   }
 }
 
@@ -230,10 +254,33 @@ onMounted(async () => {
     return
   }
 
-  // First visit — redeem the token carried in the URL fragment.
+  // First visit — redeem the token carried in the URL fragment. The token
+  // must be checked FIRST: a Capacitor Browser/WebView tab can be reused
+  // across multiple separate checkout attempts, so a genuinely new/different
+  // token in the fragment always means a genuinely new checkout attempt and
+  // must be redeemed regardless of any stale session left over from a prior,
+  // abandoned attempt in the same tab. The backend's single-use claim on the
+  // token itself (via handleRedeemError's 409/410 handling) is what protects
+  // against an actual replay — this view must not pre-empt that by guessing.
   const token = readTokenFromFragment()
 
   if (!token) {
+    // No token present — but a session from a PRIOR successful redeem in
+    // this same tab/reload cycle may already exist (e.g. an accidental
+    // reload while still in the 'payphone' phase, before PayPhone's own
+    // redirect happens, after replaceState already stripped the token from
+    // the URL). The backend's redeem token is single-use, so replaying it
+    // would just 409 even though the original confirm_token is still valid
+    // and unused. Detect that case and stop instead of re-redeeming.
+    const existingSession = readSession()
+    if (existingSession?.confirm_token) {
+      phase.value = 'error'
+      errorMessage.value =
+        'Ya se inició este proceso de pago. Si ya completaste el pago con PayPhone, revisa tu correo o la app para confirmar el estado de tu compra. ' +
+        RESTART_SUFFIX
+      return
+    }
+
     phase.value = 'expired'
     errorMessage.value = 'No se encontró un enlace de pago válido. ' + RESTART_SUFFIX
     return
@@ -271,7 +318,13 @@ onMounted(async () => {
             d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
         <p class="text-on-error-container font-medium mb-2">Este enlace de pago ya no es válido</p>
-        <p class="text-on-error-container/80 text-sm">{{ errorMessage }}</p>
+        <p class="text-on-error-container/80 text-sm mb-6">{{ errorMessage }}</p>
+        <RouterLink
+          to="/"
+          class="inline-flex items-center justify-center gap-2 bg-apricot-glow text-deep-marsala px-6 py-2 rounded-lg font-semibold hover:opacity-90 transition-opacity text-sm"
+        >
+          Volver al inicio
+        </RouterLink>
       </div>
 
       <!-- Generic error -->
@@ -284,7 +337,21 @@ onMounted(async () => {
             d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
         <p class="text-on-error-container font-medium mb-2">No se pudo completar el pago</p>
-        <p class="text-on-error-container/80 text-sm">{{ errorMessage }}</p>
+        <p class="text-on-error-container/80 text-sm mb-6">{{ errorMessage }}</p>
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
+          <button
+            @click="reloadPage"
+            class="btn-gloss bg-apricot-glow text-deep-marsala px-6 py-2 rounded-lg font-semibold hover:opacity-90 transition-opacity text-sm"
+          >
+            <span class="relative z-[1]">Reintentar</span>
+          </button>
+          <RouterLink
+            to="/"
+            class="inline-flex items-center justify-center gap-2 bg-apricot-glow text-deep-marsala px-6 py-2 rounded-lg font-semibold hover:opacity-90 transition-opacity text-sm"
+          >
+            Volver al inicio
+          </RouterLink>
+        </div>
       </div>
 
       <!-- Success -->
