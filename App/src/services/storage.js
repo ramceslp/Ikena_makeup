@@ -17,9 +17,21 @@ const cache = new Map()
  */
 export async function get(key) {
   const { value } = await Preferences.get({ key })
-  const parsed = value === null ? null : JSON.parse(value)
-  cache.set(key, parsed)
-  return parsed
+  if (value === null) {
+    cache.set(key, null)
+    return null
+  }
+
+  try {
+    const parsed = JSON.parse(value)
+    cache.set(key, parsed)
+    return parsed
+  } catch {
+    // Corrupted/malformed stored value: treat as "no cached session" instead
+    // of throwing and stalling app boot (see main.js's bootstrap()).
+    cache.set(key, null)
+    return null
+  }
 }
 
 /**

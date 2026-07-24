@@ -47,6 +47,15 @@ describe('storage service', () => {
     expect(result).toBeNull()
   })
 
+  it('get() returns null instead of throwing when the stored value is corrupted/malformed JSON', async () => {
+    Preferences.get.mockResolvedValueOnce({ value: 'not-valid-json{{' })
+
+    const result = await get(TOKEN_KEY)
+
+    expect(result).toBeNull()
+    expect(getCached(TOKEN_KEY)).toBeNull()
+  })
+
   it('get() updates the cache so a subsequent getCached() call returns the same parsed value', async () => {
     Preferences.get.mockResolvedValueOnce({ value: JSON.stringify('fresh-token') })
 
