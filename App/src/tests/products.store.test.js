@@ -51,3 +51,48 @@ describe('products store (trimmed: fetchProducts only, see Home.vue)', () => {
     expect(store.products).toEqual([])
   })
 })
+
+// Phase 7: fetchProduct (detail) + fetchCategories, needed by ProductDetail.vue
+// and Products.vue's category filter. Admin CRUD/upload actions are
+// intentionally NOT ported -- no admin surface in this app (see
+// products.js's file-level comment and the spec's Mobile App Boundaries).
+describe('products store — fetchProduct + fetchCategories (Phase 7)', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+  })
+
+  it('fetchProduct GETs /products/:slug and populates currentProduct', async () => {
+    const fakeProduct = { id: 1, slug: 'paleta-editorial', title: 'Paleta Editorial' }
+    api.get.mockResolvedValueOnce({ data: { data: fakeProduct } })
+
+    const store = useProductsStore()
+    const result = await store.fetchProduct('paleta-editorial')
+
+    expect(api.get).toHaveBeenCalledWith('/products/paleta-editorial')
+    expect(store.currentProduct).toEqual(fakeProduct)
+    expect(result).toEqual(fakeProduct)
+  })
+
+  it('fetchProduct sets a Spanish error message and re-throws on failure', async () => {
+    const notFound = new Error('Not Found')
+    notFound.response = { status: 404 }
+    api.get.mockRejectedValueOnce(notFound)
+
+    const store = useProductsStore()
+    await expect(store.fetchProduct('missing')).rejects.toThrow('Not Found')
+
+    expect(store.error).toBe('Error al cargar el producto')
+  })
+
+  it('fetchCategories GETs /categories and populates categories once, skipping subsequent calls', async () => {
+    api.get.mockResolvedValueOnce({ data: { data: [{ id: 1, name: 'Labios', slug: 'labios' }] } })
+
+    const store = useProductsStore()
+    await store.fetchCategories()
+    await store.fetchCategories()
+
+    expect(api.get).toHaveBeenCalledTimes(1)
+    expect(store.categories).toEqual([{ id: 1, name: 'Labios', slug: 'labios' }])
+  })
+})
