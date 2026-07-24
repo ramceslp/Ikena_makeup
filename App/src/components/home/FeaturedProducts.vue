@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useProductsStore } from '../../stores/products.js'
+import { formatPrice } from '../../utils/formatPrice.js'
 
 // Ported from frontend/src/components/home/FeaturedProducts.vue.
 // `v-reveal` scroll-entrance animation intentionally not ported -- see
@@ -14,12 +15,6 @@ onMounted(async () => {
   await productsStore.fetchProducts({ page: 1, per_page: 3, sort: 'newest' })
   products.value = (productsStore.products ?? []).slice(0, 3)
 })
-
-function formatPrice(price) {
-  const num = parseFloat(price)
-  if (isNaN(num)) return '$0.00'
-  return `$${num.toFixed(2)}`
-}
 </script>
 
 <template>

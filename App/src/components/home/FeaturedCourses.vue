@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useCoursesStore } from '../../stores/courses.js'
+import { formatPrice } from '../../utils/formatPrice.js'
 
 // Ported from frontend/src/components/home/FeaturedCourses.vue. The
 // scroll-triggered `v-reveal` entrance animation directive is intentionally
@@ -16,12 +17,6 @@ onMounted(async () => {
   await coursesStore.fetchCourses({ page: 1, per_page: 3, sort: 'newest' })
   courses.value = (coursesStore.courses ?? []).slice(0, 3)
 })
-
-function formatPrice(price) {
-  const num = parseFloat(price)
-  if (!num || num === 0) return 'Gratis'
-  return `$${num.toFixed(2)}`
-}
 </script>
 
 <template>

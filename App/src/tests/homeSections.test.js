@@ -139,6 +139,19 @@ describe('FeaturedProducts.vue (App)', () => {
     expect(wrapper.find('[data-product-card]').exists()).toBe(true)
     expect(wrapper.text()).toContain('Paleta Editorial')
   })
+
+  it('shows a neutral fallback (not a false "$0.00") for a malformed/non-numeric price [shared formatPrice policy]', async () => {
+    const malformedPriceProduct = [
+      { id: 2, title: 'Base Líquida', slug: 'base-liquida', price: 'not-a-number', thumbnail: null, stock_state: null },
+    ]
+    api.get.mockResolvedValueOnce({ data: { data: malformedPriceProduct, meta: {} } })
+
+    const wrapper = mountWithRouter(FeaturedProducts)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Consultar precio')
+    expect(wrapper.text()).not.toContain('$0.00')
+  })
 })
 
 describe('NewsletterCta.vue (App)', () => {

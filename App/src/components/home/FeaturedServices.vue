@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useServicesStore } from '../../stores/services.js'
+import { formatPrice } from '../../utils/formatPrice.js'
 
 // Ported from frontend/src/components/home/FeaturedServices.vue.
 // `v-reveal` scroll-entrance animation intentionally not ported -- see
@@ -14,12 +15,6 @@ onMounted(async () => {
   await servicesStore.fetchServices({ page: 1, per_page: 3, sort: 'newest' })
   services.value = (servicesStore.services ?? []).slice(0, 3)
 })
-
-function formatPrice(price) {
-  const num = parseFloat(price)
-  if (!num || num === 0) return 'Gratis'
-  return `$${num.toFixed(2)}`
-}
 </script>
 
 <template>
