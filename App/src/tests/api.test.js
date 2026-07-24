@@ -27,11 +27,10 @@ describe('api.js interceptors', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     router.currentRoute.value.path = '/'
-    // attachAuthToken resets the module-level in-flight redirect guard on
-    // every outgoing request (see api.js) — call it here so each test starts
-    // from a clean "not currently redirecting" state, mirroring a fresh
-    // request cycle in real usage.
-    attachAuthToken({ headers: {} })
+    // The module-level `redirecting` guard (see api.js) is only reset once
+    // its own router.push('/login') navigation settles, which each 401 test
+    // below already awaits to completion — so no explicit reset is needed
+    // here between tests.
   })
 
   describe('attachAuthToken (request interceptor)', () => {
@@ -103,6 +102,47 @@ describe('api.js interceptors', () => {
 
       expect(remove).not.toHaveBeenCalled()
       expect(router.push).not.toHaveBeenCalled()
+    })
+
+    it('does not re-trigger the redirect when an unrelated outgoing request intervenes before the in-flight redirect navigation settles (staggered 401 race)', async () => {
+      router.currentRoute.value.path = '/cart'
+      let resolvePush
+      router.push.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolvePush = resolve
+          })
+      )
+
+      const errorA = { response: { status: 401 } }
+      const errorB = { response: { status: 401 } }
+
+      // First 401 arrives: arms the guard and kicks off the /login
+      // navigation, but that navigation's promise is not yet resolved.
+      const handledA = handleResponseError(errorA).catch(() => {})
+
+      // Flush microtasks so the arm + the two awaited remove() calls run,
+      // reaching the point where router.push('/login') has been invoked
+      // but has not settled yet.
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+      expect(router.push).toHaveBeenCalledTimes(1)
+
+      // An unrelated outgoing request fires while errorA's redirect
+      // navigation is still in flight — this must NOT reset the guard.
+      attachAuthToken({ headers: {} })
+
+      // A second, staggered 401 lands before the first redirect settles.
+      const handledB = handleResponseError(errorB).catch(() => {})
+      await Promise.resolve()
+
+      // Now let the first navigation settle.
+      resolvePush()
+      await handledA
+      await handledB
+
+      expect(router.push).toHaveBeenCalledTimes(1)
     })
   })
 })

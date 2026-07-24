@@ -12,9 +12,10 @@ const api = axios.create({
 })
 
 // In-flight guard for the /login redirect (see handleResponseError below).
-// Reset on the next outgoing request (attachAuthToken) rather than after
-// router.push() resolves: it's synchronous, needs no promise bookkeeping,
-// and by the time a new request goes out, the prior redirect burst is over.
+// Reset only after the specific router.push('/login') navigation it guards
+// has settled (see the finally block below) — NOT on unrelated outgoing
+// requests, which can intervene while the redirect is still in flight and
+// would otherwise reopen the window for a second, duplicate redirect.
 let redirecting = false
 
 /**
@@ -23,7 +24,6 @@ let redirecting = false
  * outgoing request.
  */
 export function attachAuthToken(config) {
-  redirecting = false
   const token = getCached(TOKEN_KEY)
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
@@ -40,7 +40,10 @@ export function attachAuthToken(config) {
  * synchronously, before the async remove() calls start, so that several
  * parallel requests failing around the same time on one expired token can't
  * each independently race the async router-navigation check and all push —
- * only the first 401 to arrive claims the redirect.
+ * only the first 401 to arrive claims the redirect. The flag stays locked
+ * until that same call's router.push('/login') navigation settles (see the
+ * finally block), so unrelated requests firing while the redirect is still
+ * in flight cannot reopen the window and trigger a duplicate redirect.
  */
 export async function handleResponseError(error) {
   if (error.response?.status === 401) {
@@ -53,7 +56,11 @@ export async function handleResponseError(error) {
     await remove(USER_KEY)
 
     if (shouldRedirect) {
-      router.push('/login')
+      try {
+        await router.push('/login')
+      } finally {
+        redirecting = false
+      }
     }
   }
   return Promise.reject(error)
