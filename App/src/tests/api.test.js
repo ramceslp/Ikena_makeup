@@ -144,5 +144,26 @@ describe('api.js interceptors', () => {
 
       expect(router.push).toHaveBeenCalledTimes(1)
     })
+
+    it('surfaces the original 401 error (not a router navigation failure) when router.push("/login") rejects, and still resets the redirect guard', async () => {
+      router.currentRoute.value.path = '/cart'
+      const navigationError = new Error('Failed to fetch dynamically imported module')
+      // Queue explicit per-call behavior (rejects once, then resolves) so
+      // this test is self-contained regardless of any persistent
+      // mockImplementation left over on router.push by earlier tests.
+      router.push.mockRejectedValueOnce(navigationError).mockResolvedValueOnce(undefined)
+
+      const original401 = { response: { status: 401 } }
+
+      await expect(handleResponseError(original401)).rejects.toBe(original401)
+
+      // The redirect guard must still be reset after a failed navigation,
+      // otherwise a subsequent 401 could never trigger another redirect
+      // attempt.
+      router.currentRoute.value.path = '/cart'
+      const secondError = { response: { status: 401 } }
+      await expect(handleResponseError(secondError)).rejects.toBe(secondError)
+      expect(router.push).toHaveBeenCalledTimes(2)
+    })
   })
 })

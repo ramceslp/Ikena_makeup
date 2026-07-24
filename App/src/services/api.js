@@ -58,6 +58,12 @@ export async function handleResponseError(error) {
     if (shouldRedirect) {
       try {
         await router.push('/login')
+      } catch (navigationError) {
+        // Swallow navigation failures (e.g. a lazy-loaded /login route
+        // component failing to dynamically import over a flaky mobile
+        // connection). The original 401 below must still be the error
+        // surfaced to the caller, not this unrelated navigation failure.
+        console.error('Failed to redirect to /login after 401:', navigationError)
       } finally {
         redirecting = false
       }
