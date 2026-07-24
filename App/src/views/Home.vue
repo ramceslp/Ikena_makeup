@@ -23,14 +23,32 @@ import NewsletterCta from '../components/home/NewsletterCta.vue'
 // never got a response at all. In that case this falls through to the
 // sections below, each handling its own empty/error UI exactly like the
 // ported web version.
-const hasConnectivityError = ref(false)
+//
+// Three-state model (not a boolean): the probe starts in 'checking', and
+// NEITHER the error banner NOR the dashboard sections render while it is
+// pending. This matters because the 6 dashboard sections each fire their own
+// API calls from their own onMounted -- rendering them eagerly (as a
+// `hasConnectivityError` boolean starting `false` would) lets them mount and
+// fetch in parallel with, instead of gated behind, this connectivity probe,
+// defeating the whole point of having a probe.
+const connectivityState = ref('checking') // 'checking' | 'ok' | 'error'
+
+// In-flight guard: prevents two concurrent checkConnectivity() runs (e.g. a
+// user double-tapping "Reintentar") from racing, where whichever resolves
+// last would win regardless of which tap was most recent. Also disables the
+// retry button for the duration of a check.
+const isCheckingConnectivity = ref(false)
 
 async function checkConnectivity() {
+  if (isCheckingConnectivity.value) return
+  isCheckingConnectivity.value = true
   try {
     await api.get('/products', { params: { per_page: 1 } })
-    hasConnectivityError.value = false
+    connectivityState.value = 'ok'
   } catch (err) {
-    hasConnectivityError.value = !err.response
+    connectivityState.value = err.response ? 'ok' : 'error'
+  } finally {
+    isCheckingConnectivity.value = false
   }
 }
 
@@ -40,7 +58,7 @@ onMounted(checkConnectivity)
 <template>
   <div>
     <div
-      v-if="hasConnectivityError"
+      v-if="connectivityState === 'error'"
       data-home-error
       class="flex flex-col items-center gap-4 py-24 px-6 text-center"
     >
@@ -50,14 +68,17 @@ onMounted(checkConnectivity)
       <button
         type="button"
         data-home-retry
-        class="btn-gloss px-6 py-3 rounded-xl bg-apricot-glow text-deep-marsala font-bold"
+        :disabled="isCheckingConnectivity"
+        class="btn-gloss px-6 py-3 rounded-xl bg-apricot-glow text-deep-marsala font-bold disabled:opacity-60 disabled:cursor-not-allowed"
         @click="checkConnectivity"
       >
         Reintentar
       </button>
     </div>
 
-    <template v-else>
+    <!-- 'checking' renders neither branch: sections must not mount/fetch
+         until the connectivity probe resolves. -->
+    <template v-else-if="connectivityState === 'ok'">
       <!-- 1. Featured news hero -->
       <FeaturedNewsHero />
 

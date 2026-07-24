@@ -88,4 +88,69 @@ describe('Home.vue (App) — live sections + offline retry/error state', () => {
     expect(wrapper.find('[data-home-error]').exists()).toBe(false)
     expect(wrapper.find('[data-featured-news-hero]').exists()).toBe(true)
   })
+
+  it('does NOT mount any dashboard section (or fire their fetches) while the connectivity probe is still pending', async () => {
+    let resolveProbe
+    api.get.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveProbe = resolve
+        })
+    )
+
+    const wrapper = mount(Home, { global: { plugins: [router] } })
+    // Let only the connectivity probe's own microtasks (not its resolution)
+    // run -- the probe promise itself is still pending.
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(wrapper.find('[data-home-error]').exists()).toBe(false)
+    expect(wrapper.find('[data-featured-news-hero]').exists()).toBe(false)
+    expect(wrapper.find('[data-latest-news-grid]').exists()).toBe(false)
+    expect(wrapper.find('[data-featured-courses]').exists()).toBe(false)
+    expect(wrapper.find('[data-featured-services]').exists()).toBe(false)
+    expect(wrapper.find('[data-featured-products]').exists()).toBe(false)
+    // Only the connectivity probe itself has fired -- no section's own fetch
+    // has been triggered yet, because no section has mounted.
+    expect(api.get).toHaveBeenCalledTimes(1)
+    expect(api.get).toHaveBeenCalledWith('/products', { params: { per_page: 1 } })
+
+    resolveProbe({ data: { data: [], meta: {} } })
+    await flushPromises()
+
+    expect(wrapper.find('[data-featured-news-hero]').exists()).toBe(true)
+  })
+
+  it('ignores a second retry tap while a connectivity check is already in flight (double-tap guard)', async () => {
+    const networkError = new Error('Network Error')
+    api.get.mockRejectedValueOnce(networkError)
+
+    const wrapper = mount(Home, { global: { plugins: [router] } })
+    await flushPromises()
+    expect(wrapper.find('[data-home-error]').exists()).toBe(true)
+
+    let resolveRetry
+    api.get.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveRetry = resolve
+        })
+    )
+
+    const retryButton = wrapper.find('[data-home-retry]')
+    await retryButton.trigger('click')
+    expect(retryButton.attributes('disabled')).toBeDefined()
+    // 2 calls so far: the initial mount probe + this retry click.
+    expect(api.get).toHaveBeenCalledTimes(2)
+
+    // A second tap while the first check is still in flight must be a no-op.
+    await retryButton.trigger('click')
+    expect(api.get).toHaveBeenCalledTimes(2)
+
+    resolveRetry({ data: { data: [], meta: {} } })
+    await flushPromises()
+
+    expect(wrapper.find('[data-home-error]').exists()).toBe(false)
+    expect(wrapper.find('[data-home-retry]').exists()).toBe(false)
+  })
 })
