@@ -5,6 +5,10 @@ import { API_BASE_URL } from '../config/env.js'
 
 const api = axios.create({
   baseURL: API_BASE_URL,
+  // Without a timeout, a hung/half-open connection (e.g. a mobile network
+  // that drops mid-request without an explicit reset) never rejects, which
+  // Home.vue's connectivity probe and every other caller assume it will.
+  timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json',

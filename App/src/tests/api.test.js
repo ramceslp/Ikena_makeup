@@ -21,7 +21,13 @@ vi.mock('../router/index.js', () => ({
 
 import { getCached, remove } from '../services/storage.js'
 import router from '../router/index.js'
-import { attachAuthToken, handleResponseError } from '../services/api.js'
+import api, { attachAuthToken, handleResponseError } from '../services/api.js'
+
+describe('api.js instance config', () => {
+  it('sets a request timeout so a hung/half-open connection rejects instead of hanging forever', () => {
+    expect(api.defaults.timeout).toBe(15000)
+  })
+})
 
 describe('api.js interceptors', () => {
   beforeEach(() => {
