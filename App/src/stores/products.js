@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import api from '../services/api.js'
+import { buildParams } from './shared/buildParams.js'
 
 // Trimmed port of frontend/src/stores/products.js: only fetchProducts(),
 // needed by FeaturedProducts.vue for Home's "3 most-recent products"
@@ -19,12 +20,7 @@ export const useProductsStore = defineStore('products', {
       this.loading = true
       this.error = null
       try {
-        const params = {}
-        for (const [key, value] of Object.entries(filters)) {
-          if (value !== '' && value !== null && value !== undefined) {
-            params[key] = value
-          }
-        }
+        const params = buildParams(filters)
         const response = await api.get('/products', { params })
         this.products = response.data.data
         this.productMeta = response.data.meta

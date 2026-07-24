@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import api from '../services/api.js'
+import { buildParams } from './shared/buildParams.js'
 
 // Trimmed port of frontend/src/stores/courses.js: only fetchCourses(),
 // needed by FeaturedCourses.vue for Home's "3 most-recent courses" section.
@@ -23,12 +24,7 @@ export const useCoursesStore = defineStore('courses', {
         // Build a local params object -- do NOT mutate any shared filters
         // state (this store has none, unlike the full web version, but the
         // pattern is kept consistent with posts/services/products.js).
-        const params = {}
-        for (const [key, value] of Object.entries(filters)) {
-          if (value !== '' && value !== null && value !== undefined) {
-            params[key] = value
-          }
-        }
+        const params = buildParams(filters)
         const response = await api.get('/courses', { params })
         this.courses = response.data.data
         this.meta = response.data.meta

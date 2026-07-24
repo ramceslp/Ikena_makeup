@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import api from '../services/api.js'
+import { buildParams } from './shared/buildParams.js'
 
 // Trimmed port of frontend/src/stores/services.js: only fetchServices(),
 // needed by FeaturedServices.vue for Home's "3 most-recent services"
@@ -19,12 +20,7 @@ export const useServicesStore = defineStore('services', {
       this.loading = true
       this.error = null
       try {
-        const params = {}
-        for (const [key, value] of Object.entries(filters)) {
-          if (value !== '' && value !== null && value !== undefined) {
-            params[key] = value
-          }
-        }
+        const params = buildParams(filters)
         const response = await api.get('/services', { params })
         this.services = response.data.data
         this.serviceMeta = response.data.meta

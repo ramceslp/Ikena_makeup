@@ -9,22 +9,43 @@ import api from '../services/api.js'
 // surface at all (see spec's "Admin/instructor views excluded from app
 // shell" non-goal).
 export const usePostsStore = defineStore('posts', {
+  // Brought in line with courses.js/services.js/products.js's loading/error
+  // tracking convention. This is purely additive state -- fetchLatest() and
+  // fetchFeatured() keep returning `[]`/`null` on failure exactly as before,
+  // so existing callers (FeaturedNewsHero.vue, LatestNewsGrid.vue) are
+  // unaffected; only `loading`/`error` become observable for anyone that
+  // wants to react to them, same as the sibling stores.
+  state: () => ({
+    loading: false,
+    error: null,
+  }),
+
   actions: {
     async fetchLatest() {
+      this.loading = true
+      this.error = null
       try {
         const response = await api.get('/posts/latest')
         return response.data.data
-      } catch {
+      } catch (err) {
+        this.error = err.response?.data?.message || 'Error al cargar las noticias'
         return []
+      } finally {
+        this.loading = false
       }
     },
 
     async fetchFeatured() {
+      this.loading = true
+      this.error = null
       try {
         const response = await api.get('/posts/featured')
         return response.data.data
-      } catch {
+      } catch (err) {
+        this.error = err.response?.data?.message || 'Error al cargar la noticia destacada'
         return null
+      } finally {
+        this.loading = false
       }
     },
   },

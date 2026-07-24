@@ -56,4 +56,44 @@ describe('posts store (trimmed: fetchFeatured/fetchLatest only, see Home.vue)', 
 
     expect(result).toEqual([])
   })
+
+  // Brought in line with courses.js/services.js/products.js's loading/error
+  // tracking convention -- see stores/posts.js.
+  it('tracks loading/error state on fetchFeatured, matching the courses/services/products convention', async () => {
+    api.get.mockRejectedValueOnce(new Error('Network Error'))
+
+    const store = usePostsStore()
+    const pending = store.fetchFeatured()
+    expect(store.loading).toBe(true)
+
+    await pending
+
+    expect(store.loading).toBe(false)
+    expect(store.error).toBe('Error al cargar la noticia destacada')
+  })
+
+  it('tracks loading/error state on fetchLatest, matching the courses/services/products convention', async () => {
+    api.get.mockRejectedValueOnce(new Error('Network Error'))
+
+    const store = usePostsStore()
+    const pending = store.fetchLatest()
+    expect(store.loading).toBe(true)
+
+    await pending
+
+    expect(store.loading).toBe(false)
+    expect(store.error).toBe('Error al cargar las noticias')
+  })
+
+  it('resets error to null on a subsequent successful fetch', async () => {
+    api.get.mockRejectedValueOnce(new Error('Network Error'))
+    const store = usePostsStore()
+    await store.fetchFeatured()
+    expect(store.error).toBe('Error al cargar la noticia destacada')
+
+    api.get.mockResolvedValueOnce({ data: { data: { id: 1, title: 'OK' } } })
+    await store.fetchFeatured()
+
+    expect(store.error).toBeNull()
+  })
 })
