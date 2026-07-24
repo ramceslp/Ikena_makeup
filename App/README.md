@@ -14,21 +14,26 @@ npm install
 ## Environment: API base URL
 
 `src/services/api.js` reads its `baseURL` from `VITE_API_URL` (resolved by
-`src/config/env.js`). This project's secrets convention (see the root
-`.gitignore`) does not commit a real `.env` file, so create your own local
-`App/.env` (gitignored) with one of the following, depending on where you're
-running the app:
+`src/config/env.js`). `App/.env.development` is committed with a safe
+default (`http://10.0.2.2:8000/api`, the Android emulator's loopback alias
+to your host machine), so a fresh clone works out of the box for local
+development against the emulator — no manual env setup required.
+
+If you need to override that default, e.g. to test on a physical device,
+create your own local `App/.env.development.local` (gitignored). This must
+be the mode-specific `.local` variant — per Vite's env-file precedence
+(`.env` < `.env.local` < `.env.[mode]` < `.env.[mode].local`), only
+`.env.development.local` actually outranks the committed
+`.env.development`; a plain `App/.env` or `App/.env.local` would silently
+lose and you'd still hit the emulator address.
 
 ```bash
-# Android emulator (default for local development) — 10.0.2.2 is the
-# emulator's loopback alias to your host machine's localhost, where the
-# backend dev server (php artisan serve) runs.
-VITE_API_URL=http://10.0.2.2:8000/api
-
-# Physical device on the same Wi-Fi network as your dev machine — replace
-# with your machine's LAN IP (ipconfig / ifconfig).
+# App/.env.development.local — physical device on the same Wi-Fi network as
+# your dev machine — replace with your machine's LAN IP (ipconfig / ifconfig).
 VITE_API_URL=http://192.168.1.100:8000/api
+```
 
+```bash
 # Production — MUST be HTTPS. env.js's resolveApiBaseUrl() throws at build
 # time if a production build (`vite build --mode production`) resolves a
 # non-https URL. Cleartext dev-networking exceptions (see

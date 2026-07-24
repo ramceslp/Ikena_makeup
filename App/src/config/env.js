@@ -3,8 +3,12 @@
 // mode-based env files:
 //   - .env.development (committed): safe default for the Android emulator
 //     (10.0.2.2 is the emulator's loopback alias to the host machine).
-//   - .env.local (gitignored, per-developer): overrides VITE_API_URL with
-//     your machine's LAN IP to test on a physical device.
+//   - .env.development.local (gitignored, per-developer): overrides
+//     VITE_API_URL with your machine's LAN IP to test on a physical device.
+//     This is the mode-specific `.local` variant — per Vite's env-file
+//     precedence (.env < .env.local < .env.[mode] < .env.[mode].local), it
+//     is the only file that actually outranks the committed
+//     .env.development; a plain .env.local or .env would silently lose.
 //   - production: VITE_API_URL must be injected by the CI/CD build
 //     environment — never committed, per design decision #5/#6 (prod is
 //     HTTPS-only, no cleartext exceptions at any layer).
@@ -15,7 +19,7 @@ export function resolveApiBaseUrl(mode, url) {
   if (!url) {
     throw new Error(
       'VITE_API_URL is not set. Define it in App/.env.development (emulator), ' +
-        'App/.env.local (physical device — gitignored), or as a build-time env var for production.'
+        'App/.env.development.local (physical device — gitignored), or as a build-time env var for production.'
     )
   }
 
