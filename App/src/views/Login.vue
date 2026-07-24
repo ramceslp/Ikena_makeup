@@ -30,6 +30,7 @@ async function handleGoogleSignIn() {
       // undo; just fall through to the finally block below.
       return
     }
+    console.error('Google Sign-In failed:', err)
     errorMessage.value =
       err.response?.data?.message || 'No se pudo iniciar sesión con Google. Intenta de nuevo.'
   } finally {

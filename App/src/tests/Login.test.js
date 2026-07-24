@@ -78,7 +78,9 @@ describe('Login.vue (App) — native Google Sign-In', () => {
 
   it('shows an error message and stays on login when the backend call fails for a real (non-cancel) reason', async () => {
     signInWithGoogle.mockResolvedValueOnce({ idToken: 'native-id-token', accessToken: null, profile: {} })
-    loginWithGoogleMock.mockRejectedValueOnce({ response: { data: { message: 'Token de Google inválido' } } })
+    const backendError = { response: { data: { message: 'Token de Google inválido' } } }
+    loginWithGoogleMock.mockRejectedValueOnce(backendError)
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
     const wrapper = mount(Login, { global: { plugins: [router] } })
     await wrapper.find('[data-google-signin]').trigger('click')
@@ -86,6 +88,11 @@ describe('Login.vue (App) — native Google Sign-In', () => {
 
     expect(wrapper.find('[data-login-error]').text()).toContain('Token de Google inválido')
     expect(router.currentRoute.value.path).toBe('/login')
+    // Non-cancel failures must be logged (matching api.js's convention of
+    // console.error-ing swallowed failures), not silently absorbed.
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Google Sign-In failed:', backendError)
+
+    consoleErrorSpy.mockRestore()
   })
 
   it('disables the button while a sign-in attempt is in flight', async () => {
