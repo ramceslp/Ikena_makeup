@@ -27,6 +27,11 @@ describe('api.js interceptors', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     router.currentRoute.value.path = '/'
+    // attachAuthToken resets the module-level in-flight redirect guard on
+    // every outgoing request (see api.js) — call it here so each test starts
+    // from a clean "not currently redirecting" state, mirroring a fresh
+    // request cycle in real usage.
+    attachAuthToken({ headers: {} })
   })
 
   describe('attachAuthToken (request interceptor)', () => {
@@ -73,6 +78,22 @@ describe('api.js interceptors', () => {
       await expect(handleResponseError(error)).rejects.toBe(error)
 
       expect(router.push).not.toHaveBeenCalled()
+    })
+
+    it('on concurrent 401s (parallel requests racing on one expired token), only pushes to /login once', async () => {
+      router.currentRoute.value.path = '/cart'
+      const errorA = { response: { status: 401 } }
+      const errorB = { response: { status: 401 } }
+
+      const [resultA, resultB] = await Promise.allSettled([
+        handleResponseError(errorA),
+        handleResponseError(errorB),
+      ])
+
+      expect(resultA.status).toBe('rejected')
+      expect(resultB.status).toBe('rejected')
+      expect(router.push).toHaveBeenCalledTimes(1)
+      expect(router.push).toHaveBeenCalledWith('/login')
     })
 
     it('on a non-401 error, does not clear storage or navigate, and still rejects', async () => {
