@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest'
-import { resolveApiBaseUrl, GOOGLE_WEB_CLIENT_ID } from '../config/env.js'
+import { describe, it, expect, vi, afterEach } from 'vitest'
+import { resolveApiBaseUrl, resolveGoogleWebClientId, GOOGLE_WEB_CLIENT_ID } from '../config/env.js'
 
 describe('resolveApiBaseUrl', () => {
   it('returns the given URL unchanged for a non-production mode (emulator/device dev builds)', () => {
@@ -28,5 +28,49 @@ describe('GOOGLE_WEB_CLIENT_ID', () => {
     // (including every other test file that transitively imports env.js)
     // must keep working.
     expect(typeof GOOGLE_WEB_CLIENT_ID).toBe('string')
+  })
+})
+
+describe('resolveGoogleWebClientId', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('returns the value unchanged in non-production mode when it is a real value', () => {
+    expect(resolveGoogleWebClientId(false, 'real-client-id.apps.googleusercontent.com')).toBe(
+      'real-client-id.apps.googleusercontent.com'
+    )
+  })
+
+  it('warns (but does not throw) in non-production mode when the value is empty', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    expect(resolveGoogleWebClientId(false, '')).toBe('')
+    expect(warnSpy).toHaveBeenCalled()
+  })
+
+  it('warns (but does not throw) in non-production mode when the value is still the committed placeholder', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    expect(resolveGoogleWebClientId(false, 'your-google-web-client-id-here')).toBe(
+      'your-google-web-client-id-here'
+    )
+    expect(warnSpy).toHaveBeenCalled()
+  })
+
+  it('throws in production mode when the value is empty', () => {
+    expect(() => resolveGoogleWebClientId(true, '')).toThrow(/VITE_GOOGLE_WEB_CLIENT_ID/)
+  })
+
+  it('throws in production mode when the value is still the committed placeholder string', () => {
+    expect(() => resolveGoogleWebClientId(true, 'your-google-web-client-id-here')).toThrow(
+      /VITE_GOOGLE_WEB_CLIENT_ID/
+    )
+  })
+
+  it('returns the value unchanged in production mode when it is a real value', () => {
+    expect(resolveGoogleWebClientId(true, 'real-client-id.apps.googleusercontent.com')).toBe(
+      'real-client-id.apps.googleusercontent.com'
+    )
   })
 })
