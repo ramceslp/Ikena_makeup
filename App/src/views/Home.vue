@@ -76,8 +76,19 @@ onMounted(checkConnectivity)
       </button>
     </div>
 
-    <!-- 'checking' renders neither branch: sections must not mount/fetch
-         until the connectivity probe resolves. -->
+    <!-- 'checking': sections must not mount/fetch until the connectivity
+         probe resolves, but the user still needs to see that something is
+         happening instead of a blank screen. -->
+    <div
+      v-else-if="connectivityState === 'checking'"
+      data-home-checking
+      class="flex flex-col items-center gap-4 py-24 px-6 text-center"
+    >
+      <p class="font-body-lg text-body-lg text-on-surface-variant">
+        Cargando...
+      </p>
+    </div>
+
     <template v-else-if="connectivityState === 'ok'">
       <!-- 1. Featured news hero -->
       <FeaturedNewsHero />

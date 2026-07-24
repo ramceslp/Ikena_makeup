@@ -121,6 +121,32 @@ describe('Home.vue (App) — live sections + offline retry/error state', () => {
     expect(wrapper.find('[data-featured-news-hero]').exists()).toBe(true)
   })
 
+  it('shows a loading indicator while the connectivity probe is pending, and hides it once resolved', async () => {
+    let resolveProbe
+    api.get.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveProbe = resolve
+        })
+    )
+
+    const wrapper = mount(Home, { global: { plugins: [router] } })
+    // Let only the connectivity probe's own microtasks (not its resolution)
+    // run -- the probe promise itself is still pending.
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(wrapper.find('[data-home-checking]').exists()).toBe(true)
+    expect(wrapper.find('[data-home-error]').exists()).toBe(false)
+    expect(wrapper.find('[data-featured-news-hero]').exists()).toBe(false)
+
+    resolveProbe({ data: { data: [], meta: {} } })
+    await flushPromises()
+
+    expect(wrapper.find('[data-home-checking]').exists()).toBe(false)
+    expect(wrapper.find('[data-featured-news-hero]').exists()).toBe(true)
+  })
+
   it('ignores a second retry tap while a connectivity check is already in flight (double-tap guard)', async () => {
     const networkError = new Error('Network Error')
     api.get.mockRejectedValueOnce(networkError)
