@@ -14,6 +14,30 @@ const routes = [
     name: 'login',
     component: () => import('../views/Login.vue'),
   },
+  // Product + Service catalog/booking (mobile-capacitor-setup Phase 7). No
+  // admin/instructor routes exist anywhere in this router — see the spec's
+  // Mobile App Boundaries ("admin route unreachable from app") and
+  // src/tests/router.test.js, which asserts this invariant directly.
+  {
+    path: '/products',
+    name: 'products',
+    component: () => import('../views/Products.vue'),
+  },
+  {
+    path: '/products/:slug',
+    name: 'product-detail',
+    component: () => import('../views/ProductDetail.vue'),
+  },
+  {
+    path: '/services',
+    name: 'services',
+    component: () => import('../views/Services.vue'),
+  },
+  {
+    path: '/services/:slug',
+    name: 'service-detail',
+    component: () => import('../views/ServiceDetail.vue'),
+  },
 ]
 
 const router = createRouter({
