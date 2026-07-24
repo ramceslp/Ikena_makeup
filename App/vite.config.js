@@ -12,5 +12,14 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
+    // Vitest runs in 'test' mode, which does NOT auto-load .env.development
+    // (that file only applies to `vite`/`vite build --mode development`).
+    // Provide the same safe emulator default here so `npx vitest run`
+    // collects and runs without depending on an externally exported shell
+    // env var. Production is unaffected: it never runs through Vitest and
+    // still requires VITE_API_URL from the CI/CD build environment.
+    env: {
+      VITE_API_URL: 'http://10.0.2.2:8000/api',
+    },
   },
 })
