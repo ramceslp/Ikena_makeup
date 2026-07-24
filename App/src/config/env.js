@@ -34,3 +34,12 @@ export function resolveApiBaseUrl(mode, url) {
 }
 
 export const API_BASE_URL = resolveApiBaseUrl(import.meta.env.MODE, import.meta.env.VITE_API_URL)
+
+// Google OAuth web client ID (matches backend's GOOGLE_CLIENT_ID / frontend's
+// VITE_GOOGLE_CLIENT_ID -- the app's native Google Sign-In plugin requests an
+// ID token audienced to this same client, since AuthController::google()
+// verifies it via that client). Deliberately does NOT throw when unset --
+// unlike VITE_API_URL, a missing client ID must not crash module import/test
+// collection; it only disables Google Sign-In until configured (see
+// services/googleAuth.js).
+export const GOOGLE_WEB_CLIENT_ID = import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID || ''
