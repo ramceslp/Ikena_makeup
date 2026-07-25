@@ -14,7 +14,17 @@ vi.mock('@capacitor/preferences', () => ({
 }))
 
 import { Preferences } from '@capacitor/preferences'
-import { get, set, remove, getCached, hydrate, TOKEN_KEY, USER_KEY, CART_KEY } from '../services/storage.js'
+import {
+  get,
+  set,
+  remove,
+  getCached,
+  hydrate,
+  TOKEN_KEY,
+  USER_KEY,
+  CART_KEY,
+  PUSH_TOKEN_KEY,
+} from '../services/storage.js'
 
 describe('storage service', () => {
   beforeEach(() => {
@@ -87,6 +97,28 @@ describe('storage service', () => {
     expect(getCached(TOKEN_KEY)).toBe('hydrated-token')
     expect(getCached(USER_KEY)).toEqual({ id: 2, name: 'Hydrated User' })
     expect(getCached(CART_KEY)).toBeNull()
+  })
+
+  it('PUSH_TOKEN_KEY is a distinct key from TOKEN_KEY/USER_KEY/CART_KEY and works with get/set/remove like any other key', async () => {
+    expect(PUSH_TOKEN_KEY).toBe('ikena_push_token')
+    expect(new Set([TOKEN_KEY, USER_KEY, CART_KEY, PUSH_TOKEN_KEY]).size).toBe(4)
+
+    Preferences.set.mockResolvedValueOnce(undefined)
+    await set(PUSH_TOKEN_KEY, 'fcm-abc')
+    expect(Preferences.set).toHaveBeenCalledWith({ key: PUSH_TOKEN_KEY, value: JSON.stringify('fcm-abc') })
+    expect(getCached(PUSH_TOKEN_KEY)).toBe('fcm-abc')
+  })
+
+  it('hydrate() does NOT warm PUSH_TOKEN_KEY — push registration reads it on demand (async), unlike the auth/cart keys needed synchronously at boot', async () => {
+    Preferences.get
+      .mockResolvedValueOnce({ value: null })
+      .mockResolvedValueOnce({ value: null })
+      .mockResolvedValueOnce({ value: null })
+
+    await hydrate()
+
+    expect(Preferences.get).not.toHaveBeenCalledWith({ key: PUSH_TOKEN_KEY })
+    expect(Preferences.get).toHaveBeenCalledTimes(3)
   })
 
   it('hydrate() also warms the cart cache from a previously persisted cart (see cart.js — cart persists across restarts)', async () => {
