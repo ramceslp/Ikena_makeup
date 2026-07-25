@@ -88,15 +88,26 @@ router.beforeEach((to, _from, next) => {
   // router/index.js -> stores/auth.js -> services/api.js -> router/index.js.
   // By the time any navigation fires, Pinia is already installed via
   // main.js's bootstrap(), same precondition frontend's guard relies on.
-  import('../stores/auth.js').then(({ useAuthStore }) => {
-    const authStore = useAuthStore()
-    const destination = resolveGuard(to, authStore)
-    if (destination !== null) {
-      next(destination)
-    } else {
-      next()
-    }
-  })
+  import('../stores/auth.js')
+    .then(({ useAuthStore }) => {
+      const authStore = useAuthStore()
+      const destination = resolveGuard(to, authStore)
+      if (destination !== null) {
+        next(destination)
+      } else {
+        next()
+      }
+    })
+    .catch(() => {
+      // [Judgment Day fix, PR8d Round 1]: a rejected dynamic import (chunk-
+      // load failure, e.g. a flaky mobile connection -- the exact failure
+      // class services/api.js's handleResponseError comment already
+      // anticipates for the sibling /login lazy-import path) previously left
+      // next() uncalled entirely, hanging the pending navigation forever, on
+      // EVERY route in the app (this guard runs on every navigation, not
+      // just /profile). next(false) cancels the navigation cleanly instead.
+      next(false)
+    })
 })
 
 export default router

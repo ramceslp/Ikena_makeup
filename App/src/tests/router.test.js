@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
+import { isNavigationFailure, NavigationFailureType } from 'vue-router'
 import router, { resolveGuard } from '../router/index.js'
 
 // mobile-capacitor-setup Phase 7, task 7.5 [Spec: admin route unreachable
@@ -95,5 +96,32 @@ describe('resolveGuard (App)', () => {
   it('proceeds for a public route (no meta) regardless of auth state', () => {
     expect(resolveGuard(makeTo({}), makeAuth(false))).toBeNull()
     expect(resolveGuard(makeTo({}), makeAuth(true))).toBeNull()
+  })
+})
+
+// [Judgment Day fix, PR8d Round 1]: the real registered router.beforeEach
+// dynamically imports stores/auth.js with no .catch(). If that import
+// rejects (a chunk-load failure -- the same failure class services/api.js's
+// handleResponseError comment already anticipates for the sibling /login
+// lazy-import path), next() was never called at all, hanging the pending
+// navigation forever for EVERY route, not just /profile. Exercises the REAL
+// registered guard (via a freshly re-imported router module, so the mocked
+// rejection is picked up), not just the extracted pure resolveGuard().
+describe('router beforeEach guard (App) — dynamic import failure defense', () => {
+  afterEach(() => {
+    vi.doUnmock('../stores/auth.js')
+    vi.resetModules()
+  })
+
+  it('calls next(false) instead of hanging when the dynamic import of stores/auth.js rejects', async () => {
+    vi.doMock('../stores/auth.js', () => {
+      throw new Error('Simulated chunk-load failure')
+    })
+    vi.resetModules()
+
+    const { default: freshRouter } = await import('../router/index.js')
+    const result = await freshRouter.push('/profile')
+
+    expect(isNavigationFailure(result, NavigationFailureType.aborted)).toBe(true)
   })
 })
