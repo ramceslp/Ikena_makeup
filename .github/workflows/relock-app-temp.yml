@@ -1,0 +1,25 @@
+name: Temp Relock App
+on:
+  push:
+    branches:
+      - feat/mobile-capacitor-setup-pr8d-app-profile-history
+
+permissions:
+  contents: read
+
+jobs:
+  relock:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: App
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+      - run: npm install --package-lock-only
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-package-lock
+          path: App/package-lock.json
