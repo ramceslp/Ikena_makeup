@@ -1,0 +1,126 @@
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+# Nothing here writes to the repo: no comments, no pushes, no releases.
+permissions:
+  contents: read
+
+jobs:
+  backend-tests:
+    name: Backend (PHPUnit)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          # composer.json requires "php": "^8.4" (composer.lock pulls
+          # symfony/* v8.1.0 packages that need php >=8.4.1; declaring
+          # ^8.3 was inaccurate and unlockable on 8.3).
+          php-version: "8.4"
+          extensions: mbstring, pdo, pdo_sqlite, sqlite3, bcmath, curl, dom, fileinfo, filter, hash, tokenizer, xml, ctype, json, openssl
+          coverage: none
+
+      - name: Resolve Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('backend/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Prepare environment file
+        run: cp .env.example .env
+
+      - name: Generate application key
+        run: php artisan key:generate
+
+      # phpunit.xml forces DB_CONNECTION=sqlite and DB_DATABASE=:memory:,
+      # so no database service container is needed here.
+      - name: Run PHPUnit test suite
+        run: php artisan test
+
+  frontend-tests:
+    name: Frontend (Vitest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          # frontend/package.json has no "engines" field; use current LTS.
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Run Vitest test suite
+        run: npm run test
+
+  app-tests:
+    name: App (Vitest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: App
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # App/ does not exist on main yet (it arrives with PR #41).
+      # This job must stay green until the directory shows up, so every
+      # remaining step is guarded on this check instead of failing on a
+      # missing path.
+      - name: Check whether App package exists
+        id: check-app
+        working-directory: .
+        run: |
+          if [ -f "App/package.json" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "App/package.json not found — skipping App test job (directory not present on this ref)."
+            # Surface the skip in the PR checks summary. Without this, a skipped
+            # job is visually identical to one that ran the suite and passed.
+            echo "### App tests SKIPPED — \`App/\` is not present on this ref" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Set up Node.js
+        if: steps.check-app.outputs.exists == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: App/package-lock.json
+
+      - name: Install npm dependencies
+        if: steps.check-app.outputs.exists == 'true'
+        run: npm ci
+
+      - name: Run Vitest test suite
+        if: steps.check-app.outputs.exists == 'true'
+        run: npm run test
