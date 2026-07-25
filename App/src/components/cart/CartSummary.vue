@@ -1,7 +1,6 @@
 <script setup>
 import { computed } from 'vue'
 import { useCartStore } from '../../stores/cart.js'
-import { formatPrice } from '../../utils/formatPrice.js'
 
 // Ported from frontend/src/components/cart/CartSummary.vue
 // (mobile-capacitor-setup Phase 8, task 8.1), with one deliberate deviation:
@@ -25,9 +24,21 @@ const subtotalCents = computed(() => Math.round(cart.subtotal * 100))
 const taxCents = computed(() => Math.round(subtotalCents.value * IVA_RATE))
 const totalCents = computed(() => subtotalCents.value + taxCents.value)
 
-const subtotalDisplay = computed(() => formatPrice(subtotalCents.value / 100))
-const taxDisplay = computed(() => formatPrice(taxCents.value / 100))
-const totalDisplay = computed(() => formatPrice(totalCents.value / 100))
+// Plain currency formatting for these three DERIVED totals -- deliberately
+// NOT routed through utils/formatPrice.js. That util's "Gratis" fallback is
+// a policy for a genuine zero unit *price* (a real free product/service),
+// not for a computed tax/subtotal/total that can round to 0 for reasons
+// that have nothing to do with the cart being free (e.g. a small subtotal
+// makes taxCents round to 0 via Math.round(subtotalCents * IVA_RATE)).
+// "IVA (15%): Gratis" would be nonsensical. Restores the original web
+// CartSummary.vue's local toFixed(2)-based formatter for this reason.
+function formatCents(cents) {
+  return `$${(cents / 100).toFixed(2)}`
+}
+
+const subtotalDisplay = computed(() => formatCents(subtotalCents.value))
+const taxDisplay = computed(() => formatCents(taxCents.value))
+const totalDisplay = computed(() => formatCents(totalCents.value))
 </script>
 
 <template>

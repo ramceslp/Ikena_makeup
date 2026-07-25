@@ -34,6 +34,13 @@ function sanitizeItems(cached) {
 export const useCartStore = defineStore('cart', {
   state: () => ({
     items: sanitizeItems(getCached(CART_KEY)), // [{ product_id, slug, title, price, thumbnail, stock_qty, quantity }]
+    // Set when the underlying storage.js set()/remove() call fails (e.g. the
+    // native Preferences bridge errors out). Mirrors the error-field
+    // convention already established by stores/booking.js (daysError,
+    // bookingError) and stores/products.js (error) -- single field here
+    // because cart.js has exactly one async concern (persistence), shared by
+    // every action below.
+    persistError: null,
   }),
 
   getters: {
@@ -45,10 +52,21 @@ export const useCartStore = defineStore('cart', {
 
   actions: {
     async _persist() {
-      if (this.items.length === 0) {
-        await remove(CART_KEY)
-      } else {
-        await set(CART_KEY, this.items)
+      this.persistError = null
+      try {
+        if (this.items.length === 0) {
+          await remove(CART_KEY)
+        } else {
+          await set(CART_KEY, this.items)
+        }
+      } catch (err) {
+        // Caught here (not re-thrown) so every caller below -- and, in turn,
+        // CartItemRow.vue's fire-and-forget increment/decrement/remove
+        // handlers, which do not await/.catch these actions -- never see an
+        // unhandled promise rejection. The failure is recorded on
+        // persistError instead, same shape as booking.js/products.js.
+        console.error('Failed to persist cart to storage:', err)
+        this.persistError = 'No se pudo guardar el carrito. Tus cambios podrían perderse.'
       }
     },
 

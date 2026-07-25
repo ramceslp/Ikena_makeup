@@ -162,4 +162,55 @@ describe('cart store', () => {
 
     expect(store.subtotal).toBeCloseTo(25.5)
   })
+
+  // ── Persistence failure handling ────────────────────────────────────────
+  // storage.js's set()/remove() are backed by the native Preferences bridge,
+  // which can reject (e.g. platform storage error). Unlike a fetch failure
+  // in booking.js/products.js, a rejected persist here is triggered from
+  // fire-and-forget call sites (CartItemRow.vue does not await/.catch these
+  // actions), so a rejection that escapes _persist() would surface as an
+  // unhandled promise rejection instead of a caught, recorded error.
+
+  it('addItem catches a rejected storage.js set() call and records it on persistError instead of throwing', async () => {
+    const store = useCartStore()
+    set.mockRejectedValueOnce(new Error('Preferences native bridge failure'))
+
+    await expect(store.addItem(product())).resolves.toBeUndefined()
+
+    expect(store.items).toHaveLength(1) // in-memory state still updated
+    expect(store.persistError).toBe('No se pudo guardar el carrito. Tus cambios podrían perderse.')
+  })
+
+  it('removeItem catches a rejected storage.js remove() call and records it on persistError instead of throwing', async () => {
+    const store = useCartStore()
+    await store.addItem(product())
+    remove.mockRejectedValueOnce(new Error('Preferences native bridge failure'))
+
+    await expect(store.removeItem(1)).resolves.toBeUndefined()
+
+    expect(store.items).toHaveLength(0) // in-memory state still updated
+    expect(store.persistError).toBe('No se pudo guardar el carrito. Tus cambios podrían perderse.')
+  })
+
+  it('updateQuantity catches a rejected storage.js set() call and records it on persistError instead of throwing', async () => {
+    const store = useCartStore()
+    await store.addItem(product({ stock_qty: 5 }))
+    set.mockRejectedValueOnce(new Error('Preferences native bridge failure'))
+
+    await expect(store.updateQuantity(1, 2)).resolves.toBeUndefined()
+
+    expect(store.items[0].quantity).toBe(2) // in-memory state still updated
+    expect(store.persistError).toBe('No se pudo guardar el carrito. Tus cambios podrían perderse.')
+  })
+
+  it('clears persistError on the next successful persist', async () => {
+    const store = useCartStore()
+    set.mockRejectedValueOnce(new Error('Preferences native bridge failure'))
+    await store.addItem(product())
+    expect(store.persistError).not.toBeNull()
+
+    await store.addItem(product({ id: 2, slug: 'otro' }))
+
+    expect(store.persistError).toBeNull()
+  })
 })

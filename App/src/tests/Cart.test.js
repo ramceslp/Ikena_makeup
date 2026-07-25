@@ -105,6 +105,22 @@ describe('Cart.vue (App) — build/manage UX, no in-app payment [Spec: cart pers
     expect(wrapper.find('[data-cart-total]').exists()).toBe(true)
   })
 
+  it('never shows "Gratis" for subtotal/tax/total, even when the 15% tax rounds to $0.00', async () => {
+    // Regression for Judgment Day Round 1: subtotalCents=3 -> taxCents =
+    // Math.round(3 * 0.15) = Math.round(0.45) = 0. Routing that through
+    // formatPrice()'s "Gratis" fallback rendered "IVA (15%): Gratis" --
+    // nonsensical for a tax line that merely rounds to zero, not a genuine
+    // free item.
+    const cart = useCartStore()
+    await cart.addItem({ ...product, price: '0.03', stock_qty: 1 })
+
+    const wrapper = mount(Cart, { global: { plugins: [router] } })
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('Gratis')
+    expect(wrapper.text()).toContain('$0.00') // tax row, rounds to zero cents
+  })
+
   it('the pay CTA is present but disabled — checkout-handoff wiring lands in a later PR (tasks 8.3-8.5)', async () => {
     const cart = useCartStore()
     await cart.addItem(product)

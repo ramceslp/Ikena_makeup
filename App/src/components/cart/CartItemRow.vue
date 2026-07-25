@@ -23,6 +23,12 @@ const unitPrice = computed(() => formatPrice(props.item.price))
 const canDecrement = computed(() => props.item.quantity > 1)
 const canIncrement = computed(() => props.item.quantity < props.item.stock_qty)
 
+// updateQuantity()/removeItem() are intentionally called without
+// await/.catch here: cart.js's _persist() wraps its own storage.js set()/
+// remove() call in try/catch and records any failure on
+// cart.persistError instead of re-throwing, so these actions never reject
+// -- there is no unhandled-promise-rejection risk at this fire-and-forget
+// call site.
 function decrement() {
   if (canDecrement.value) {
     cart.updateQuantity(props.item.product_id, props.item.quantity - 1)
