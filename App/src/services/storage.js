@@ -7,6 +7,14 @@ export const USER_KEY = 'ikena_user'
 // localStorage-backed 'ikena_cart' key with the same async Preferences path
 // used for the auth session (see cart.js).
 export const CART_KEY = 'ikena_cart'
+// Last device token successfully registered with POST /api/device-tokens
+// (mobile-capacitor-setup Phase 8, tasks 8.6-8.8 — see stores/push.js).
+// Deliberately NOT included in hydrate()'s Promise.all: unlike TOKEN_KEY/
+// USER_KEY (read synchronously by the Axios request interceptor on every
+// request) and CART_KEY (read synchronously at cart.js's store-init), push
+// registration is only ever read asynchronously from stores/push.js's
+// init(), which is not on the app's synchronous boot-critical path.
+export const PUSH_TOKEN_KEY = 'ikena_push_token'
 
 // In-memory cache so synchronous consumers (the Axios request interceptor in
 // api.js in particular) can read a value without awaiting the async

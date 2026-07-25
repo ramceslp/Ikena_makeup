@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import api from '../services/api.js'
 import { set, getCached, TOKEN_KEY, USER_KEY } from '../services/storage.js'
+import { usePushStore } from './push.js'
 
 // Trimmed port of frontend/src/stores/auth.js: the app only supports native
 // Google Sign-In (no email/password login/register -- see spec's "Native
@@ -41,6 +42,22 @@ export const useAuthStore = defineStore('auth', {
       const response = await api.post('/auth/google', { id_token: idToken })
       const { user, token } = response.data
       await this._persist(user, token)
+
+      // Push registration (tasks 8.6-8.8) requires an authenticated session
+      // (POST /device-tokens is auth:sanctum), so a fresh login is one of
+      // its two trigger points (the other is app boot for an already-
+      // cached session — see main.js's bootstrap()). Deliberately NOT
+      // awaited: push.js's init() never throws (every internal failure
+      // path is caught and recorded on its own `error` state — see
+      // stores/push.js), but a stray rejection is still guarded against
+      // here defensively so a future change to that contract can never
+      // turn a successful login into a rejected loginWithGoogle() call.
+      usePushStore()
+        .init()
+        .catch((err) => {
+          console.error('Push registration failed after login:', err)
+        })
+
       return response.data
     },
   },

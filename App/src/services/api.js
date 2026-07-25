@@ -48,9 +48,20 @@ export function attachAuthToken(config) {
  * until that same call's router.push('/login') navigation settles (see the
  * finally block), so unrelated requests firing while the redirect is still
  * in flight cannot reopen the window and trigger a duplicate redirect.
+ *
+ * Per-request opt-out: a request config with `skipAuthRedirect: true` (see
+ * stores/push.js's opportunistic POST /device-tokens call) bypasses this
+ * whole 401 handling block entirely -- no session clear, no redirect -- and
+ * falls straight through to a plain rejection instead. That background call
+ * runs unprompted at app boot/login and must never force-navigate the user
+ * away from whatever screen they're actually on or clear a session that may
+ * still be perfectly valid for every other in-flight/future request; the
+ * caller's own catch block (push.js's _onToken) records the failure on its
+ * own `error` state instead. Scoped narrowly to opt-in call sites only --
+ * every other call site keeps the full logout+redirect behavior.
  */
 export async function handleResponseError(error) {
-  if (error.response?.status === 401) {
+  if (error.response?.status === 401 && !error.config?.skipAuthRedirect) {
     const shouldRedirect = !redirecting && router.currentRoute.value.path !== '/login'
     if (shouldRedirect) {
       redirecting = true

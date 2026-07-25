@@ -1,8 +1,9 @@
 import { createApp } from 'vue'
-import { createPinia } from 'pinia'
+import { createPinia, setActivePinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
 import { hydrate } from './services/storage.js'
+import { usePushStore } from './stores/push.js'
 import './style.css'
 
 // @capacitor/preferences is async, so the cached auth session (token/user)
@@ -19,10 +20,27 @@ async function bootstrap() {
     console.error('Failed to hydrate cached auth session, continuing without it:', error)
   }
 
+  const pinia = createPinia()
+  setActivePinia(pinia) // lets usePushStore() below be called outside a component's setup()
+
   const app = createApp(App)
-  app.use(createPinia())
+  app.use(pinia)
   app.use(router)
   app.mount('#app')
+
+  // Push registration (tasks 8.6-8.8): the other trigger point besides a
+  // fresh login (see stores/auth.js's loginWithGoogle()) is app boot with
+  // an already-cached session (the user is still logged in from a previous
+  // run, but registration may not have succeeded yet — e.g. it failed last
+  // time, or the app was reinstalled). Fired after mount, deliberately NOT
+  // awaited: push.js's init() never throws (every internal failure is
+  // caught and recorded on its own `error` state) and must never delay
+  // rendering the app's first screen.
+  usePushStore()
+    .init()
+    .catch((error) => {
+      console.error('Push registration failed at app boot:', error)
+    })
 }
 
 bootstrap()
