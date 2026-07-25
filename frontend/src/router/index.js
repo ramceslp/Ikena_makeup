@@ -16,6 +16,10 @@ const InstructorDashboard = () => import('../views/InstructorDashboard.vue')
 const InstructorSubmissions = () => import('../views/InstructorSubmissions.vue')
 const Profile = () => import('../views/Profile.vue')
 
+// Checkout resume — public (mobile-capacitor-setup PR 4: resumes a checkout
+// handoff started from the future mobile app; token lives in the URL fragment).
+const CheckoutResume = () => import('../views/CheckoutResume.vue')
+
 // Products — public
 const Products = () => import('../views/Products.vue')
 const ProductDetail = () => import('../views/ProductDetail.vue')
@@ -100,6 +104,14 @@ const routes = [
     name: 'PaymentCallback',
     component: PaymentCallback,
     meta: { requiresAuth: true },
+  },
+  {
+    // Intentionally NO requiresAuth: this resumes a checkout handoff opened
+    // from the mobile app in a separate, logged-out browser session — the
+    // single-use token in the URL fragment is the authorization mechanism.
+    path: '/checkout/resume',
+    name: 'CheckoutResume',
+    component: CheckoutResume,
   },
   {
     path: '/profile',
