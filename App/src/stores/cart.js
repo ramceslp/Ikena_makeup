@@ -152,6 +152,17 @@ export const useCartStore = defineStore('cart', {
           })),
         })
         const { url } = response.data.data
+        // Validate the handoff URL before ever handing it to Browser.open().
+        // Without this guard, a malformed/missing `url` (e.g. { url:
+        // undefined }) is passed straight through with no exception --
+        // Browser.open()'s web fallback resolves that to
+        // window.open(undefined, '_blank'), silently opening a blank tab
+        // while payError stays null and the CTA just resets. This is a
+        // security/isolation-sensitive path (design's "payment container
+        // isolation"), so only an https:// URL is accepted.
+        if (typeof url !== 'string' || !url.startsWith('https://')) {
+          throw new Error('Invalid or missing checkout handoff URL')
+        }
         // Browser.open() renders the checkout URL exclusively in the
         // system/in-app Browser container -- this is the one call in the
         // entire app that is allowed to load a payment-adjacent URL, and it

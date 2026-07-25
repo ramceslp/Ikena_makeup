@@ -306,6 +306,20 @@ describe('cart store', () => {
       expect(store.payError).toBe('No se pudo iniciar el pago. Inténtalo de nuevo.')
     })
 
+    it('sets payError and never opens the browser when the handoff response is missing a valid url', async () => {
+      const store = useCartStore()
+      await store.addItem(product())
+
+      api.post.mockResolvedValueOnce({
+        data: { data: { expires_at: '2026-07-25T15:10:00Z' } },
+      })
+
+      await store.pay()
+
+      expect(Browser.open).not.toHaveBeenCalled()
+      expect(store.payError).toBe('No se pudo iniciar el pago. Inténtalo de nuevo.')
+    })
+
     it('clears a previous payError on the next pay() attempt before re-checking the cart', async () => {
       const store = useCartStore()
       await store.addItem(product())
