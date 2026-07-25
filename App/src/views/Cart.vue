@@ -9,8 +9,10 @@ import CartSummary from '../components/cart/CartSummary.vue'
 // (handleCheckout()) is NOT ported — see CartSummary.vue's header comment
 // for why: rendering PayPhone in this app's own WebView would violate the
 // spec's Mobile App Boundaries ("payment never renders in the app's own
-// WebView"). That capability (checkout-handoff + @capacitor/browser) is
-// tasks 8.3-8.5, a separate PR.
+// WebView"). The app's real "pay" action (checkout-handoff +
+// @capacitor/browser, tasks 8.3-8.5) is wired into CartSummary.vue's CTA;
+// cart.payError below surfaces either the empty-cart guard or a failed
+// handoff request from that action.
 const cart = useCartStore()
 </script>
 
@@ -31,6 +33,20 @@ const cart = useCartStore()
       role="alert"
     >
       {{ cart.persistError }}
+    </div>
+
+    <!-- Pay-error banner (tasks 8.3-8.5): cart.payError is set either by the
+         client-side empty-cart guard in cart.pay() or by a failed
+         POST /checkout/handoff call, and cleared at the start of the next
+         pay() attempt -- same error-container convention as the persist-error
+         banner above. -->
+    <div
+      v-if="cart.payError"
+      data-pay-error
+      class="mb-6 bg-error-container rounded-xl px-4 py-3 font-body-md text-body-md text-on-error-container"
+      role="alert"
+    >
+      {{ cart.payError }}
     </div>
 
     <!-- Empty state -->
