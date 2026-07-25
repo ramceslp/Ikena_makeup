@@ -26,7 +26,10 @@ import { formatCurrency } from '../../utils/money.js'
 //    redirect-loop guard; a second, local redirect here would be redundant
 //    and could race the global one. `bookingStore.bookingError` still
 //    surfaces the Spanish "please sign in" message via the inline error
-//    banner below while that redirect is in flight.
+//    banner below as a fallback for when that redirect itself fails — on
+//    the success path the interceptor's `await router.push('/login')`
+//    completes before this component's local `catch` ever runs, so the
+//    banner is not normally visible during a successful in-flight redirect.
 const props = defineProps({
   selectedSlot: {
     type: Object,

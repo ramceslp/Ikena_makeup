@@ -20,6 +20,10 @@ const product = computed(() => productsStore.currentProduct)
 const loading = computed(() => productsStore.loading)
 const error = computed(() => productsStore.error)
 
+// Fetches only on initial mount (same inherited limitation as frontend/'s
+// equivalent view) — a detail→detail navigation reusing this route component
+// would not re-fetch. No such navigation exists in this PR; add a `watch` on
+// route.params.slug if/when deep-linking between detail pages is introduced.
 onMounted(async () => {
   try {
     await productsStore.fetchProduct(route.params.slug)

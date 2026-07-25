@@ -52,6 +52,10 @@ function onBookingSuccess(result) {
   void result
 }
 
+// Fetches only on initial mount (same inherited limitation as frontend/'s
+// equivalent view) — a detail→detail navigation reusing this route component
+// would not re-fetch. No such navigation exists in this PR; add a `watch` on
+// route.params.slug if/when deep-linking between detail pages is introduced.
 onMounted(async () => {
   try {
     await servicesStore.fetchService(route.params.slug)
