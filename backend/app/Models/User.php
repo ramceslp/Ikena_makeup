@@ -69,6 +69,30 @@ class User extends Authenticatable
         return $this->hasMany(Order::class);
     }
 
+    public function deviceTokens(): HasMany
+    {
+        return $this->hasMany(DeviceToken::class);
+    }
+
+    /**
+     * Routes FCM notifications to every registered device token for this
+     * user (mobile-capacitor-setup PR3). NotificationChannels\Fcm\FcmChannel
+     * calls this via `$notifiable->routeNotificationFor('fcm', ...)` and
+     * multicasts the send across all returned tokens.
+     *
+     * Reuses the `deviceTokens` relation when it has already been eager
+     * loaded (e.g. via `with('user.deviceTokens')`) to avoid an N+1 query
+     * per notified user; otherwise falls back to a fresh query.
+     *
+     * @return array<int, string>
+     */
+    public function routeNotificationForFcm(): array
+    {
+        return ($this->relationLoaded('deviceTokens') ? $this->deviceTokens : $this->deviceTokens()->get())
+            ->pluck('token')
+            ->all();
+    }
+
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
