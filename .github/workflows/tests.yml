@@ -6,6 +6,10 @@ on:
     branches:
       - main
 
+# Nothing here writes to the repo: no comments, no pushes, no releases.
+permissions:
+  contents: read
+
 jobs:
   backend-tests:
     name: Backend (PHPUnit)
@@ -22,7 +26,7 @@ jobs:
         with:
           # composer.json requires "php": "^8.3"
           php-version: "8.3"
-          extensions: mbstring, pdo_sqlite, sqlite3, bcmath, curl, fileinfo, tokenizer, xml, ctype, json, openssl
+          extensions: mbstring, pdo, pdo_sqlite, sqlite3, bcmath, curl, dom, fileinfo, filter, hash, tokenizer, xml, ctype, json, openssl
           coverage: none
 
       - name: Resolve Composer cache directory
@@ -98,6 +102,9 @@ jobs:
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
             echo "App/package.json not found — skipping App test job (directory not present on this ref)."
+            # Surface the skip in the PR checks summary. Without this, a skipped
+            # job is visually identical to one that ran the suite and passed.
+            echo "### App tests SKIPPED — \`App/\` is not present on this ref" >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Set up Node.js
