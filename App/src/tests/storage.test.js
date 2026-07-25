@@ -14,7 +14,7 @@ vi.mock('@capacitor/preferences', () => ({
 }))
 
 import { Preferences } from '@capacitor/preferences'
-import { get, set, remove, getCached, hydrate, TOKEN_KEY, USER_KEY } from '../services/storage.js'
+import { get, set, remove, getCached, hydrate, TOKEN_KEY, USER_KEY, CART_KEY } from '../services/storage.js'
 
 describe('storage service', () => {
   beforeEach(() => {
@@ -75,15 +75,33 @@ describe('storage service', () => {
     expect(getCached(TOKEN_KEY)).toBeNull()
   })
 
-  it('hydrate() reads TOKEN_KEY and USER_KEY from Preferences and returns both parsed values', async () => {
+  it('hydrate() reads TOKEN_KEY, USER_KEY, and CART_KEY from Preferences and returns all three parsed values', async () => {
     Preferences.get
       .mockResolvedValueOnce({ value: JSON.stringify('hydrated-token') })
       .mockResolvedValueOnce({ value: JSON.stringify({ id: 2, name: 'Hydrated User' }) })
+      .mockResolvedValueOnce({ value: null })
 
     const result = await hydrate()
 
-    expect(result).toEqual({ token: 'hydrated-token', user: { id: 2, name: 'Hydrated User' } })
+    expect(result).toEqual({ token: 'hydrated-token', user: { id: 2, name: 'Hydrated User' }, cart: null })
     expect(getCached(TOKEN_KEY)).toBe('hydrated-token')
     expect(getCached(USER_KEY)).toEqual({ id: 2, name: 'Hydrated User' })
+    expect(getCached(CART_KEY)).toBeNull()
+  })
+
+  it('hydrate() also warms the cart cache from a previously persisted cart (see cart.js — cart persists across restarts)', async () => {
+    const persistedCart = [
+      { product_id: 1, slug: 'paleta', title: 'Paleta', price: 9.99, thumbnail: null, stock_qty: 5, quantity: 2 },
+    ]
+    Preferences.get
+      .mockResolvedValueOnce({ value: null })
+      .mockResolvedValueOnce({ value: null })
+      .mockResolvedValueOnce({ value: JSON.stringify(persistedCart) })
+
+    const result = await hydrate()
+
+    expect(result.cart).toEqual(persistedCart)
+    expect(getCached(CART_KEY)).toEqual(persistedCart)
+    expect(Preferences.get).toHaveBeenCalledWith({ key: CART_KEY })
   })
 })

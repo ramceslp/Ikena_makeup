@@ -16,6 +16,7 @@ describe('router (App) — no path to admin/instructor views [Spec: admin route 
     expect(paths).toContain('/products/:slug')
     expect(paths).toContain('/services')
     expect(paths).toContain('/services/:slug')
+    expect(paths).toContain('/cart')
   })
 
   it('has no route whose path or name references admin/instructor views', () => {
