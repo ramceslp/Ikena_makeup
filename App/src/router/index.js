@@ -38,6 +38,14 @@ const routes = [
     name: 'service-detail',
     component: () => import('../views/ServiceDetail.vue'),
   },
+  // Cart build/manage UX (mobile-capacitor-setup Phase 8, task 8.1). The
+  // "pay" action (checkout-handoff + @capacitor/browser) is wired in a later
+  // PR (tasks 8.3-8.5) — see views/Cart.vue's header comment.
+  {
+    path: '/cart',
+    name: 'cart',
+    component: () => import('../views/Cart.vue'),
+  },
 ]
 
 const router = createRouter({
