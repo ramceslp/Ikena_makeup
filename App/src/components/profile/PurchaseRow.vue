@@ -54,10 +54,24 @@ const productLabel = computed(() =>
 )
 const productSubtitle = computed(() => items.value.map((i) => i.product_title).join(', '))
 
+// [Judgment Day fix, PR8d Round 1]: `order.appointment?.scheduled_date` is a
+// bare `YYYY-MM-DD` date-only string, which genuinely needs the
+// `T00:00:00` suffix trick to avoid `new Date(...)` parsing it as UTC
+// midnight and shifting the displayed day backwards in negative-UTC-offset
+// timezones. But `order.paid_at`/`order.created_at` (product_cart/course
+// rows) are Eloquent 'datetime'-cast attributes, already serialized as FULL
+// ISO datetime strings (e.g. '2026-07-20T10:00:00.000000Z') -- appending a
+// second 'T00:00:00' onto those produced a malformed string, `new Date(...)`
+// returned Invalid Date, formatting threw, and every product/course row
+// silently fell back to showing the raw unformatted ISO string. Detect a
+// bare date (no 'T', exactly 10 chars) and only apply the suffix trick then;
+// anything else is treated as an already-complete datetime string.
 function formatDate(dateStr) {
   if (!dateStr) return ''
+  const isBareDate = !dateStr.includes('T') && dateStr.length === 10
   try {
-    return new Intl.DateTimeFormat('es', { dateStyle: 'medium' }).format(new Date(dateStr + 'T00:00:00'))
+    const parsed = new Date(isBareDate ? dateStr + 'T00:00:00' : dateStr)
+    return new Intl.DateTimeFormat('es', { dateStyle: 'medium' }).format(parsed)
   } catch {
     return dateStr
   }
