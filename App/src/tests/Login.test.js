@@ -62,6 +62,24 @@ describe('Login.vue (App) — native Google Sign-In', () => {
     expect(router.currentRoute.value.path).toBe('/')
   })
 
+  // [Judgment Day fix, PR8d Round 1]: a user who was redirected to /login
+  // with a `redirect` query (see router/index.js's resolveGuard, e.g. after
+  // direct-linking to the auth-gated /profile route while logged out) must
+  // land back on that original destination after signing in, not always on
+  // Home. Regression guard for the bug where handleGoogleSignIn() ignored
+  // route.query.redirect entirely.
+  it('navigates to route.query.redirect instead of Home when present', async () => {
+    signInWithGoogle.mockResolvedValueOnce({ idToken: 'native-id-token', accessToken: null, profile: {} })
+    router.addRoute({ path: '/profile', component: { template: '<div data-profile/>' }, name: 'profile' })
+    await router.push('/login?redirect=%2Fprofile')
+
+    const wrapper = mount(Login, { global: { plugins: [router] } })
+    await wrapper.find('[data-google-signin]').trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.path).toBe('/profile')
+  })
+
   it('cancelling the native sheet returns to the login screen with no token posted and no crash/error shown', async () => {
     const cancelError = new Error('User cancelled the login flow')
     cancelError.code = 'USER_CANCELLED'

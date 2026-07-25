@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 import { signInWithGoogle } from '../services/googleAuth.js'
 
@@ -10,6 +10,7 @@ import { signInWithGoogle } from '../services/googleAuth.js'
 // email/password login -- native Google Sign-In is the sole authentication
 // method (see spec's "Native Google Sign-In and bearer session" requirement).
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 
 const loading = ref(false)
@@ -21,7 +22,13 @@ async function handleGoogleSignIn() {
   try {
     const { idToken } = await signInWithGoogle()
     await authStore.loginWithGoogle(idToken)
-    await router.push('/')
+    // [Judgment Day fix, PR8d Round 1]: honor the router guard's
+    // `redirect` query (see router/index.js's resolveGuard) so a user who
+    // direct-linked to an auth-gated route like /profile lands back there
+    // after signing in, instead of always bouncing to Home. Matches
+    // frontend/src/views/Login.vue's identical `route.query.redirect || '/'`
+    // mechanism for consistency between the two codebases.
+    await router.push(route.query.redirect || '/')
   } catch (err) {
     if (err?.code === 'USER_CANCELLED') {
       // User dismissed the native sheet -- per spec's "Google Sign-In
