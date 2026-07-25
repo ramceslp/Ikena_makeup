@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Ikena Makeup</string>
+    <string name="title_activity_main">Ikena Makeup</string>
+    <string name="package_name">com.ikenamakeup.app</string>
+    <string name="custom_url_scheme">com.ikenamakeup.app</string>
+</resources>
