@@ -6,11 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\Enrollment;
 use App\Models\Order;
+use App\Notifications\BookingConfirmed;
 use App\Services\Commerce\StockReservation;
 use App\Services\Payments\Contracts\PaymentGatewayInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 
 class CheckoutController extends Controller
@@ -190,6 +192,12 @@ class CheckoutController extends Controller
                     $order->appointment->update([
                         'status' => 'paid',
                     ]);
+
+                    // Push notification trigger (mobile-capacitor-setup PR3,
+                    // design Decision 2's "Booking confirmed" primary v1
+                    // trigger). Fans out to every device_tokens row the user
+                    // has registered; a no-op if they have none.
+                    Notification::send($order->appointment->user, new BookingConfirmed($order->appointment));
                 }
 
                 return response()->json([
