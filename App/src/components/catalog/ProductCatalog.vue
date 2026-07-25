@@ -71,7 +71,7 @@ defineEmits(['retry', 'page-change'])
         <button
           data-page-prev
           type="button"
-          :disabled="meta.current_page <= 1 || undefined"
+          :disabled="meta.current_page <= 1"
           class="flex items-center gap-1 px-4 py-2 rounded-xl border border-blush-canvas/30 font-label-md text-label-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:enabled:bg-surface-container-low"
           @click="$emit('page-change', meta.current_page - 1)"
         >
@@ -86,7 +86,7 @@ defineEmits(['retry', 'page-change'])
         <button
           data-page-next
           type="button"
-          :disabled="meta.current_page >= meta.last_page || undefined"
+          :disabled="meta.current_page >= meta.last_page"
           class="flex items-center gap-1 px-4 py-2 rounded-xl border border-blush-canvas/30 font-label-md text-label-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:enabled:bg-surface-container-low"
           @click="$emit('page-change', meta.current_page + 1)"
         >

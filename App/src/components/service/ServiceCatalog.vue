@@ -23,6 +23,7 @@ defineEmits(['retry', 'page-change'])
         <div
           v-for="i in 6"
           :key="i"
+          data-skeleton
           class="bg-surface-muted rounded-2xl border border-blush-canvas/30 overflow-hidden animate-pulse"
         >
           <div class="aspect-[16/9] bg-surface-container" />
@@ -66,6 +67,7 @@ defineEmits(['retry', 'page-change'])
         class="flex items-center justify-center gap-4 mt-16"
       >
         <BaseButton
+          data-page-prev
           variant="outline"
           size="sm"
           :disabled="meta.current_page <= 1"
@@ -80,6 +82,7 @@ defineEmits(['retry', 'page-change'])
         </span>
 
         <BaseButton
+          data-page-next
           variant="outline"
           size="sm"
           :disabled="meta.current_page >= meta.last_page"

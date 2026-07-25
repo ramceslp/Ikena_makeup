@@ -81,7 +81,7 @@ const inputClass =
       <div class="flex flex-wrap items-center gap-2" role="group" aria-label="Filtrar por categoría">
         <!-- "Todas" pill -->
         <button
-          data-category-pill
+          data-category-pill="all"
           type="button"
           @click="category = ''"
           class="px-3 py-1 rounded-full font-label-sm text-label-sm transition-colors"
@@ -97,7 +97,7 @@ const inputClass =
         <button
           v-for="cat in props.categories"
           :key="cat.id"
-          data-category-pill
+          :data-category-pill="cat.slug"
           type="button"
           @click="category = cat.slug"
           class="px-3 py-1 rounded-full font-label-sm text-label-sm transition-colors"
