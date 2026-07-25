@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\CheckoutController;
 use App\Http\Controllers\Api\CheckoutHandoffController;
 use App\Http\Controllers\Api\CourseController;
 use App\Http\Controllers\Api\CourseReviewController;
+use App\Http\Controllers\Api\DeviceTokenController;
 use App\Http\Controllers\Api\Instructor\CourseController as InstructorCourseController;
 use App\Http\Controllers\Api\Instructor\DashboardController as InstructorDashboardController;
 use App\Http\Controllers\Api\Instructor\LessonController as InstructorLessonController;
@@ -113,6 +114,10 @@ Route::middleware(['auth:sanctum', RejectScopedCheckoutToken::class])->group(fun
     // Checkout-handoff — snapshot cart/booking behind a single-use token for
     // the mobile app to hand off to the web checkout flow (mobile-capacitor-setup PR2).
     Route::post('/checkout/handoff', [CheckoutHandoffController::class, 'store']);
+
+    // Push notification device tokens (mobile-capacitor-setup PR3).
+    Route::post('/device-tokens', [DeviceTokenController::class, 'store']);
+    Route::delete('/device-tokens', [DeviceTokenController::class, 'destroy']);
 
     Route::get('/lessons/{lesson}', [LessonController::class, 'show']);
     Route::post('/lessons/{lesson}/complete', [LessonController::class, 'complete']);
