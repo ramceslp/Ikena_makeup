@@ -3,16 +3,13 @@ import { computed } from 'vue'
 import { useCartStore } from '../../stores/cart.js'
 
 // Ported from frontend/src/components/cart/CartSummary.vue
-// (mobile-capacitor-setup Phase 8, task 8.1), with one deliberate deviation:
-// the "Proceder al Pago" CTA is rendered but permanently disabled and NOT
-// wired to any handler in this PR. The web version posts to /cart/checkout
-// and renders the PayPhone widget inline in Cart.vue -- doing the same here
-// would render payment UI inside this app's own WebView, which the spec's
-// Mobile App Boundaries explicitly forbid. The app's real "pay" action
-// (checkout-handoff -> @capacitor/browser, per design.md Decision 1) is
-// tasks 8.3-8.5, a separate PR (8b) that will replace this disabled button
-// with the real wiring. Kept visible-but-disabled rather than omitted
-// entirely so the cart page isn't missing an obviously-expected CTA.
+// (mobile-capacitor-setup Phase 8, task 8.1). The "Proceder al Pago" CTA was
+// rendered-but-permanently-disabled in PR8a; this PR (8b, tasks 8.3-8.5)
+// wires it to cart.pay(), which calls POST /checkout/handoff and opens the
+// returned URL via @capacitor/browser (design.md Decision 1) instead of the
+// web's direct /cart/checkout + inline PayPhone widget -- rendering payment
+// UI inside this app's own WebView is explicitly forbidden by the spec's
+// Mobile App Boundaries.
 const cart = useCartStore()
 
 // DISPLAY estimate only — keep in sync with backend commerce.tax.iva_rate
@@ -68,13 +65,17 @@ const totalDisplay = computed(() => formatCents(totalCents.value))
       <span data-cart-total class="font-title-lg text-title-lg text-primary">{{ totalDisplay }}</span>
     </div>
 
-    <!-- CTA — disabled, see file header comment. Wired in a future PR. -->
+    <!-- CTA — wired to cart.pay() (tasks 8.3-8.5): POSTs /checkout/handoff
+         and opens the result via @capacitor/browser, never this app's own
+         router/WebView. Disabled only while a handoff request is in flight,
+         to prevent duplicate taps opening the browser twice. -->
     <button
       data-checkout-btn
-      disabled
+      :disabled="cart.isPaying"
+      @click="cart.pay()"
       class="btn-gloss w-full bg-apricot-glow text-deep-marsala font-label-md text-label-md py-4 rounded-xl transition-all shadow-lg shadow-apricot-glow/20 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
     >
-      Proceder al Pago
+      {{ cart.isPaying ? 'Redirigiendo…' : 'Proceder al Pago' }}
     </button>
   </div>
 </template>

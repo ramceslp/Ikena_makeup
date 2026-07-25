@@ -10,7 +10,23 @@ vi.mock('../services/storage.js', () => ({
   CART_KEY: 'ikena_cart',
 }))
 
+// pay() (tasks 8.3-8.5) POSTs to /checkout/handoff and opens the result via
+// @capacitor/browser -- mock both so the pay CTA can be exercised without a
+// real network call or a real native browser (unavailable in vitest/jsdom).
+vi.mock('../services/api.js', () => ({
+  default: {
+    post: vi.fn(),
+    interceptors: { request: { use: vi.fn() }, response: { use: vi.fn() } },
+  },
+}))
+
+vi.mock('@capacitor/browser', () => ({
+  Browser: { open: vi.fn().mockResolvedValue(undefined) },
+}))
+
 import { set } from '../services/storage.js'
+import api from '../services/api.js'
+import { Browser } from '@capacitor/browser'
 import { useCartStore } from '../stores/cart.js'
 import Cart from '../views/Cart.vue'
 
@@ -122,7 +138,12 @@ describe('Cart.vue (App) — build/manage UX, no in-app payment [Spec: cart pers
     expect(wrapper.text()).toContain('$0.00') // tax row, rounds to zero cents
   })
 
-  it('the pay CTA is present but disabled — checkout-handoff wiring lands in a later PR (tasks 8.3-8.5)', async () => {
+  // ── pay CTA wiring (tasks 8.3-8.5) ───────────────────────────────────────
+  // The pay button was rendered-but-disabled in PR8a; this PR wires it to
+  // cart.pay(), which POSTs /checkout/handoff and opens the result via
+  // @capacitor/browser -- never the app's own router/WebView.
+
+  it('the pay CTA is enabled (not disabled) once the cart has items', async () => {
     const cart = useCartStore()
     await cart.addItem(product)
 
@@ -131,7 +152,57 @@ describe('Cart.vue (App) — build/manage UX, no in-app payment [Spec: cart pers
 
     const checkoutBtn = wrapper.find('[data-checkout-btn]')
     expect(checkoutBtn.exists()).toBe(true)
-    expect(checkoutBtn.attributes('disabled')).toBeDefined()
+    expect(checkoutBtn.attributes('disabled')).toBeUndefined()
+  })
+
+  it('tapping pay opens the returned checkout URL via @capacitor/browser (never the app WebView/router) [Spec: handoff opens browser pre-loaded / payment container isolation]', async () => {
+    const cart = useCartStore()
+    await cart.addItem(product)
+    api.post.mockResolvedValueOnce({
+      data: { data: { url: 'https://app.ikena.com/checkout/resume#token=abc', expires_at: '' } },
+    })
+
+    const wrapper = mount(Cart, { global: { plugins: [router] } })
+    await flushPromises()
+
+    await wrapper.find('[data-checkout-btn]').trigger('click')
+    await flushPromises()
+
+    expect(api.post).toHaveBeenCalledWith('/checkout/handoff', {
+      type: 'product_cart',
+      items: [{ product_id: 1, quantity: 1 }],
+    })
+    expect(Browser.open).toHaveBeenCalledWith({
+      url: 'https://app.ikena.com/checkout/resume#token=abc',
+    })
+    // The app's own router never navigates anywhere on a successful pay tap
+    // -- the checkout URL is handed to @capacitor/browser, not router.push().
+    expect(router.currentRoute.value.path).toBe('/cart')
+  })
+
+  it('shows a pay-error banner when the handoff call fails, and never opens the browser', async () => {
+    const cart = useCartStore()
+    await cart.addItem(product)
+    api.post.mockRejectedValueOnce(new Error('Network Error'))
+
+    const wrapper = mount(Cart, { global: { plugins: [router] } })
+    await flushPromises()
+
+    await wrapper.find('[data-checkout-btn]').trigger('click')
+    await flushPromises()
+
+    expect(Browser.open).not.toHaveBeenCalled()
+    const banner = wrapper.find('[data-pay-error]')
+    expect(banner.exists()).toBe(true)
+    expect(banner.text()).toBe('No se pudo iniciar el pago. Inténtalo de nuevo.')
+  })
+
+  it('the empty-cart state never renders a pay CTA at all, and shows the "cart is empty" message [Spec: cart empty at checkout tap]', async () => {
+    const wrapper = mount(Cart, { global: { plugins: [router] } })
+    await flushPromises()
+
+    expect(wrapper.find('[data-checkout-btn]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Tu carrito está vacío')
   })
 
   // ── Judgment Day Round 2 regression ─────────────────────────────────────
