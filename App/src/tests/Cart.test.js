@@ -10,6 +10,7 @@ vi.mock('../services/storage.js', () => ({
   CART_KEY: 'ikena_cart',
 }))
 
+import { set } from '../services/storage.js'
 import { useCartStore } from '../stores/cart.js'
 import Cart from '../views/Cart.vue'
 
@@ -131,5 +132,31 @@ describe('Cart.vue (App) — build/manage UX, no in-app payment [Spec: cart pers
     const checkoutBtn = wrapper.find('[data-checkout-btn]')
     expect(checkoutBtn.exists()).toBe(true)
     expect(checkoutBtn.attributes('disabled')).toBeDefined()
+  })
+
+  // ── Judgment Day Round 2 regression ─────────────────────────────────────
+  // cart.js's persistError (added in Round 1) was set on a failed persist
+  // but never surfaced anywhere, silently swallowing storage failures.
+  it('shows a persist-error banner when cart.persistError is set (storage.js set() rejected)', async () => {
+    const cart = useCartStore()
+    set.mockRejectedValueOnce(new Error('Preferences native bridge failure'))
+    await cart.addItem(product)
+
+    const wrapper = mount(Cart, { global: { plugins: [router] } })
+    await flushPromises()
+
+    const banner = wrapper.find('[data-persist-error]')
+    expect(banner.exists()).toBe(true)
+    expect(banner.text()).toBe('No se pudo guardar el carrito. Tus cambios podrían perderse.')
+  })
+
+  it('does not show the persist-error banner when cart.persistError is null', async () => {
+    const cart = useCartStore()
+    await cart.addItem(product)
+
+    const wrapper = mount(Cart, { global: { plugins: [router] } })
+    await flushPromises()
+
+    expect(wrapper.find('[data-persist-error]').exists()).toBe(false)
   })
 })

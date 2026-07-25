@@ -20,6 +20,19 @@ const cart = useCartStore()
       Mi Carrito
     </h1>
 
+    <!-- Persist-error banner (Judgment Day Round 2): cart.persistError is set
+         by cart.js's _persist() when the storage.js set()/remove() call
+         fails, and cleared again on the next successful persist -- same
+         error-container convention as BookingForm.vue's data-booking-error. -->
+    <div
+      v-if="cart.persistError"
+      data-persist-error
+      class="mb-6 bg-error-container rounded-xl px-4 py-3 font-body-md text-body-md text-on-error-container"
+      role="alert"
+    >
+      {{ cart.persistError }}
+    </div>
+
     <!-- Empty state -->
     <div v-if="cart.isEmpty" data-empty-cart class="flex flex-col items-center justify-center py-24 gap-6 text-center">
       <span class="material-symbols-outlined text-7xl text-on-surface-variant/40" aria-hidden="true">
