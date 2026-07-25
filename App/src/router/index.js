@@ -46,11 +46,57 @@ const routes = [
     name: 'cart',
     component: () => import('../views/Cart.vue'),
   },
+  // Profile/history (mobile-capacitor-setup Phase 8, tasks 8.9-8.10). The
+  // app's FIRST auth-gated route — unlike /cart (guest carts intentionally
+  // allowed, see frontend/src/router/index.js's own comment on that), a
+  // user's purchase/appointment history is meaningless without a session, so
+  // it carries `requiresAuth: true` (same meta shape as frontend's
+  // /profile route) and is enforced by the beforeEach guard below.
+  {
+    path: '/profile',
+    name: 'profile',
+    component: () => import('../views/Profile.vue'),
+    meta: { requiresAuth: true },
+  },
 ]
 
 const router = createRouter({
   history: createWebHistory(),
   routes,
+})
+
+/**
+ * Pure guard-decision function — extracted so it can be unit-tested without
+ * needing a running router or real navigation (same convention as
+ * frontend/src/router/index.js's resolveGuard). App only ever needs the
+ * requiresAuth branch: there is no admin/instructor surface (Phase 7's own
+ * invariant — see router.test.js) and no requiresGuest-restricted route.
+ *
+ * Returns:
+ *   null           → proceed (call next() with no arguments)
+ *   { name, ... }  → redirect target (call next(destination))
+ */
+export function resolveGuard(to, authStore) {
+  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+    return { name: 'login', query: { redirect: to.fullPath } }
+  }
+  return null
+}
+
+router.beforeEach((to, _from, next) => {
+  // Import the store inside the guard to avoid a circular-dependency chain:
+  // router/index.js -> stores/auth.js -> services/api.js -> router/index.js.
+  // By the time any navigation fires, Pinia is already installed via
+  // main.js's bootstrap(), same precondition frontend's guard relies on.
+  import('../stores/auth.js').then(({ useAuthStore }) => {
+    const authStore = useAuthStore()
+    const destination = resolveGuard(to, authStore)
+    if (destination !== null) {
+      next(destination)
+    } else {
+      next()
+    }
+  })
 })
 
 export default router
