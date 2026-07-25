@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Cleartext (HTTP) is allowed ONLY for the local dev backend, reached via the
+  Android emulator's special loopback alias (10.0.2.2 -> host machine's
+  localhost, where `php artisan serve` runs). This is NOT a blanket
+  cleartext allowance: base-config below forces HTTPS (system trust
+  anchors) for every other domain, including production.
+
+  To test against a physical device on the same LAN, add a second <domain>
+  entry with your dev machine's LAN IP (matching the VITE_API_URL override
+  documented in App/.env.example) - do NOT widen this to a production
+  domain or a wildcard domain.
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">10.0.2.2</domain>
+    </domain-config>
+
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

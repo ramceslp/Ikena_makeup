@@ -1,5 +1,18 @@
 apply plugin: 'com.android.application'
 
+// Release signing: reads from a gitignored keystore.properties file (see
+// android/keystore.properties.example for the expected keys). No real
+// keystore or credentials are committed to version control. When the file
+// is absent (e.g. on a fresh checkout or CI without secrets configured),
+// release builds fall back to debug signing so `./gradlew assembleRelease`
+// still runs locally without failing on a missing signing config.
+def keystorePropertiesFile = rootProject.file('keystore.properties')
+def keystoreProperties = new Properties()
+def hasReleaseSigning = keystorePropertiesFile.exists()
+if (hasReleaseSigning) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace = "com.ikenamakeup.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -16,8 +29,19 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (hasReleaseSigning) {
+                storeFile file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
+            signingConfig hasReleaseSigning ? signingConfigs.release : signingConfigs.debug
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
