@@ -173,4 +173,19 @@ describe('Profile.vue (App) — history [Spec: history loads / no history yet]',
 
     expect(wrapper.find('[data-notification-status]').text()).toContain('Pendiente')
   })
+
+  // [Judgment Day fix, PR8d Round 1]: pushStore.error was recorded by
+  // push.js (register-call-failed/backend-registration-failed/native-
+  // registration-failed) but never rendered anywhere -- a third instance of
+  // this codebase's "state set but never rendered" bug class if left alone.
+  it('shows "Error" when push permission was granted but registration then failed', async () => {
+    pushState.registered = false
+    pushState.permissionState = 'granted'
+    pushState.error = 'backend-registration-failed'
+    mockApi()
+    const wrapper = mount(Profile, { global: { plugins: [router] } })
+    await flushPromises()
+
+    expect(wrapper.find('[data-notification-status]').text()).toContain('Error')
+  })
 })

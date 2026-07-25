@@ -67,9 +67,19 @@ onMounted(init)
 // now has a real UI consumer, matching cart.js's persistError/payError
 // precedent of "state exists ⇒ someone renders it") without inventing new
 // business behavior that has no spec scenario backing it.
+// [Judgment Day fix, PR8d Round 1]: `registered`/`permissionState` alone left
+// push.js's recorded `error` (register-call-failed / backend-registration-
+// failed / native-registration-failed / permission-check-failed) with no UI
+// consumer at all -- a permission-granted-but-registration-failed case would
+// otherwise show "Pendiente" forever with zero indication anything actually
+// went wrong. `error` takes priority over the pending fallback (a resolved
+// failure is more informative than "still pending"), but stays behind the
+// success/denied checks so a stale error field from a prior attempt never
+// masks a definitively resolved state.
 const notificationStatus = computed(() => {
   if (pushStore.registered) return 'Activadas'
   if (pushStore.permissionState === 'denied') return 'Desactivadas'
+  if (pushStore.error) return 'Error'
   return 'Pendiente'
 })
 </script>
