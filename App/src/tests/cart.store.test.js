@@ -16,7 +16,26 @@ vi.mock('../services/storage.js', () => ({
   CART_KEY: 'ikena_cart',
 }))
 
+// ---------------------------------------------------------------------------
+// Mock api.js and @capacitor/browser for the pay() action (tasks 8.3-8.5):
+// pay() POSTs to /checkout/handoff and opens the returned URL via
+// @capacitor/browser -- never the app's own router/WebView. Mirrors the
+// api.js mocking convention already used by booking.store.test.js.
+// ---------------------------------------------------------------------------
+vi.mock('../services/api.js', () => ({
+  default: {
+    post: vi.fn(),
+    interceptors: { request: { use: vi.fn() }, response: { use: vi.fn() } },
+  },
+}))
+
+vi.mock('@capacitor/browser', () => ({
+  Browser: { open: vi.fn().mockResolvedValue(undefined) },
+}))
+
 import { set, remove, getCached } from '../services/storage.js'
+import api from '../services/api.js'
+import { Browser } from '@capacitor/browser'
 import { useCartStore } from '../stores/cart.js'
 
 const product = (overrides = {}) => ({
@@ -212,5 +231,94 @@ describe('cart store', () => {
     await store.addItem(product({ id: 2, slug: 'otro' }))
 
     expect(store.persistError).toBeNull()
+  })
+
+  // ── pay() — checkout-handoff action (tasks 8.3-8.5) ─────────────────────
+  // The app never renders payment UI inside its own WebView (spec's Mobile
+  // App Boundaries). pay() instead POSTs a snapshot to
+  // POST /api/checkout/handoff and opens the returned URL via
+  // @capacitor/browser's Browser.open() -- never the app's own router.
+
+  describe('pay', () => {
+    it('blocks the handoff call and sets a "cart is empty" error when the cart has no items [Spec: cart empty at checkout tap]', async () => {
+      const store = useCartStore()
+      expect(store.isEmpty).toBe(true)
+
+      await store.pay()
+
+      expect(api.post).not.toHaveBeenCalled()
+      expect(Browser.open).not.toHaveBeenCalled()
+      expect(store.payError).toBe('El carrito está vacío.')
+    })
+
+    it('POSTs /checkout/handoff with a product_cart snapshot and opens the returned URL via @capacitor/browser, never the app WebView [Spec: handoff opens browser pre-loaded]', async () => {
+      const store = useCartStore()
+      await store.addItem(product({ id: 1, quantity: 1 }))
+      await store.addItem(product({ id: 2, slug: 'otro' }))
+      await store.updateQuantity(2, 3)
+
+      api.post.mockResolvedValueOnce({
+        data: {
+          data: {
+            url: 'https://app.ikena.com/checkout/resume#token=abc123',
+            expires_at: '2026-07-25T15:10:00Z',
+          },
+        },
+      })
+
+      await store.pay()
+
+      expect(api.post).toHaveBeenCalledWith('/checkout/handoff', {
+        type: 'product_cart',
+        items: [
+          { product_id: 1, quantity: 1 },
+          { product_id: 2, quantity: 3 },
+        ],
+      })
+      expect(Browser.open).toHaveBeenCalledWith({
+        url: 'https://app.ikena.com/checkout/resume#token=abc123',
+      })
+      expect(store.payError).toBeNull()
+    })
+
+    it('sets payError and never opens the browser when the handoff call fails', async () => {
+      const store = useCartStore()
+      await store.addItem(product())
+
+      const error = new Error('Request failed')
+      error.response = { data: { message: 'Uno o más productos no están disponibles.' } }
+      api.post.mockRejectedValueOnce(error)
+
+      await store.pay()
+
+      expect(Browser.open).not.toHaveBeenCalled()
+      expect(store.payError).toBe('Uno o más productos no están disponibles.')
+    })
+
+    it('falls back to a generic Spanish error message when the handoff failure has no response body', async () => {
+      const store = useCartStore()
+      await store.addItem(product())
+      api.post.mockRejectedValueOnce(new Error('Network Error'))
+
+      await store.pay()
+
+      expect(Browser.open).not.toHaveBeenCalled()
+      expect(store.payError).toBe('No se pudo iniciar el pago. Inténtalo de nuevo.')
+    })
+
+    it('clears a previous payError on the next pay() attempt before re-checking the cart', async () => {
+      const store = useCartStore()
+      await store.addItem(product())
+      api.post.mockRejectedValueOnce(new Error('Network Error'))
+      await store.pay()
+      expect(store.payError).not.toBeNull()
+
+      api.post.mockResolvedValueOnce({
+        data: { data: { url: 'https://app.ikena.com/checkout/resume#token=xyz', expires_at: '' } },
+      })
+      await store.pay()
+
+      expect(store.payError).toBeNull()
+    })
   })
 })

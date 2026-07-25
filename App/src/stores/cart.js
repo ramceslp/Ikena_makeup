@@ -1,4 +1,6 @@
 import { defineStore } from 'pinia'
+import { Browser } from '@capacitor/browser'
+import api from '../services/api.js'
 import { set, remove, getCached, CART_KEY } from '../services/storage.js'
 
 // Ported from frontend/src/stores/cart.js (mobile-capacitor-setup Phase 8,
@@ -9,15 +11,15 @@ import { set, remove, getCached, CART_KEY } from '../services/storage.js'
 // from storage.js's in-memory cache, which main.js's bootstrap() warms via
 // hydrate() BEFORE the app is mounted (see services/storage.js hydrate()).
 //
-// checkout() is intentionally NOT ported here. The web version posts
-// directly to /cart/checkout and renders the PayPhone widget inline
-// (Cart.vue) -- that pattern would render payment UI inside this app's own
-// WebView, which the spec's Mobile App Boundaries explicitly forbid ("MUST
-// NOT render any payment UI inside the app's own WebView"). The app's
-// equivalent "pay" action instead calls the checkout-handoff endpoint and
-// opens the result via @capacitor/browser (design.md Decision 1) -- that
-// action, plus the empty-cart guard and browser-isolation tests, are tasks
-// 8.3-8.5, a separate PR (8b), not part of this port.
+// checkout() (the web's direct /cart/checkout + inline PayPhone widget
+// action) is intentionally NOT ported here -- that pattern would render
+// payment UI inside this app's own WebView, which the spec's Mobile App
+// Boundaries explicitly forbid ("MUST NOT render any payment UI inside the
+// app's own WebView"). pay() below is the app's real equivalent: it calls
+// the checkout-handoff endpoint (design.md Decision 1) and hands the
+// returned URL to @capacitor/browser's Browser.open(), which renders the
+// checkout page in the system/in-app Browser container -- never the app's
+// own router/WebView (tasks 8.3-8.5).
 function isValidItem(item) {
   if (!item || typeof item !== 'object') return false
   const price = parseFloat(item.price)
@@ -41,6 +43,13 @@ export const useCartStore = defineStore('cart', {
     // because cart.js has exactly one async concern (persistence), shared by
     // every action below.
     persistError: null,
+    // pay() state (tasks 8.3-8.5): isPaying drives the CTA's loading state in
+    // CartSummary.vue; payError surfaces either the client-side "cart is
+    // empty" guard or a failed POST /checkout/handoff call. Same single-field
+    // convention as persistError/bookingError -- pay() has exactly one async
+    // concern.
+    isPaying: false,
+    payError: null,
   }),
 
   getters: {
@@ -109,6 +118,52 @@ export const useCartStore = defineStore('cart', {
     async clear() {
       this.items = []
       await this._persist()
+    },
+
+    /**
+     * "Pay" action (tasks 8.3-8.5). Snapshots the current cart into
+     * POST /api/checkout/handoff and opens the returned resume URL via
+     * @capacitor/browser's Browser.open() -- the system/in-app Browser
+     * container, never the app's own router/WebView (spec's "Payment never
+     * renders in the app's WebView" / "Handoff opens system/in-app browser
+     * pre-loaded" scenarios).
+     *
+     * Guards against an empty cart client-side BEFORE contacting the
+     * backend at all [Spec: cart empty at checkout tap] -- the backend's
+     * own StoreCartCheckoutRequest also rejects an empty `items` array
+     * (min:1), but that would mean a wasted round-trip and a generic 422
+     * instead of the specific "cart is empty" message the spec calls for.
+     */
+    async pay() {
+      this.payError = null
+
+      if (this.isEmpty) {
+        this.payError = 'El carrito está vacío.'
+        return
+      }
+
+      this.isPaying = true
+      try {
+        const response = await api.post('/checkout/handoff', {
+          type: 'product_cart',
+          items: this.items.map((item) => ({
+            product_id: item.product_id,
+            quantity: item.quantity,
+          })),
+        })
+        const { url } = response.data.data
+        // Browser.open() renders the checkout URL exclusively in the
+        // system/in-app Browser container -- this is the one call in the
+        // entire app that is allowed to load a payment-adjacent URL, and it
+        // deliberately never touches this app's own router/WebView.
+        await Browser.open({ url })
+      } catch (err) {
+        console.error('Failed to start checkout handoff:', err)
+        this.payError =
+          err.response?.data?.message || 'No se pudo iniciar el pago. Inténtalo de nuevo.'
+      } finally {
+        this.isPaying = false
+      }
     },
   },
 })
