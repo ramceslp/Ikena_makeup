@@ -52,6 +52,21 @@ export const usePushStore = defineStore('push', {
     async init() {
       this.error = null
 
+      if (!Capacitor.isNativePlatform()) {
+        // @capacitor/push-notifications has no web implementation -- every
+        // method on the plugin throws "... is not implemented on web" (see
+        // services/pushNotifications.js's plugin wrapper). init() runs
+        // unconditionally at every app boot and login (see main.js/auth.js),
+        // which includes every `npm run dev` session in a browser. This is
+        // an expected, not-a-failure condition for that platform, so it is
+        // a clean no-op: `registered` stays false, `error` stays null
+        // (denial/skip here is not the "registration call fails" or
+        // "permission denied" spec scenario -- there is no native
+        // permission system to check or deny on web), and nothing is
+        // logged, since there is nothing to retry or report.
+        return
+      }
+
       if (!getCached(TOKEN_KEY)) {
         // Not logged in yet — loginWithGoogle() calls init() again right
         // after a session exists.
@@ -107,7 +122,17 @@ export const usePushStore = defineStore('push', {
 
     async _onToken(token) {
       try {
-        await api.post('/device-tokens', { token, platform: Capacitor.getPlatform() })
+        // skipAuthRedirect: true -- this call runs unprompted in the
+        // background (app boot / post-login), so a stale/expired cached
+        // token must not force-clear the session and redirect the user away
+        // from whatever screen they're on (see services/api.js's
+        // handleResponseError doc comment). The catch block below still
+        // records the failure on `error` normally either way.
+        await api.post(
+          '/device-tokens',
+          { token, platform: Capacitor.getPlatform() },
+          { skipAuthRedirect: true }
+        )
         await set(PUSH_TOKEN_KEY, token)
         this.registered = true
         this.error = null

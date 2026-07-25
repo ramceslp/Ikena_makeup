@@ -151,6 +151,16 @@ describe('api.js interceptors', () => {
       expect(router.push).toHaveBeenCalledTimes(1)
     })
 
+    it('on 401 with config.skipAuthRedirect, does NOT clear storage or redirect (opt-out for background/opportunistic calls like push.js device-token registration), but still rejects so the caller\'s own catch records the failure', async () => {
+      router.currentRoute.value.path = '/cart'
+      const error = { response: { status: 401 }, config: { skipAuthRedirect: true } }
+
+      await expect(handleResponseError(error)).rejects.toBe(error)
+
+      expect(remove).not.toHaveBeenCalled()
+      expect(router.push).not.toHaveBeenCalled()
+    })
+
     it('surfaces the original 401 error (not a router navigation failure) when router.push("/login") rejects, and still resets the redirect guard', async () => {
       router.currentRoute.value.path = '/cart'
       const navigationError = new Error('Failed to fetch dynamically imported module')

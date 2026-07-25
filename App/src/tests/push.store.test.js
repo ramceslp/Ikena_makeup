@@ -34,12 +34,16 @@ vi.mock('../services/pushNotifications.js', () => ({
 }))
 
 vi.mock('@capacitor/core', () => ({
-  Capacitor: { getPlatform: vi.fn().mockReturnValue('android') },
+  Capacitor: {
+    getPlatform: vi.fn().mockReturnValue('android'),
+    isNativePlatform: vi.fn().mockReturnValue(true),
+  },
 }))
 
 import api from '../services/api.js'
 import { get, set, remove, getCached } from '../services/storage.js'
 import { checkPushPermission, requestPushPermission, registerForPush } from '../services/pushNotifications.js'
+import { Capacitor } from '@capacitor/core'
 import { usePushStore } from '../stores/push.js'
 
 describe('push store', () => {
@@ -48,6 +52,22 @@ describe('push store', () => {
     vi.clearAllMocks()
     getCached.mockReturnValue(null) // no cached auth token by default (not logged in)
     get.mockResolvedValue(null) // no previously-registered push token by default
+    Capacitor.isNativePlatform.mockReturnValue(true) // native by default; web is opted into per-test below
+  })
+
+  // ── Web/dev-session gating ──────────────────────────────────────────────
+  it('init() no-ops cleanly on web (Capacitor.isNativePlatform() === false): no permission check, no registration attempt, no error recorded', async () => {
+    Capacitor.isNativePlatform.mockReturnValue(false)
+    getCached.mockReturnValue('auth-tok') // even with a live session...
+
+    const store = usePushStore()
+    await store.init()
+
+    expect(checkPushPermission).not.toHaveBeenCalled()
+    expect(registerForPush).not.toHaveBeenCalled()
+    expect(api.post).not.toHaveBeenCalled()
+    expect(store.registered).toBe(false)
+    expect(store.error).toBeNull() // web is an expected condition, not a failure
   })
 
   it('init() short-circuits with no permission check and no registration attempt when there is no authenticated session yet', async () => {
@@ -114,10 +134,14 @@ describe('push store', () => {
     const store = usePushStore()
     await store.init()
 
-    expect(api.post).toHaveBeenCalledWith('/device-tokens', {
-      token: 'fresh-fcm-token',
-      platform: 'android',
-    })
+    expect(api.post).toHaveBeenCalledWith(
+      '/device-tokens',
+      {
+        token: 'fresh-fcm-token',
+        platform: 'android',
+      },
+      { skipAuthRedirect: true }
+    )
     expect(set).toHaveBeenCalledWith('ikena_push_token', 'fresh-fcm-token')
     expect(store.registered).toBe(true)
     expect(store.error).toBeNull()
