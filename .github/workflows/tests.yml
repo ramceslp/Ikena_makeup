@@ -24,8 +24,10 @@ jobs:
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
-          # composer.json requires "php": "^8.3"
-          php-version: "8.3"
+          # composer.json requires "php": "^8.4" (composer.lock pulls
+          # symfony/* v8.1.0 packages that need php >=8.4.1; declaring
+          # ^8.3 was inaccurate and unlockable on 8.3).
+          php-version: "8.4"
           extensions: mbstring, pdo, pdo_sqlite, sqlite3, bcmath, curl, dom, fileinfo, filter, hash, tokenizer, xml, ctype, json, openssl
           coverage: none
 
