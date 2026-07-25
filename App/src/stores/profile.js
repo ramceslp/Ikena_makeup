@@ -30,8 +30,13 @@ export const useProfileStore = defineStore('profile', {
         const response = await api.get('/profile/orders', { params: { page } })
         this.orders = response.data.data
         this.ordersMeta = response.data.meta
-      } catch {
-        this.error = 'Error al cargar tu historial'
+      } catch (err) {
+        // [Judgment Day fix, PR8d Round 1]: surface the backend's specific
+        // error detail when present, matching the established convention in
+        // every sibling store (products.js/services.js/booking.js), instead
+        // of silently discarding it behind the same generic fallback string
+        // on every failure.
+        this.error = err.response?.data?.message || 'Error al cargar tu historial'
       } finally {
         this.loading = false
       }

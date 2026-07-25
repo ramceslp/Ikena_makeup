@@ -88,6 +88,19 @@ describe('profile store — fetchOrders [Spec: history loads / no history yet]',
     expect(store.loading).toBe(false)
   })
 
+  // [Judgment Day fix, PR8d Round 1]: catch{} previously discarded the real
+  // error entirely, always showing the same generic fallback string. Every
+  // sibling store (products.js/services.js/booking.js) instead surfaces
+  // err.response?.data?.message when the backend provides one.
+  it('fetchOrders surfaces the backend\'s specific error message when present, instead of the generic fallback', async () => {
+    api.get.mockRejectedValueOnce({ response: { data: { message: 'Sesión expirada' } } })
+
+    const store = useProfileStore()
+    await store.fetchOrders()
+
+    expect(store.error).toBe('Sesión expirada')
+  })
+
   it('fetchOrders clears a previous error on a subsequent successful call', async () => {
     api.get.mockRejectedValueOnce(new Error('Network Error'))
     const store = useProfileStore()
