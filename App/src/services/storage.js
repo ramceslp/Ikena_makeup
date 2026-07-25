@@ -3,6 +3,10 @@ import { Preferences } from '@capacitor/preferences'
 // Well-known keys used across the app for the cached auth session.
 export const TOKEN_KEY = 'ikena_auth_token'
 export const USER_KEY = 'ikena_user'
+// Cart contents (mobile-capacitor-setup Phase 8) — replaces the web's
+// localStorage-backed 'ikena_cart' key with the same async Preferences path
+// used for the auth session (see cart.js).
+export const CART_KEY = 'ikena_cart'
 
 // In-memory cache so synchronous consumers (the Axios request interceptor in
 // api.js in particular) can read a value without awaiting the async
@@ -59,11 +63,12 @@ export function getCached(key) {
 }
 
 /**
- * Warms the in-memory cache for the auth session (token + user) from
- * Preferences. Call once at app boot before mounting routes that depend on
- * synchronous cached-token reads (e.g. the Axios request interceptor).
+ * Warms the in-memory cache for the auth session (token + user) and the
+ * cart from Preferences. Call once at app boot before mounting routes that
+ * depend on synchronous cached reads (e.g. the Axios request interceptor's
+ * token read, and cart.js's store-init read — see stores/cart.js).
  */
 export async function hydrate() {
-  const [token, user] = await Promise.all([get(TOKEN_KEY), get(USER_KEY)])
-  return { token, user }
+  const [token, user, cart] = await Promise.all([get(TOKEN_KEY), get(USER_KEY), get(CART_KEY)])
+  return { token, user, cart }
 }
