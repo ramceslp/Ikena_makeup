@@ -51,3 +51,48 @@ describe('services store (trimmed: fetchServices only, see Home.vue)', () => {
     expect(store.services).toEqual([])
   })
 })
+
+// Phase 7: fetchService (detail) + fetchCategories, needed by
+// ServiceDetail.vue and Services.vue's category filter. Admin CRUD/upload
+// actions are intentionally NOT ported -- no admin surface in this app (see
+// services.js's file-level comment and the spec's Mobile App Boundaries).
+describe('services store — fetchService + fetchCategories (Phase 7)', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+  })
+
+  it('fetchService GETs /services/:slug and populates currentService', async () => {
+    const fakeService = { id: 1, slug: 'maquillaje-novia', title: 'Maquillaje de Novia' }
+    api.get.mockResolvedValueOnce({ data: { data: fakeService } })
+
+    const store = useServicesStore()
+    const result = await store.fetchService('maquillaje-novia')
+
+    expect(api.get).toHaveBeenCalledWith('/services/maquillaje-novia')
+    expect(store.currentService).toEqual(fakeService)
+    expect(result).toEqual(fakeService)
+  })
+
+  it('fetchService sets a Spanish error message and re-throws on failure', async () => {
+    const notFound = new Error('Not Found')
+    notFound.response = { status: 404 }
+    api.get.mockRejectedValueOnce(notFound)
+
+    const store = useServicesStore()
+    await expect(store.fetchService('missing')).rejects.toThrow('Not Found')
+
+    expect(store.error).toBe('Error al cargar el servicio')
+  })
+
+  it('fetchCategories GETs /categories and populates categories once, skipping subsequent calls', async () => {
+    api.get.mockResolvedValueOnce({ data: { data: [{ id: 1, name: 'Novias', slug: 'novias' }] } })
+
+    const store = useServicesStore()
+    await store.fetchCategories()
+    await store.fetchCategories()
+
+    expect(api.get).toHaveBeenCalledTimes(1)
+    expect(store.categories).toEqual([{ id: 1, name: 'Novias', slug: 'novias' }])
+  })
+})

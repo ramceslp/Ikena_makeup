@@ -313,7 +313,7 @@ class ServiceCatalogTest extends TestCase
                  ->assertJsonStructure([
                      'data' => [
                          'id', 'title', 'slug', 'description', 'price',
-                         'duration_hours', 'availability_type',
+                         'duration_hours', 'availability_type', 'deposit_percentage',
                          'images',
                      ],
                  ]);
@@ -323,6 +323,32 @@ class ServiceCatalogTest extends TestCase
         $this->assertEquals(0, $images[0]['sort_order']);
         $this->assertEquals(1, $images[1]['sort_order']);
         $this->assertEquals(2, $images[2]['sort_order']);
+    }
+
+    /** WARNING fix: deposit_percentage must reflect the service's own configured value
+     *  (via the `deposit_percentage` column, defaulted to the global config value at the
+     *  DB level), not a hardcoded value baked into the resource.
+     */
+    public function test_show_returns_configured_deposit_percentage(): void
+    {
+        $configured = Service::factory()->published()->create([
+            'slug'               => 'custom-deposit-service',
+            'deposit_percentage' => 30,
+        ]);
+        $default = Service::factory()->published()->create([
+            'slug' => 'default-deposit-service',
+        ]);
+
+        $responseConfigured = $this->getJson('/api/services/custom-deposit-service');
+        $responseDefault    = $this->getJson('/api/services/default-deposit-service');
+
+        $responseConfigured->assertStatus(200);
+        $responseDefault->assertStatus(200);
+        $this->assertEquals(30, $responseConfigured->json('data.deposit_percentage'));
+        $this->assertEquals(
+            (int) config('booking.deposit.default_percentage'),
+            $responseDefault->json('data.deposit_percentage')
+        );
     }
 
     public function test_show_returns_gallery_images_in_sort_order(): void

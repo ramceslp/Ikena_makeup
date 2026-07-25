@@ -17,6 +17,7 @@ class ServiceDetailResource extends JsonResource
             'price'             => number_format((float) $this->price, 2, '.', ''),
             'duration_hours'    => $this->duration_hours,
             'availability_type' => $this->availability_type,
+            'deposit_percentage' => $this->depositPercentage(),
             'thumbnail'         => $this->thumbnailUrl,
             'images_count'      => $this->images->count(),
             // Delegate URL resolution to the model — single source of truth for path → URL
