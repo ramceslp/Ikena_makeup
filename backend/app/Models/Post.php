@@ -34,6 +34,10 @@ class Post extends Model
             'is_published' => 'boolean',
             'is_featured'  => 'boolean',
             'published_at' => 'datetime',
+            // Intentionally NOT in $fillable — the push idempotency guard must
+            // not be clearable from a request payload. Stamped via forceFill
+            // in App\Services\Push\PushDispatcher.
+            'push_notified_at' => 'datetime',
         ];
     }
 

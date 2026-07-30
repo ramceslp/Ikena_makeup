@@ -32,6 +32,10 @@ class Course extends Model
             'price'              => 'decimal:2',
             'is_published'       => 'boolean',
             'offers_certificate' => 'boolean',
+            // Intentionally NOT in $fillable — the push idempotency guard must
+            // not be clearable from a request payload. Stamped via forceFill
+            // in App\Services\Push\PushDispatcher.
+            'push_notified_at'   => 'datetime',
         ];
     }
 

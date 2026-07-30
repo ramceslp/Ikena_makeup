@@ -8,6 +8,7 @@ use App\Http\Requests\Instructor\UpdateCourseRequest;
 use App\Http\Resources\Instructor\InstructorCourseCardResource;
 use App\Http\Resources\Instructor\InstructorCourseDetailResource;
 use App\Models\Course;
+use App\Services\Push\PushDispatcher;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -124,7 +125,7 @@ class CourseController extends Controller
      * POST /api/instructor/courses/{slug}/publish
      * Publish course — 422 if course has 0 lessons.
      */
-    public function publish(Request $request, string $slug): JsonResponse
+    public function publish(Request $request, string $slug, PushDispatcher $pushDispatcher): JsonResponse
     {
         $course = Course::where('slug', $slug)->firstOrFail();
 
@@ -139,6 +140,13 @@ class CourseController extends Controller
         }
 
         $course->update(['is_published' => true]);
+
+        // The ONLY path by which a course becomes available: store() hard-codes
+        // is_published to false, so this is the single push hook point. Fires
+        // at most once — PushDispatcher stamps push_notified_at, so an
+        // unpublish/republish cycle does not re-notify
+        // (push-notifications Slice 2).
+        $pushDispatcher->forCourse($course);
 
         $course->load('sections.lessons');
         $course->loadCount('lessons');
