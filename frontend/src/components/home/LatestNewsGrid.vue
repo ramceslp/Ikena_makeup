@@ -11,6 +11,22 @@ onMounted(async () => {
   posts.value = (await postsStore.fetchLatest()) ?? []
 })
 
+// A cover_image_url that is present but fails to LOAD is a different case
+// from one that is absent, and it looks worse: the broken-image glyph plus
+// the alt text overflow the thumbnail. Tracked per post id, not with a
+// single flag — one card's image can 500 while its siblings return 200,
+// which is exactly what happened with the seeded placeholder host. Mirrors
+// App/src/components/home/LatestNewsGrid.vue.
+const failedCovers = ref({})
+
+function markCoverFailed(post) {
+  failedCovers.value[post.id] = true
+}
+
+function hasCover(post) {
+  return Boolean(post.cover_image_url) && !failedCovers.value[post.id]
+}
+
 function getCtaHref(post) {
   return safeCtaUrl(post.cta_url)
 }
@@ -53,10 +69,12 @@ function getSlugLink(post) {
           <!-- Cover image -->
           <div class="aspect-video bg-blush-canvas/10 overflow-hidden">
             <img
-              v-if="post.cover_image_url"
+              v-if="hasCover(post)"
               :src="post.cover_image_url"
               :alt="post.title"
+              data-card-cover
               class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              @error="markCoverFailed(post)"
             />
             <div v-else class="w-full h-full flex items-center justify-center">
               <span class="material-symbols-outlined text-4xl text-blush-canvas/40" aria-hidden="true">article</span>

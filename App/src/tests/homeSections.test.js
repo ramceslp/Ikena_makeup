@@ -164,6 +164,87 @@ describe('FeaturedProducts.vue (App)', () => {
   })
 })
 
+/**
+ * A cover_image_url that is present but fails to LOAD is a different case
+ * from one that is absent, and both components only handled the second.
+ * Seen for real on the emulator: a seeded placeholder host returned 500 for
+ * one post while returning 200 for its siblings.
+ */
+describe('broken cover images (App home)', () => {
+  function post(overrides = {}) {
+    return {
+      id: 1,
+      title: 'Nueva colección',
+      slug: 'nueva-coleccion',
+      excerpt: 'Resumen',
+      type: 'noticia',
+      cover_image_url: 'http://broken.test/x.jpg',
+      cta_label: null,
+      cta_url: null,
+      published_at: '2026-07-20T10:00:00-05:00',
+      ...overrides,
+    }
+  }
+
+  it('FeaturedNewsHero falls back to the gradient when its cover fails', async () => {
+    api.get.mockResolvedValue({ data: { data: post() } })
+
+    const wrapper = mountWithRouter(FeaturedNewsHero)
+    await flushPromises()
+
+    expect(wrapper.find('[data-hero-cover]').exists()).toBe(true)
+    expect(wrapper.find('[data-hero-gradient]').exists()).toBe(false)
+
+    await wrapper.find('[data-hero-cover]').trigger('error')
+
+    // The v-else gradient only tested whether the URL existed, so before this
+    // fix a failed load left the hero with neither an image nor its backdrop.
+    expect(wrapper.find('[data-hero-cover]').exists()).toBe(false)
+    expect(wrapper.find('[data-hero-gradient]').exists()).toBe(true)
+  })
+
+  it('LatestNewsGrid falls back to the placeholder for a card whose cover fails', async () => {
+    api.get.mockResolvedValue({ data: { data: [post()] } })
+
+    const wrapper = mountWithRouter(LatestNewsGrid)
+    await flushPromises()
+
+    expect(wrapper.find('[data-card-cover]').exists()).toBe(true)
+
+    await wrapper.find('[data-card-cover]').trigger('error')
+
+    expect(wrapper.find('[data-card-cover]').exists()).toBe(false)
+    expect(wrapper.find('[data-card-cover-placeholder]').exists()).toBe(true)
+  })
+
+  /**
+   * The reason failure is tracked per post id rather than with one flag:
+   * exactly the situation observed on the emulator, where one placeholder
+   * URL 500'd and the others did not.
+   */
+  it('LatestNewsGrid does not let one broken cover hide the others', async () => {
+    api.get.mockResolvedValue({
+      data: {
+        data: [
+          post({ id: 1, slug: 'a', cover_image_url: 'http://broken.test/a.jpg' }),
+          post({ id: 2, slug: 'b', cover_image_url: 'http://ok.test/b.jpg' }),
+          post({ id: 3, slug: 'c', cover_image_url: 'http://ok.test/c.jpg' }),
+        ],
+      },
+    })
+
+    const wrapper = mountWithRouter(LatestNewsGrid)
+    await flushPromises()
+
+    expect(wrapper.findAll('[data-card-cover]')).toHaveLength(3)
+
+    await wrapper.findAll('[data-card-cover]')[0].trigger('error')
+
+    expect(wrapper.findAll('[data-card-cover]')).toHaveLength(2)
+    expect(wrapper.findAll('[data-card-cover-placeholder]')).toHaveLength(1)
+  })
+})
+
 describe('NewsletterCta.vue (App)', () => {
   it('renders an email input and emits subscribe on submit', async () => {
     const wrapper = mount(NewsletterCta)

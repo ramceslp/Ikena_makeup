@@ -6,6 +6,18 @@ import { safeCtaUrl } from '../utils/cta.js'
 
 const postsStore = usePostsStore()
 
+// See components/home/LatestNewsGrid.vue — same per-post-id tracking, and
+// for the same reason: one card's cover can fail while its siblings load.
+const failedCovers = ref({})
+
+function markCoverFailed(post) {
+  failedCovers.value[post.id] = true
+}
+
+function hasCover(post) {
+  return Boolean(post.cover_image_url) && !failedCovers.value[post.id]
+}
+
 const posts = computed(() => postsStore.posts)
 const meta = computed(() => postsStore.postMeta)
 const loading = computed(() => postsStore.loading)
@@ -87,10 +99,12 @@ onMounted(() => {
             <!-- Cover image -->
             <div class="aspect-video bg-surface-container overflow-hidden">
               <img
-                v-if="post.cover_image_url"
+                v-if="hasCover(post)"
                 :src="post.cover_image_url"
                 :alt="post.title"
+                data-card-cover
                 class="w-full h-full object-cover"
+                @error="markCoverFailed(post)"
               />
               <div
                 v-else

@@ -1,11 +1,16 @@
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { usePostsStore } from '../stores/posts.js'
 import { safeCtaUrl } from '../utils/cta.js'
 
 const route = useRoute()
 const postsStore = usePostsStore()
+
+// A failed cover load is hidden rather than replaced with a placeholder:
+// the headline directly below already carries the meaning, so an empty
+// decorative block would add nothing. Mirrors App/src/views/NewsDetail.vue.
+const coverFailed = ref(false)
 
 const post = computed(() => postsStore.currentPost)
 const loading = computed(() => postsStore.loading)
@@ -91,12 +96,13 @@ onMounted(async () => {
       </div>
 
       <!-- Cover image -->
-      <div v-if="post.cover_image_url" class="mb-8 rounded-2xl overflow-hidden">
+      <div v-if="post.cover_image_url && !coverFailed" class="mb-8 rounded-2xl overflow-hidden">
         <img
           data-cover-image
           :src="post.cover_image_url"
           :alt="post.title"
           class="w-full aspect-video object-cover"
+          @error="coverFailed = true"
         />
       </div>
 

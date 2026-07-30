@@ -11,6 +11,13 @@ onMounted(async () => {
   post.value = await postsStore.fetchFeatured()
 })
 
+// A cover_image_url that is present but fails to LOAD is a different case
+// from one that is absent, and the hero handles only the second. Without
+// this the broken-image glyph covers the backdrop AND the signature
+// gradient-mesh fallback never runs, because its v-else only tests whether
+// the URL exists. Mirrors App/src/components/home/FeaturedNewsHero.vue.
+const coverFailed = ref(false)
+
 const ctaHref = computed(() => {
   if (!post.value) return null
   return safeCtaUrl(post.value.cta_url)
@@ -25,12 +32,14 @@ const slugLink = computed(() => {
 <template>
   <section data-featured-news-hero class="relative overflow-hidden min-h-[480px] flex items-center bg-surface-muted">
     <!-- Background image when available -->
-    <div v-if="post?.cover_image_url" class="absolute inset-0 z-0 overflow-hidden">
+    <div v-if="post?.cover_image_url && !coverFailed" class="absolute inset-0 z-0 overflow-hidden">
       <img
         :src="post.cover_image_url"
         alt=""
         aria-hidden="true"
+        data-hero-cover
         class="w-full h-full object-cover object-center"
+        @error="coverFailed = true"
       />
       <!-- Legibility veil (left → right) -->
       <div class="absolute inset-0 bg-gradient-to-r from-background via-background/60 to-transparent z-10" />
