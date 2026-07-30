@@ -359,7 +359,7 @@ function onKeydown(event, info) {
         aria-label="Mes anterior"
         :disabled="!canGoPrev || locked"
         @click="prevMonth"
-        class="flex items-center justify-center w-10 h-10 rounded-full text-on-surface-variant transition-all disabled:opacity-30 disabled:cursor-not-allowed hover:enabled:bg-surface-container hover:enabled:text-primary cursor-pointer"
+        class="flex items-center justify-center w-11 h-11 rounded-full text-on-surface-variant transition-all disabled:opacity-30 disabled:cursor-not-allowed hover:enabled:bg-surface-container hover:enabled:text-primary cursor-pointer"
       >
         <span class="material-symbols-outlined" aria-hidden="true">chevron_left</span>
       </button>
@@ -372,7 +372,7 @@ function onKeydown(event, info) {
         aria-label="Mes siguiente"
         :disabled="!canGoNext || locked"
         @click="nextMonth"
-        class="flex items-center justify-center w-10 h-10 rounded-full text-on-surface-variant transition-all disabled:opacity-30 disabled:cursor-not-allowed hover:enabled:bg-surface-container hover:enabled:text-primary cursor-pointer"
+        class="flex items-center justify-center w-11 h-11 rounded-full text-on-surface-variant transition-all disabled:opacity-30 disabled:cursor-not-allowed hover:enabled:bg-surface-container hover:enabled:text-primary cursor-pointer"
       >
         <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
       </button>

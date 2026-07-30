@@ -4,7 +4,7 @@ import { computed } from 'vue'
 const props = defineProps({
   // primary = apricot CTA · outline = bordered marsala · solid = filled marsala
   variant: { type: String, default: 'primary' },
-  size: { type: String, default: 'md' }, // md | sm
+  size: { type: String, default: 'md' }, // lg | md | sm
   type: { type: String, default: 'button' },
   // Async state: disables the button and shows a spinner without layout shift.
   loading: { type: Boolean, default: false },
@@ -12,7 +12,10 @@ const props = defineProps({
 })
 
 const base =
-  'relative inline-flex items-center justify-center gap-2 rounded-xl font-title-md ' +
+  // min-h-11 (44px) is a hard floor so every size variant clears the
+  // touch-target minimum regardless of its text line-height (Skill:
+  // touch-target-size).
+  'relative inline-flex items-center justify-center gap-2 rounded-xl font-title-md min-h-11 ' +
   'transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100 ' +
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ' +
   'focus-visible:ring-offset-2 focus-visible:ring-offset-surface'
@@ -26,8 +29,16 @@ const variants = {
 }
 
 const sizes = {
+  // 'lg' was referenced by ServiceDetail.vue's non-bookable CTA
+  // (`size="lg"`) but never defined here — `sizes[props.size]` silently
+  // resolved to `undefined`, so that button rendered with no size classes
+  // at all beyond this file's own `base` string (no horizontal padding, no
+  // font-size). Adding the missing entry rather than changing the call
+  // site: a full-width primary CTA is exactly what "lg" implies, and the
+  // call site's intent (a prominent, generously-padded button) was correct.
+  lg: 'px-8 py-5 text-title-md',
   md: 'px-8 py-4 text-title-md',
-  sm: 'px-5 py-2 rounded-lg text-label-md',
+  sm: 'px-5 py-2.5 rounded-lg text-label-md',
 }
 
 const classes = computed(() => [base, variants[props.variant], sizes[props.size]])

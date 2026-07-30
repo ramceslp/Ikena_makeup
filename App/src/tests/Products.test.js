@@ -96,6 +96,26 @@ describe('Products.vue (App) — catalog browse + connectivity [Spec: catalog br
     expect(wrapper.find('[data-catalog-error]').exists()).toBe(false)
   })
 
+  // [DEFECT 1 fix] ProductFilters.vue now hides price/stock/sort behind a
+  // "Filtros" toggle so the filter stack no longer fills the whole first
+  // viewport. Collapsing is purely visual -- a filter set while the panel
+  // is open (or was previously opened) must still reach the store/API,
+  // exactly as before the collapse was introduced.
+  it('a filter hidden behind the "Filtros" toggle still reaches the API once the panel is opened and changed', async () => {
+    api.get.mockResolvedValue({ data: { data: fakeProducts, meta: { current_page: 1, last_page: 1 } } })
+
+    const wrapper = mount(Products, { global: { plugins: [router] } })
+    await flushPromises()
+
+    await wrapper.find('[data-filters-toggle]').trigger('click')
+    await wrapper.find('[data-stock-filter]').setValue('out_of_stock')
+    await flushPromises()
+
+    const lastCall = api.get.mock.calls.at(-1)
+    expect(lastCall[0]).toBe('/products')
+    expect(lastCall[1].params).toMatchObject({ stock_state: 'out_of_stock' })
+  })
+
   it('tapping retry re-checks connectivity and renders the catalog on success', async () => {
     api.get.mockRejectedValueOnce(new Error('Network Error'))
 

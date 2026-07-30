@@ -51,7 +51,7 @@ function prev() {
           data-gallery-prev
           type="button"
           @click="prev"
-          class="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-surface/80 backdrop-blur flex items-center justify-center hover:bg-surface transition-colors shadow"
+          class="absolute left-3 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-surface/80 backdrop-blur flex items-center justify-center hover:bg-surface transition-colors shadow"
           aria-label="Imagen anterior"
         >
           <span class="material-symbols-outlined" aria-hidden="true">chevron_left</span>
@@ -60,7 +60,7 @@ function prev() {
           data-gallery-next
           type="button"
           @click="next"
-          class="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-surface/80 backdrop-blur flex items-center justify-center hover:bg-surface transition-colors shadow"
+          class="absolute right-3 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-surface/80 backdrop-blur flex items-center justify-center hover:bg-surface transition-colors shadow"
           aria-label="Imagen siguiente"
         >
           <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>

@@ -83,4 +83,22 @@ describe('Services.vue (App) — catalog browse + connectivity [Spec: catalog br
     expect(wrapper.find('[data-catalog-checking]').exists()).toBe(false)
     expect(wrapper.find('[data-service-card]').exists()).toBe(true)
   })
+
+  // [DEFECT 1 fix] ServiceFilters.vue now hides price/availability/sort
+  // behind a "Filtros" toggle. Collapsing is purely visual -- a filter set
+  // while the panel is open must still reach the store/API.
+  it('a filter hidden behind the "Filtros" toggle still reaches the API once the panel is opened and changed', async () => {
+    api.get.mockResolvedValue({ data: { data: fakeServices, meta: { current_page: 1, last_page: 1 } } })
+
+    const wrapper = mount(Services, { global: { plugins: [router] } })
+    await flushPromises()
+
+    await wrapper.find('[data-filters-toggle]').trigger('click')
+    await wrapper.find('[data-availability]').setValue('immediate')
+    await flushPromises()
+
+    const lastCall = api.get.mock.calls.at(-1)
+    expect(lastCall[0]).toBe('/services')
+    expect(lastCall[1].params).toMatchObject({ availability_type: 'immediate' })
+  })
 })

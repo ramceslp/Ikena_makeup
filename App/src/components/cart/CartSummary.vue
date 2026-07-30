@@ -51,18 +51,18 @@ const totalDisplay = computed(() => formatCents(totalCents.value))
     <div class="space-y-2 border-t border-blush-canvas/20 pt-4">
       <div class="flex justify-between font-body-md text-body-md text-on-surface-variant">
         <span>Subtotal</span>
-        <span>{{ subtotalDisplay }}</span>
+        <span class="tabular-nums">{{ subtotalDisplay }}</span>
       </div>
       <div class="flex justify-between font-body-md text-body-md text-on-surface-variant">
         <span>IVA (15%)</span>
-        <span>{{ taxDisplay }}</span>
+        <span class="tabular-nums">{{ taxDisplay }}</span>
       </div>
     </div>
 
     <!-- Total -->
     <div class="flex justify-between items-center border-t border-blush-canvas/20 pt-4">
       <span class="font-title-md text-title-md text-deep-marsala">Total</span>
-      <span data-cart-total class="font-title-lg text-title-lg text-primary">{{ totalDisplay }}</span>
+      <span data-cart-total class="font-title-lg text-title-lg text-primary tabular-nums">{{ totalDisplay }}</span>
     </div>
 
     <!-- CTA — wired to cart.pay() (tasks 8.3-8.5): POSTs /checkout/handoff

@@ -250,7 +250,7 @@ onMounted(() => {
           :aria-pressed="isDisabled(slot) ? undefined : (selectedSlotKey === occurrenceKey(slot) ? 'true' : 'false')"
           @click="selectSlot(slot)"
           @keydown.enter.space.prevent="selectSlot(slot)"
-          class="flex items-center gap-1.5 rounded-full border px-4 py-2 font-label-md text-label-md transition-all"
+          class="flex items-center gap-1.5 rounded-full border px-4 py-2 min-h-11 font-label-md text-label-md transition-all"
           :class="[
             slotDisabledReason(slot) === 'locked'
               ? 'opacity-50 cursor-wait bg-surface-container border-blush-canvas/20 text-on-surface-variant'
