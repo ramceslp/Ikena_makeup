@@ -19,7 +19,14 @@ const sending = computed(() => store.sending)
 const error = computed(() => store.error)
 const sendError = computed(() => store.sendError)
 
-const form = ref({ title: '', body: '', route: '' })
+// `destination` is a key from the server's catalogue, never a hand-typed path.
+// It used to be a free-text `route` field, and that shipped a real bug: a
+// course URL copied from THIS panel (/courses/{slug}) is not the app's route
+// for the same screen (/cursos/{slug}), and vue-router resolves an unmatched
+// path without complaining — so the notification arrived, the history said
+// "sent", and tapping it opened a blank screen. A picker cannot express a
+// destination that does not exist.
+const form = ref({ title: '', body: '', destination: '', slug: '' })
 const successMessage = ref('')
 const typeFilter = ref('')
 const currentPage = ref(1)
@@ -52,10 +59,49 @@ const statusClass = {
 }
 
 const canSubmit = computed(
-  () => form.value.title.trim() !== '' && form.value.body.trim() !== '' && !sending.value,
+  () =>
+    form.value.title.trim() !== '' &&
+    form.value.body.trim() !== '' &&
+    !destinationIncomplete.value &&
+    !sending.value,
 )
 
 const pushDisabled = computed(() => stats.value !== null && stats.value.push_enabled === false)
+
+const destinations = computed(() => store.destinations)
+
+const selectedDestination = computed(
+  () => destinations.value.find((d) => d.key === form.value.destination) ?? null,
+)
+
+const needsSlug = computed(() => selectedDestination.value?.requires_slug === true)
+
+/**
+ * The exact path the notification will open, shown back to the admin before
+ * they send. The server builds the real one — this is a preview, not the value
+ * submitted — but seeing "/cursos/mi-curso" removes the last place a mistake
+ * can hide, since the whole failure mode here is invisible until a user taps.
+ */
+const routePreview = computed(() => {
+  if (selectedDestination.value === null) return ''
+
+  const slug = form.value.slug.trim()
+
+  if (!needsSlug.value) return selectedDestination.value.pattern
+  if (slug === '') return ''
+
+  return selectedDestination.value.pattern.replace('{slug}', slug)
+})
+
+// A destination that needs a slug and hasn't got one is the one incomplete
+// state the form can be in — the server rejects it, so block it here first.
+const destinationIncomplete = computed(() => needsSlug.value && form.value.slug.trim() === '')
+
+function onDestinationChange() {
+  // A stale slug left over from a previous selection would silently ride along
+  // into a destination that does not take one.
+  form.value.slug = ''
+}
 
 function formatDate(iso) {
   if (!iso) return '—'
@@ -85,7 +131,8 @@ async function handleSubmit() {
     const created = await store.send({
       title: form.value.title.trim(),
       body: form.value.body.trim(),
-      route: form.value.route.trim(),
+      destination: form.value.destination,
+      slug: form.value.slug.trim(),
     })
 
     successMessage.value =
@@ -93,7 +140,7 @@ async function handleSubmit() {
         ? 'La notificación quedó registrada, pero NO se envió: las notificaciones push están desactivadas en el servidor.'
         : 'Notificación encolada. El historial mostrará los envíos cuando FCM responda.'
 
-    form.value = { title: '', body: '', route: '' }
+    form.value = { title: '', body: '', destination: '', slug: '' }
     await loadLogs(1)
   } catch {
     // sendError is already set by the store and rendered below.
@@ -101,7 +148,7 @@ async function handleSubmit() {
 }
 
 onMounted(async () => {
-  await Promise.all([loadLogs(), store.fetchStats()])
+  await Promise.all([loadLogs(), store.fetchStats(), store.fetchDestinations()])
 })
 </script>
 
@@ -188,22 +235,56 @@ onMounted(async () => {
         </div>
 
         <div>
-          <label for="notif-route" class="block font-label-md text-label-md text-on-surface-variant mb-1">
+          <label for="notif-destination" class="block font-label-md text-label-md text-on-surface-variant mb-1">
             Destino (opcional)
           </label>
+          <select
+            id="notif-destination"
+            v-model="form.destination"
+            data-destination-select
+            class="w-full px-4 py-3 rounded-xl border border-blush-canvas/40 font-body-md text-body-md focus:outline-none focus:border-primary"
+            @change="onDestinationChange"
+          >
+            <option value="">Ninguno — abre la app en el inicio</option>
+            <option v-for="d in destinations" :key="d.key" :value="d.key">
+              {{ d.label }}
+            </option>
+          </select>
+          <p class="font-body-sm text-body-sm text-on-surface-variant mt-1">
+            Pantalla de la app que se abre al tocar la notificación.
+          </p>
+        </div>
+
+        <!-- Only the destinations that point at one specific item need this. -->
+        <div v-if="needsSlug">
+          <label for="notif-slug" class="block font-label-md text-label-md text-on-surface-variant mb-1">
+            ¿Cuál? — identificador (slug)
+          </label>
           <input
-            id="notif-route"
-            v-model="form.route"
-            data-route-input
+            id="notif-slug"
+            v-model="form.slug"
+            data-slug-input
             type="text"
-            placeholder="/cursos/maquillaje-de-novias"
+            placeholder="maquillaje-de-novias"
             class="w-full px-4 py-3 rounded-xl border border-blush-canvas/40 font-body-md text-body-md focus:outline-none focus:border-primary"
           />
           <p class="font-body-sm text-body-sm text-on-surface-variant mt-1">
-            Ruta interna de la app a la que se abre al tocar la notificación. Tiene que empezar
-            con “/”. Si lo dejás vacío, la notificación abre la app en el inicio.
+            El identificador que aparece al final de la dirección del contenido. Si no existe o no
+            está publicado, el envío se rechaza antes de salir.
           </p>
         </div>
+
+        <!-- The whole failure mode here is invisible until someone taps the
+             notification on their phone, so the resolved path is shown back
+             before sending rather than only stored. -->
+        <p
+          v-if="routePreview"
+          data-route-preview
+          class="font-body-sm text-body-sm text-on-surface-variant"
+        >
+          Al tocarla, la app abre
+          <code class="font-mono text-primary">{{ routePreview }}</code>
+        </p>
 
         <BaseButton
           data-send-btn
