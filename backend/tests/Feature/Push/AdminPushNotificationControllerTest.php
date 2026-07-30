@@ -3,6 +3,7 @@
 namespace Tests\Feature\Push;
 
 use App\Jobs\BroadcastPushNotification;
+use App\Models\Course;
 use App\Models\DeviceToken;
 use App\Models\PushNotificationLog;
 use App\Models\User;
@@ -191,6 +192,161 @@ class AdminPushNotificationControllerTest extends TestCase
         }
 
         Queue::assertNothingPushed();
+    }
+
+    // ---------------------------------------------------------------------
+    // Deep-link destinations (the blank-screen fix)
+    //
+    // vue-router 4 resolves an unmatched path WITHOUT rejecting — the app then
+    // renders its chrome around an empty <RouterView>, with no error on the
+    // device, in the logs, or in the history. The server is therefore the last
+    // place a dead deep link can be caught, which is what these pin.
+    // ---------------------------------------------------------------------
+
+    public function test_an_admin_can_send_to_a_destination_chosen_by_key(): void
+    {
+        $response = $this->actingAs($this->admin())
+            ->postJson('/api/admin/push-notifications', [
+                'title'       => 'Novedades',
+                'body'        => 'Mirá lo nuevo',
+                'destination' => 'news',
+            ])
+            ->assertCreated();
+
+        $this->assertSame('/noticias', $response->json('data.route'));
+    }
+
+    public function test_a_destination_with_a_slug_is_expanded_into_the_app_path(): void
+    {
+        Course::factory()->create(['slug' => 'bridal', 'is_published' => true]);
+
+        $response = $this->actingAs($this->admin())
+            ->postJson('/api/admin/push-notifications', [
+                'title'       => 'Nuevo curso',
+                'body'        => 'Ya podés inscribirte',
+                'destination' => 'course-detail',
+                'slug'        => 'bridal',
+            ])
+            ->assertCreated();
+
+        $this->assertSame('/cursos/bridal', $response->json('data.route'));
+    }
+
+    /**
+     * The reported bug, verbatim: a course URL copied out of the WEB panel.
+     * `/courses/{slug}` is the web's route; the app's is `/cursos/{slug}`. The
+     * old `regex:/^\/(?!\/)/` accepted it happily — it is an internal path, it
+     * just is not one the app has — and every device that tapped it got a blank
+     * screen.
+     */
+    public function test_it_rejects_an_internal_path_the_app_has_no_route_for(): void
+    {
+        foreach (['/courses/bridal', '/admin/noticias', '/productos/labial', '/nope'] as $route) {
+            $this->actingAs($this->admin())
+                ->postJson('/api/admin/push-notifications', [
+                    'title' => 'X',
+                    'body'  => 'Y',
+                    'route' => $route,
+                ])
+                ->assertStatus(422)
+                ->assertJsonValidationErrors(['route']);
+        }
+
+        Queue::assertNothingPushed();
+    }
+
+    /**
+     * A real route with a slug that matches nothing is not a blank screen — the
+     * app's detail views render a "no encontrado" state — but it is still a
+     * broadcast to every device advertising a page that is not there.
+     */
+    public function test_it_rejects_a_real_route_whose_slug_matches_no_published_record(): void
+    {
+        Course::factory()->create(['slug' => 'bridal', 'is_published' => false]);
+
+        $this->actingAs($this->admin())
+            ->postJson('/api/admin/push-notifications', [
+                'title'       => 'X',
+                'body'        => 'Y',
+                'destination' => 'course-detail',
+                'slug'        => 'bridal',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['route']);
+
+        Queue::assertNothingPushed();
+    }
+
+    public function test_a_destination_that_needs_a_slug_reports_a_missing_one(): void
+    {
+        $this->actingAs($this->admin())
+            ->postJson('/api/admin/push-notifications', [
+                'title'       => 'X',
+                'body'        => 'Y',
+                'destination' => 'course-detail',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['slug']);
+
+        Queue::assertNothingPushed();
+    }
+
+    /**
+     * Preferring a client-supplied `route` over an explicit `destination` would
+     * reintroduce the free-text hole the picker exists to close.
+     */
+    public function test_the_destination_key_wins_over_a_route_sent_alongside_it(): void
+    {
+        $response = $this->actingAs($this->admin())
+            ->postJson('/api/admin/push-notifications', [
+                'title'       => 'X',
+                'body'        => 'Y',
+                'destination' => 'cart',
+                'route'       => '/courses/bridal',
+            ])
+            ->assertCreated();
+
+        $this->assertSame('/cart', $response->json('data.route'));
+    }
+
+    public function test_it_rejects_an_unknown_destination_key(): void
+    {
+        $this->actingAs($this->admin())
+            ->postJson('/api/admin/push-notifications', [
+                'title'       => 'X',
+                'body'        => 'Y',
+                'destination' => 'admin-panel',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['destination']);
+    }
+
+    public function test_it_lists_the_destinations_the_compose_form_offers(): void
+    {
+        $response = $this->actingAs($this->admin())
+            ->getJson('/api/admin/push-notifications/destinations')
+            ->assertOk();
+
+        $keys = collect($response->json('data'));
+
+        $this->assertTrue($keys->contains('key', 'news'));
+        $this->assertTrue($keys->contains('key', 'course-detail'));
+
+        $this->assertTrue($keys->firstWhere('key', 'course-detail')['requires_slug']);
+        $this->assertFalse($keys->firstWhere('key', 'news')['requires_slug']);
+
+        // No model class names leak to the client.
+        $this->assertSame(
+            ['key', 'label', 'pattern', 'requires_slug'],
+            array_keys($response->json('data.0'))
+        );
+    }
+
+    public function test_the_destinations_endpoint_is_admin_only(): void
+    {
+        $this->actingAs(User::factory()->create(['role' => 'student']))
+            ->getJson('/api/admin/push-notifications/destinations')
+            ->assertForbidden();
     }
 
     public function test_it_rejects_an_overlong_title(): void

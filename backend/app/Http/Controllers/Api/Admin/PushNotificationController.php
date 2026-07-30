@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\StorePushNotificationRequest;
 use App\Http\Resources\PushNotificationLogResource;
 use App\Models\DeviceToken;
 use App\Models\PushNotificationLog;
+use App\Services\Push\AppDestinations;
 use App\Services\Push\PushDispatcher;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -81,6 +82,26 @@ class PushNotificationController extends Controller
         return response()->json([
             'data' => new PushNotificationLogResource($log),
         ], 201);
+    }
+
+    /**
+     * GET /api/admin/push-notifications/destinations
+     *
+     * The screens a notification is allowed to open in the mobile app, which
+     * the compose form renders as a picker instead of a free-text path field.
+     *
+     * Served from the server rather than hard-coded in the Vue view for the
+     * reason config/push_destinations.php exists at all: the list must be the
+     * same one the validator enforces. A picker built from a second, local copy
+     * would eventually offer an option the server rejects — or worse, accept a
+     * path the app cannot open, which is the bug this endpoint was added to
+     * close.
+     */
+    public function destinations(AppDestinations $destinations): JsonResponse
+    {
+        return response()->json([
+            'data' => $destinations->forPicker(),
+        ]);
     }
 
     /**
