@@ -168,6 +168,7 @@ const activeClass = 'text-primary border-b-2 border-apricot-glow'
                   v-if="user?.avatar"
                   :src="user.avatar"
                   :alt="user.name"
+                  referrerpolicy="no-referrer"
                   class="w-9 h-9 rounded-full object-cover ring-2 ring-apricot-glow"
                 />
                 <div
@@ -343,7 +344,7 @@ const activeClass = 'text-primary border-b-2 border-apricot-glow'
             </div>
           </template>
           <RouterLink to="/profile" @click="mobileOpen = false" class="flex items-center gap-2 py-2 hover:opacity-80 transition-opacity">
-            <img v-if="user?.avatar" :src="user.avatar" :alt="user.name" class="w-9 h-9 rounded-full object-cover ring-2 ring-apricot-glow" />
+            <img v-if="user?.avatar" :src="user.avatar" :alt="user.name" referrerpolicy="no-referrer" class="w-9 h-9 rounded-full object-cover ring-2 ring-apricot-glow" />
             <div
               v-else
               class="w-9 h-9 rounded-full bg-primary text-on-primary flex items-center justify-center font-label-md text-label-md shrink-0"

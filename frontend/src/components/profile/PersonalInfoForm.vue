@@ -53,6 +53,7 @@ function handleSubmit() {
           v-if="avatarPreview || user.avatar"
           :src="avatarPreview || user.avatar"
           :alt="user.name"
+          referrerpolicy="no-referrer"
           class="w-20 h-20 rounded-full object-cover ring-2 ring-apricot-glow"
         />
         <div

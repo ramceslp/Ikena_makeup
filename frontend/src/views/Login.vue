@@ -53,33 +53,59 @@ async function handleSubmit() {
   }
 }
 
-function handleGoogleLogin() {
+let gsiScriptPromise = null
+let gsiInitialized = false
+
+function loadGsiScript() {
+  if (window.google?.accounts?.id) return Promise.resolve()
+  if (gsiScriptPromise) return gsiScriptPromise
+
+  gsiScriptPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script')
+    script.src = 'https://accounts.google.com/gsi/client'
+    script.async = true
+    script.onload = resolve
+    script.onerror = () => {
+      gsiScriptPromise = null
+      reject(new Error('No se pudo cargar Google Sign-In'))
+    }
+    document.head.appendChild(script)
+  })
+  return gsiScriptPromise
+}
+
+async function handleGoogleLogin() {
   if (!googleEnabled.value) return
 
   googleLoading.value = true
-  const script = document.createElement('script')
-  script.src = 'https://accounts.google.com/gsi/client'
-  script.async = true
-  document.head.appendChild(script)
-  script.onload = () => {
-    window.google.accounts.id.initialize({
-      client_id: googleClientId,
-      callback: async (response) => {
-        try {
-          await authStore.loginWithGoogle(response.credential)
-          const redirect = route.query.redirect || '/'
-          router.push(redirect)
-        } catch (err) {
-          serverError.value = err.response?.data?.message || 'Error al iniciar sesión con Google'
-        } finally {
-          googleLoading.value = false
-        }
-      },
+  try {
+    await loadGsiScript()
+
+    if (!gsiInitialized) {
+      window.google.accounts.id.initialize({
+        client_id: googleClientId,
+        callback: async (response) => {
+          try {
+            await authStore.loginWithGoogle(response.credential)
+            const redirect = route.query.redirect || '/'
+            router.push(redirect)
+          } catch (err) {
+            serverError.value = err.response?.data?.message || 'Error al iniciar sesión con Google'
+          } finally {
+            googleLoading.value = false
+          }
+        },
+      })
+      gsiInitialized = true
+    }
+
+    window.google.accounts.id.prompt((notification) => {
+      if (notification.isDismissedMoment() || notification.isSkippedMoment() || notification.isNotDisplayed()) {
+        googleLoading.value = false
+      }
     })
-    window.google.accounts.id.prompt()
-  }
-  script.onerror = () => {
-    serverError.value = 'No se pudo cargar Google Sign-In'
+  } catch (err) {
+    serverError.value = err.message || 'No se pudo cargar Google Sign-In'
     googleLoading.value = false
   }
 }
