@@ -81,3 +81,68 @@ export const GOOGLE_WEB_CLIENT_ID = resolveGoogleWebClientId(
   import.meta.env.PROD,
   RAW_GOOGLE_WEB_CLIENT_ID
 )
+
+// ---------------------------------------------------------------------------
+// PUSH_ENABLED — build-time kill switch for push notifications.
+// ---------------------------------------------------------------------------
+// WHY THIS FLAG EXISTS (read this before "cleaning up" and deleting it):
+//
+// @capacitor/push-notifications' PushNotifications.register() calls into
+// FirebaseMessaging.getInstance() natively, which requires
+// android/app/google-services.json to exist (it does not, anywhere in this
+// repo, as of this flag's introduction -- no Firebase project has been wired
+// up yet). Without it, register() throws:
+//   java.lang.IllegalStateException: Default FirebaseApp is not initialized
+//   in this process com.ikenamakeup.app.
+//
+// The critical, non-obvious part: that throw happens on Capacitor's own
+// `CapacitorPlugins` HandlerThread (Bridge.callPluginMethod's reflection
+// call into the plugin), NOT on the JS thread and NOT as a rejected promise.
+// stores/push.js wraps every native call in `try { await ... } catch`, and
+// none of that JS error handling can ever see this exception -- it
+// propagates straight to HandlerThread.run() uncaught, which kills the
+// entire app process. Reproduced on-device: user logs in with Google, taps
+// "Allow" on the notification-permission dialog, and the whole app dies
+// (FATAL EXCEPTION on the CapacitorPlugins thread).
+//
+// It gets worse: android/app/build.gradle's `apply plugin:
+// com.google.gms.google-services` is wrapped by Capacitor's own generated
+// Gradle template in `try { if (servicesJSON.text) {...} } catch { logger
+// .info(...) }` (see build.gradle around the google-services block). A
+// missing google-services.json therefore does NOT fail the build -- it logs
+// at `info` level (invisible in a normal build run) and silently compiles
+// and ships an app that is guaranteed to crash the first time a user grants
+// push permission. There is no build-time signal that anything is wrong.
+//
+// PUSH_ENABLED is the only thing standing between "Firebase not configured"
+// and "process death on first login". stores/push.js's init() checks this
+// flag BEFORE calling checkPushPermission()/requestPushPermission() too, not
+// just before registerForPush() -- prompting the user for a permission that
+// can never be honored (because register() will crash regardless of what
+// they answer) is worse UX than simply not asking.
+//
+// DEFAULT IS FALSE. This is the single most important property of this
+// flag: an unset VITE_PUSH_ENABLED must fail SAFE (feature silently off),
+// not fail FATAL (process death). Do not flip the default to true, and do
+// not replace resolvePushEnabled's exact 'true' check with a looser
+// truthiness check (`Boolean(import.meta.env.VITE_PUSH_ENABLED)` would treat
+// the *string* 'false' as truthy, since any non-empty string is truthy in
+// JS -- env vars are always strings, never real booleans).
+//
+// To enable push notifications, BOTH of the following are required (see
+// README.md's "Push notifications" section for the full walkthrough):
+//   1. A real android/app/google-services.json from a configured Firebase
+//      project (package name com.ikenamakeup.app).
+//   2. VITE_PUSH_ENABLED=true in the build's env file.
+// Setting only #2 without #1 re-introduces this exact crash.
+export function resolvePushEnabled(value) {
+  // Intentionally strict: only the exact string 'true' enables the flag.
+  // Every other value -- unset/undefined, '', 'false', '0', '1', or any
+  // other string -- is treated as disabled. Some env-boolean conventions
+  // also accept '1' as truthy; this flag deliberately does not, so there is
+  // exactly one unambiguous way to turn on a feature that can crash the app
+  // if turned on incorrectly.
+  return value === 'true'
+}
+
+export const PUSH_ENABLED = resolvePushEnabled(import.meta.env.VITE_PUSH_ENABLED)

@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { resolveApiBaseUrl, resolveGoogleWebClientId, GOOGLE_WEB_CLIENT_ID } from '../config/env.js'
+import {
+  resolveApiBaseUrl,
+  resolveGoogleWebClientId,
+  GOOGLE_WEB_CLIENT_ID,
+  resolvePushEnabled,
+  PUSH_ENABLED,
+} from '../config/env.js'
 
 describe('resolveApiBaseUrl', () => {
   it('returns the given URL unchanged for a non-production mode (emulator/device dev builds)', () => {
@@ -72,5 +78,45 @@ describe('resolveGoogleWebClientId', () => {
     expect(resolveGoogleWebClientId(true, 'real-client-id.apps.googleusercontent.com')).toBe(
       'real-client-id.apps.googleusercontent.com'
     )
+  })
+})
+
+describe('resolvePushEnabled', () => {
+  // See env.js's PUSH_ENABLED doc comment for the full incident writeup:
+  // PushNotifications.register() throws natively (unreachable from JS
+  // try/catch, fatal to the whole process) when google-services.json is
+  // absent, so the default MUST be false -- an unset env var must fail
+  // safe, not fail fatal. Only the exact string 'true' enables the flag;
+  // every other value (including '1', which some boolean-env conventions
+  // treat as truthy) is intentionally treated as disabled, so there is
+  // exactly one unambiguous way to turn this on.
+  it('is disabled when the env var is unset (undefined) -- the safe default', () => {
+    expect(resolvePushEnabled(undefined)).toBe(false)
+  })
+
+  it('is enabled only for the exact string "true"', () => {
+    expect(resolvePushEnabled('true')).toBe(true)
+  })
+
+  it('is disabled for the string "false"', () => {
+    expect(resolvePushEnabled('false')).toBe(false)
+  })
+
+  it('is disabled for the string "0"', () => {
+    expect(resolvePushEnabled('0')).toBe(false)
+  })
+
+  it('is disabled for the empty string', () => {
+    expect(resolvePushEnabled('')).toBe(false)
+  })
+
+  it('is disabled for the string "1" (not treated as truthy -- only "true" enables)', () => {
+    expect(resolvePushEnabled('1')).toBe(false)
+  })
+})
+
+describe('PUSH_ENABLED', () => {
+  it('is exported as a boolean and never throws at import time, even when unset', () => {
+    expect(typeof PUSH_ENABLED).toBe('boolean')
   })
 })
