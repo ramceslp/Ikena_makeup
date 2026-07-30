@@ -25,6 +25,18 @@
 
         </activity>
 
+        <!--
+            Without this, Android logs "Missing Default Notification Channel
+            metadata in AndroidManifest" and routes every push to FCM's own
+            fcm_fallback_notification_channel, which the user sees in system
+            settings under a generic name they cannot meaningfully manage.
+            The channel itself is created at runtime by stores/push.js — this
+            only says which one incoming messages belong to.
+        -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="@string/default_notification_channel_id" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

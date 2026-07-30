@@ -4,4 +4,13 @@
     <string name="title_activity_main">Ikena Makeup</string>
     <string name="package_name">com.ikenamakeup.app</string>
     <string name="custom_url_scheme">com.ikenamakeup.app</string>
+    <!--
+      Channel FCM posts to when a message carries no explicit channel_id, wired
+      up by the meta-data in AndroidManifest.xml. An identifier, not copy: it is
+      compared verbatim against the channel the WebView creates at runtime
+      (DEFAULT_NOTIFICATION_CHANNEL_ID in src/services/pushNotifications.js) and
+      against the channel already registered on every installed device, so it
+      must never be translated and must never be renamed.
+    -->
+    <string name="default_notification_channel_id" translatable="false">ikena_general</string>
 </resources>

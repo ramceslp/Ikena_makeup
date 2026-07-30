@@ -81,3 +81,54 @@ export function addNotificationListeners(onReceived, onAction) {
   PushNotifications.addListener('pushNotificationActionPerformed', (action) => onAction(action))
   deliveryListenersAttached = true
 }
+
+/**
+ * The id of the notification channel every push from this app lands on.
+ *
+ * MUST stay byte-identical to `default_notification_channel_id` in
+ * android/app/src/main/res/values/strings.xml, which AndroidManifest.xml hands
+ * to FCM as the default channel for incoming messages. Nothing in either
+ * toolchain enforces that — src/tests/androidNotificationChannel.test.js is
+ * what does, by reading both sources and comparing them.
+ *
+ * Treat it as frozen. Android identifies an existing channel by this string, so
+ * changing it does not rename the channel on devices that already have the app:
+ * it creates a second one and abandons the first, silently discarding whatever
+ * importance or mute the user had configured on it.
+ */
+export const DEFAULT_NOTIFICATION_CHANNEL_ID = 'ikena_general'
+
+/**
+ * Creates (or updates) the app's single notification channel.
+ *
+ * ANDROID ONLY — the plugin's iOS implementation rejects with "not
+ * implemented", and iOS has no channel concept at all. The caller owns the
+ * platform check (see stores/push.js), keeping this module a thin plugin
+ * wrapper, and owns the failure too: this deliberately does not swallow a
+ * rejection, so the store can decide that a missing channel must not abort
+ * registration.
+ *
+ * Safe to call on every boot. Android's createNotificationChannel is an upsert,
+ * and it will not raise an importance the user has since lowered — re-running
+ * it can never override their choice.
+ */
+export async function createDefaultNotificationChannel() {
+  await PushNotifications.createChannel({
+    id: DEFAULT_NOTIFICATION_CHANNEL_ID,
+    name: 'Novedades de Ikena',
+    description: 'Nuevas publicaciones, cursos y anuncios de Ikena Makeup.',
+    // 4 = IMPORTANCE_HIGH: sound plus a heads-up banner. Chosen over the
+    // plugin's default 3 because these are the announcements the user opted
+    // into by granting permission, and a named channel is exactly what lets
+    // them turn it down in system settings if they disagree — which the
+    // generic FCM fallback channel this replaced did not.
+    importance: 4,
+    // `visibility` is deliberately NOT passed. The plugin forwards it to
+    // NotificationChannel.setLockscreenVisibility(), but Android discards an
+    // app-supplied value and stores VISIBILITY_NO_OVERRIDE (-1000) instead --
+    // verified on an API 36 emulator, where passing VISIBILITY_PUBLIC (1) still
+    // dumped as mLockscreenVisibility=-1000. Lockscreen visibility is the
+    // notification's and the user's call, not the channel's. Setting it here
+    // would read as a working preference while doing nothing.
+  })
+}

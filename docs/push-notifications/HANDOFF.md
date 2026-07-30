@@ -583,11 +583,29 @@ placeholder was returning 500 while its siblings returned 200. Both `NewsCard.vu
 
 ### Follow-ups worth doing (none blocking)
 
-- **`Missing Default Notification Channel metadata in AndroidManifest`** (logcat warning).
-  Android falls back to `fcm_fallback_notification_channel`, which shows up in system settings
-  under a generic name. Declaring
-  `com.google.firebase.messaging.default_notification_channel_id` in the manifest gives the
-  channel a proper Spanish label users can manage.
+- ~~**`Missing Default Notification Channel metadata in AndroidManifest`** (logcat warning).~~
+  **Done.** The manifest now declares
+  `com.google.firebase.messaging.default_notification_channel_id` pointing at a
+  `translatable="false"` string resource, and the app creates the matching channel
+  (`ikena_general` / "Novedades de Ikena", importance 4) at every enabled Android boot.
+
+  Two things are less obvious than they look:
+
+  - The channel is created **before** `init()`'s "not logged in" and "already registered"
+    early returns, for the same reason the delivery listeners are. A device that has had the
+    app installed for a while exits at `alreadyRegistered` — and that is exactly the device
+    that receives pushes. Creating it after either return would leave existing installs with
+    no channel forever.
+  - The id is necessarily duplicated between the Android string resource and JS, and nothing
+    in either toolchain links them. A rename on one side yields a push aimed at a channel that
+    does not exist, which Android drops in silence.
+    `App/src/tests/androidNotificationChannel.test.js` is that missing link: it reads the real
+    Android sources and compares them.
+
+  Verified on an API 36 emulator: warning gone, channel visible by name in system settings,
+  and a real broadcast landed on `channel=ikena_general` (not on the fallback).
+  Devices that received a push under an earlier build keep the old fallback channel, listed as
+  "Miscellaneous" alongside the new one — cosmetic, and only on those installs.
 - **Notification icon** is the default Capacitor launcher glyph. A dedicated monochrome
   `ic_stat_*` drawable is the Android convention.
 - ~~The same broken-image weakness still exists in the home news components.~~

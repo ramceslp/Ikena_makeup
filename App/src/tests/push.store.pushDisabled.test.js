@@ -39,6 +39,7 @@ vi.mock('../services/pushNotifications.js', () => ({
   requestPushPermission: vi.fn(),
   registerForPush: vi.fn(),
   addNotificationListeners: vi.fn(),
+  createDefaultNotificationChannel: vi.fn().mockResolvedValue(undefined),
 }))
 
 vi.mock('../router/index.js', () => ({
@@ -58,7 +59,12 @@ vi.mock('../config/env.js', () => ({
 
 import api from '../services/api.js'
 import { getCached, get } from '../services/storage.js'
-import { checkPushPermission, requestPushPermission, registerForPush } from '../services/pushNotifications.js'
+import {
+  checkPushPermission,
+  requestPushPermission,
+  registerForPush,
+  createDefaultNotificationChannel,
+} from '../services/pushNotifications.js'
 import { Capacitor } from '@capacitor/core'
 import { usePushStore } from '../stores/push.js'
 
@@ -91,6 +97,20 @@ describe('push store — PUSH_ENABLED false (build-time flag disabled)', () => {
 
     expect(store.registered).toBe(false)
     expect(store.error).toBeNull()
+  })
+
+  /**
+   * Channel creation itself is harmless without Firebase (it is a plain
+   * NotificationManager call, nothing to do with google-services.json), so
+   * this is a product decision rather than a crash guard: a build with push
+   * switched off must not advertise a notification channel in the user's
+   * Android settings for notifications it will never send.
+   */
+  it('does not create the default notification channel', async () => {
+    const store = usePushStore()
+    await store.init()
+
+    expect(createDefaultNotificationChannel).not.toHaveBeenCalled()
   })
 
   it('never throws', async () => {

@@ -32,6 +32,7 @@ vi.mock('../services/pushNotifications.js', () => ({
   requestPushPermission: vi.fn(),
   registerForPush: vi.fn(),
   addNotificationListeners: vi.fn(),
+  createDefaultNotificationChannel: vi.fn().mockResolvedValue(undefined),
 }))
 
 // The store imports the router to open deep links on a notification tap.
@@ -60,7 +61,12 @@ vi.mock('../config/env.js', () => ({
 
 import api from '../services/api.js'
 import { get, set, remove, getCached } from '../services/storage.js'
-import { checkPushPermission, requestPushPermission, registerForPush } from '../services/pushNotifications.js'
+import {
+  checkPushPermission,
+  requestPushPermission,
+  registerForPush,
+  createDefaultNotificationChannel,
+} from '../services/pushNotifications.js'
 import { Capacitor } from '@capacitor/core'
 import { usePushStore } from '../stores/push.js'
 
@@ -71,6 +77,8 @@ describe('push store', () => {
     getCached.mockReturnValue(null) // no cached auth token by default (not logged in)
     get.mockResolvedValue(null) // no previously-registered push token by default
     Capacitor.isNativePlatform.mockReturnValue(true) // native by default; web is opted into per-test below
+    Capacitor.getPlatform.mockReturnValue('android') // channel creation is Android-only
+    createDefaultNotificationChannel.mockResolvedValue(undefined)
   })
 
   // ── Web/dev-session gating ──────────────────────────────────────────────
@@ -110,6 +118,83 @@ describe('push store', () => {
     expect(checkPushPermission).not.toHaveBeenCalled()
     expect(registerForPush).not.toHaveBeenCalled()
     expect(store.registered).toBe(true)
+  })
+
+  // ── Default notification channel (Android O+) ───────────────────────────
+  //
+  // Android drops a notification aimed at a channel that does not exist, so
+  // the channel has to be created on EVERY enabled Android boot -- including
+  // the boots that never reach the registration flow. The two early returns
+  // exercised below are precisely the common ones on a device that has been
+  // installed for a while, which is also the device most likely to receive a
+  // push. Creating the channel after either of them would mean the users who
+  // have had the app longest are the ones who silently stop getting anything.
+
+  it('init() creates the default notification channel even when there is no authenticated session yet', async () => {
+    getCached.mockReturnValue(null) // not logged in — init() returns early
+
+    const store = usePushStore()
+    await store.init()
+
+    expect(createDefaultNotificationChannel).toHaveBeenCalledTimes(1)
+    expect(registerForPush).not.toHaveBeenCalled() // still short-circuits, as before
+  })
+
+  it('init() creates the default notification channel even when a device token was already registered', async () => {
+    getCached.mockReturnValue('auth-tok')
+    get.mockResolvedValue('previously-registered-fcm-token') // init() returns early
+
+    const store = usePushStore()
+    await store.init()
+
+    expect(createDefaultNotificationChannel).toHaveBeenCalledTimes(1)
+    expect(store.registered).toBe(true)
+  })
+
+  it('init() does not attempt to create a channel on web', async () => {
+    Capacitor.isNativePlatform.mockReturnValue(false)
+    getCached.mockReturnValue('auth-tok')
+
+    const store = usePushStore()
+    await store.init()
+
+    expect(createDefaultNotificationChannel).not.toHaveBeenCalled()
+  })
+
+  /**
+   * `createChannel` is Android-only — the plugin's iOS implementation rejects
+   * with "not implemented". iOS has no channel concept at all, so calling it
+   * there would be a guaranteed failure logged on every single boot.
+   */
+  it('init() does not attempt to create a channel on iOS', async () => {
+    Capacitor.getPlatform.mockReturnValue('ios')
+    getCached.mockReturnValue('auth-tok')
+    checkPushPermission.mockResolvedValue('granted')
+    registerForPush.mockResolvedValue(undefined)
+
+    const store = usePushStore()
+    await store.init()
+
+    expect(createDefaultNotificationChannel).not.toHaveBeenCalled()
+    expect(registerForPush).toHaveBeenCalled() // iOS registration is unaffected
+  })
+
+  /**
+   * A channel that fails to materialize costs a nicely-labelled entry in the
+   * system settings; a registration that never happens costs the device every
+   * future notification. The lesser failure must not cause the greater one.
+   */
+  it('init() still registers when channel creation fails, and does not record it as a registration error', async () => {
+    getCached.mockReturnValue('auth-tok')
+    createDefaultNotificationChannel.mockRejectedValue(new Error('channel boom'))
+    checkPushPermission.mockResolvedValue('granted')
+    registerForPush.mockResolvedValue(undefined)
+
+    const store = usePushStore()
+    await expect(store.init()).resolves.toBeUndefined()
+
+    expect(registerForPush).toHaveBeenCalled()
+    expect(store.error).toBeNull()
   })
 
   // ── Task 8.7: permission denied ─────────────────────────────────────────

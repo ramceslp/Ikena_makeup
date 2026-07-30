@@ -12,6 +12,7 @@ vi.mock('@capacitor/push-notifications', () => ({
     requestPermissions: vi.fn(),
     register: vi.fn(),
     addListener: vi.fn(),
+    createChannel: vi.fn(),
   },
 }))
 
@@ -156,5 +157,52 @@ describe('pushNotifications service', () => {
       ['pushNotificationReceived', 'pushNotificationActionPerformed'].includes(call[0])
     )
     expect(deliveryCalls).toHaveLength(2)
+  })
+
+  // -------------------------------------------------------------------
+  // Default notification channel (Android O+)
+  // -------------------------------------------------------------------
+
+  it('createDefaultNotificationChannel registers a channel whose id matches the manifest string resource', async () => {
+    const { PushNotifications } = await import('@capacitor/push-notifications')
+    PushNotifications.createChannel.mockResolvedValueOnce(undefined)
+
+    const { createDefaultNotificationChannel, DEFAULT_NOTIFICATION_CHANNEL_ID } = await import(
+      '../services/pushNotifications.js'
+    )
+    await createDefaultNotificationChannel()
+
+    expect(PushNotifications.createChannel).toHaveBeenCalledTimes(1)
+    expect(PushNotifications.createChannel).toHaveBeenCalledWith(
+      expect.objectContaining({ id: DEFAULT_NOTIFICATION_CHANNEL_ID })
+    )
+  })
+
+  /**
+   * The channel's name and description are what the user reads in Android's
+   * notification settings -- the entire reason for declaring a channel instead
+   * of letting FCM fall back to its generic one. An empty or missing label
+   * would reintroduce exactly the problem this replaced.
+   */
+  it('createDefaultNotificationChannel gives the channel a user-facing name and description', async () => {
+    const { PushNotifications } = await import('@capacitor/push-notifications')
+    PushNotifications.createChannel.mockResolvedValueOnce(undefined)
+
+    const { createDefaultNotificationChannel } = await import('../services/pushNotifications.js')
+    await createDefaultNotificationChannel()
+
+    const channel = PushNotifications.createChannel.mock.calls[0][0]
+    expect(channel.name).toBeTruthy()
+    expect(channel.description).toBeTruthy()
+    expect(channel.importance).toBeGreaterThanOrEqual(3) // at least DEFAULT: makes a sound
+  })
+
+  it('createDefaultNotificationChannel rejects when the plugin rejects (the caller owns the failure)', async () => {
+    const { PushNotifications } = await import('@capacitor/push-notifications')
+    PushNotifications.createChannel.mockRejectedValueOnce(new Error('not implemented'))
+
+    const { createDefaultNotificationChannel } = await import('../services/pushNotifications.js')
+
+    await expect(createDefaultNotificationChannel()).rejects.toThrow('not implemented')
   })
 })

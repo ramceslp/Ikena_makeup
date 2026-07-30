@@ -6,6 +6,7 @@ import {
   requestPushPermission,
   registerForPush,
   addNotificationListeners,
+  createDefaultNotificationChannel,
 } from '../services/pushNotifications.js'
 import router from '../router/index.js'
 import { get, set, remove, getCached, TOKEN_KEY, PUSH_TOKEN_KEY } from '../services/storage.js'
@@ -136,6 +137,8 @@ export const usePushStore = defineStore('push', {
         (action) => this._onNotificationTapped(action),
       )
 
+      await this._ensureNotificationChannel()
+
       if (!getCached(TOKEN_KEY)) {
         // Not logged in yet — loginWithGoogle() calls init() again right
         // after a session exists.
@@ -186,6 +189,44 @@ export const usePushStore = defineStore('push', {
         // next init() call since nothing was persisted.
         console.error('Failed to start push registration:', err)
         this.error = 'register-call-failed'
+      }
+    },
+
+    /**
+     * Declares the Android notification channel that AndroidManifest.xml names
+     * as FCM's default (see services/pushNotifications.js's
+     * DEFAULT_NOTIFICATION_CHANNEL_ID). The manifest only NAMES the channel;
+     * nothing creates it. When FCM finds that the named channel does not
+     * exist it quietly substitutes its own `fcm_fallback_notification_channel`
+     * ("Miscellaneous"), which is the exact generic, unmanageable entry this
+     * change exists to replace — so without this call the manifest half of the
+     * work buys nothing.
+     *
+     * Called from init() before every remaining early return, for the same
+     * reason addNotificationListeners is — the common path on a device that
+     * has had the app installed for a while exits at `alreadyRegistered`, and
+     * those are precisely the devices that receive pushes. It is also the
+     * reason this runs unconditionally rather than only on a first
+     * registration: an install that predates this code has no channel yet, and
+     * will never take the registration path again.
+     *
+     * Never throws. Per the above, a failure here costs the channel's name and
+     * the user's control over it — degraded, but notifications still arrive;
+     * letting that abort init() would cost the device registration entirely,
+     * which is strictly worse. Deliberately does NOT set `error`: that field
+     * means "device-token registration did not happen", and a future
+     * notification-settings screen reading it must not be told registration
+     * failed when it in fact succeeded.
+     */
+    async _ensureNotificationChannel() {
+      // Channels are an Android concept; the plugin's iOS implementation
+      // rejects with "not implemented".
+      if (Capacitor.getPlatform() !== 'android') return
+
+      try {
+        await createDefaultNotificationChannel()
+      } catch (err) {
+        console.error('Failed to create the default notification channel:', err)
       }
     },
 
