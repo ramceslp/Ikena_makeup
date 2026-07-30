@@ -60,7 +60,7 @@ onMounted(checkConnectivity)
     <div
       v-if="connectivityState === 'error'"
       data-home-error
-      class="flex flex-col items-center gap-4 py-24 px-6 text-center"
+      class="state-y flex flex-col items-center gap-4 px-6 text-center"
     >
       <p class="font-body-lg text-body-lg text-on-surface-variant">
         No pudimos cargar tu inicio. Verifica tu conexión e intenta de nuevo.
@@ -82,7 +82,7 @@ onMounted(checkConnectivity)
     <div
       v-else-if="connectivityState === 'checking'"
       data-home-checking
-      class="flex flex-col items-center gap-4 py-24 px-6 text-center"
+      class="state-y flex flex-col items-center gap-4 px-6 text-center"
     >
       <p class="font-body-lg text-body-lg text-on-surface-variant">
         Cargando...

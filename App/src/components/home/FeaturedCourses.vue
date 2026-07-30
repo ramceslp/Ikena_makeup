@@ -20,10 +20,10 @@ onMounted(async () => {
 </script>
 
 <template>
-  <section data-featured-courses class="py-20 bg-surface-muted">
+  <section data-featured-courses class="section-y bg-surface-muted">
     <div class="max-w-container-max mx-auto px-gutter">
       <!-- Section header -->
-      <div class="flex items-end justify-between mb-10">
+      <div class="section-header flex items-end justify-between">
         <div>
           <p class="font-label-sm text-label-sm text-primary uppercase tracking-widest mb-2">
             Formación Artística
@@ -42,11 +42,11 @@ onMounted(async () => {
       </div>
 
       <!-- Courses grid -->
-      <div v-if="courses.length > 0" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div v-if="courses.length > 0" class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <router-link
           v-for="course in courses"
           :key="course.id"
-          :to="`/courses/${course.slug}`"
+          :to="`/cursos/${course.slug}`"
           data-course-card
           class="group flex flex-col bg-surface rounded-2xl overflow-hidden border border-blush-canvas/30 shadow-md shadow-primary/5 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-1 transition-all duration-300 no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface-muted"
         >
@@ -79,7 +79,7 @@ onMounted(async () => {
       </div>
 
       <!-- Empty state -->
-      <div v-else class="text-center py-12">
+      <div v-else class="state-y text-center">
         <p class="font-body-lg text-body-lg text-on-surface-variant">
           Próximamente nuevos cursos disponibles.
         </p>

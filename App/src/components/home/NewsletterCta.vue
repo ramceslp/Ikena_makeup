@@ -20,8 +20,8 @@ function onSubmit() {
 </script>
 
 <template>
-  <section class="py-24 bg-surface-container-low">
-    <div class="max-w-4xl mx-auto px-gutter text-center space-y-8">
+  <section class="section-y bg-surface-container-low">
+    <div class="max-w-4xl mx-auto px-gutter text-center space-y-6">
       <h2 class="font-headline-lg text-headline-lg text-deep-marsala">
         Únete a nuestra comunidad artística
       </h2>

@@ -105,6 +105,16 @@ describe('FeaturedCourses.vue (App)', () => {
     expect(wrapper.find('[data-course-card]').exists()).toBe(true)
     expect(wrapper.text()).toContain('Maquillaje Nupcial')
   })
+
+  it('links each course card to /cursos/:slug and "ver todos" to /cursos [Phase 3 fix: cards previously pointed at the unregistered /courses/:slug]', async () => {
+    api.get.mockResolvedValueOnce({ data: { data: fakeCourses, meta: {} } })
+
+    const wrapper = mountWithRouter(FeaturedCourses)
+    await flushPromises()
+
+    expect(wrapper.find('[data-course-card]').attributes('href')).toBe('/cursos/maquillaje-nupcial')
+    expect(wrapper.find('a[href="/cursos"]').exists()).toBe(true)
+  })
 })
 
 const fakeServices = [

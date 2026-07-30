@@ -18,10 +18,10 @@ onMounted(async () => {
 </script>
 
 <template>
-  <section data-featured-services class="py-20 bg-background">
+  <section data-featured-services class="section-y bg-background">
     <div class="max-w-container-max mx-auto px-gutter">
       <!-- Section header -->
-      <div class="flex items-end justify-between mb-10">
+      <div class="section-header flex items-end justify-between">
         <div>
           <p class="font-label-sm text-label-sm text-primary uppercase tracking-widest mb-2">
             Experiencias Profesionales
@@ -40,7 +40,7 @@ onMounted(async () => {
       </div>
 
       <!-- Services grid -->
-      <div v-if="services.length > 0" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div v-if="services.length > 0" class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <router-link
           v-for="service in services"
           :key="service.id"
@@ -77,7 +77,7 @@ onMounted(async () => {
       </div>
 
       <!-- Empty state -->
-      <div v-else class="text-center py-12">
+      <div v-else class="state-y text-center">
         <p class="font-body-lg text-body-lg text-on-surface-variant">
           Próximamente nuevos servicios disponibles.
         </p>

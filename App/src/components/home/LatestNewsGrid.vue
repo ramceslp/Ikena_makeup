@@ -21,10 +21,10 @@ function getSlugLink(post) {
 </script>
 
 <template>
-  <section data-latest-news-grid class="py-20 bg-background">
+  <section data-latest-news-grid class="section-y bg-background">
     <div class="max-w-container-max mx-auto px-gutter">
       <!-- Section header -->
-      <div class="flex items-end justify-between mb-10">
+      <div class="section-header flex items-end justify-between">
         <div>
           <p class="font-label-sm text-label-sm text-primary uppercase tracking-widest mb-2">
             Últimas Noticias
@@ -43,7 +43,7 @@ function getSlugLink(post) {
       </div>
 
       <!-- Posts grid -->
-      <div v-if="posts.length > 0" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div v-if="posts.length > 0" class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <article
           v-for="post in posts"
           :key="post.id"
@@ -109,7 +109,7 @@ function getSlugLink(post) {
       </div>
 
       <!-- Empty state -->
-      <div v-else data-news-empty class="text-center py-12">
+      <div v-else data-news-empty class="state-y text-center">
         <p class="font-body-lg text-body-lg text-on-surface-variant">
           Próximamente nuevas noticias.
         </p>
