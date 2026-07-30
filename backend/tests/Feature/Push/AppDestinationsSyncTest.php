@@ -129,4 +129,52 @@ class AppDestinationsSyncTest extends TestCase
         // …while the app's own dialect of the same screen is.
         $this->assertTrue($destinations->matchesAny('/cursos/maquillaje-de-novias'));
     }
+
+    /**
+     * Slugs are auto-generated ONLY when the admin leaves the field blank
+     * (Admin\PostController::store). StorePostRequest's rule is
+     * `['string', 'max:255', 'unique']` — no pattern — so a hand-entered slug
+     * need not look like Str::slug output, and `/noticias/:slug` in the app
+     * matches any segment regardless.
+     *
+     * Rejecting such a slug here would be a false negative carrying a message
+     * that lies: "la app no tiene ninguna pantalla en …" is untrue when the app
+     * has exactly that screen.
+     */
+    public function test_it_accepts_a_hand_written_slug_that_is_not_str_slug_output(): void
+    {
+        $destinations = app(AppDestinations::class);
+
+        foreach ([
+            '/noticias/Promo_Verano_2026',
+            '/noticias/promo.verano',
+            '/cursos/MiCurso',
+            '/products/labial-n1',
+            '/services/limpieza~facial',
+        ] as $route) {
+            $this->assertTrue($destinations->matchesAny($route), "expected {$route} to be accepted");
+        }
+    }
+
+    /**
+     * Widening the slug charset must not widen it to a path separator. A deep
+     * link is handed straight to vue-router, and the catalogue is the last
+     * gate before it is stored.
+     */
+    public function test_it_still_rejects_separators_and_traversal_inside_a_slug(): void
+    {
+        $destinations = app(AppDestinations::class);
+
+        foreach ([
+            '/cursos/../admin',       // traversal, literal
+            '/cursos/..',             // a dot-only segment
+            '/cursos/.',
+            '/cursos/a%2Fb',          // an encoded separator
+            '/cursos/a/b',            // two segments where one is expected
+            '/cursos/',               // empty slug
+            '/cursos/a b',            // whitespace
+        ] as $route) {
+            $this->assertFalse($destinations->matchesAny($route), "expected {$route} to be rejected");
+        }
+    }
 }

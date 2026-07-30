@@ -100,6 +100,12 @@ export const usePushStore = defineStore('push', {
     error: null,
     // Last notification delivered while the app was in the foreground. Set so
     // a future in-app banner can render it; no view reads it yet.
+    //
+    // Its `route` has passed extractRoute (safe internal path) but NOT
+    // isReachableRoute — there is no navigation here to guard. Whatever
+    // eventually turns this into a tappable banner must run that check before
+    // routing, or it reintroduces the blank screen on a surface that never had
+    // it.
     lastReceived: null,
   }),
 

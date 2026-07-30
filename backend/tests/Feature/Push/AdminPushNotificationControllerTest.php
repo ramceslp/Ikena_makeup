@@ -335,11 +335,10 @@ class AdminPushNotificationControllerTest extends TestCase
         $this->assertTrue($keys->firstWhere('key', 'course-detail')['requires_slug']);
         $this->assertFalse($keys->firstWhere('key', 'news')['requires_slug']);
 
-        // No model class names leak to the client.
-        $this->assertSame(
-            ['key', 'label', 'pattern', 'requires_slug'],
-            array_keys($response->json('data.0'))
-        );
+        // The model class backing a destination is a server-side concern and
+        // must not leak. Asserted by absence rather than by comparing the whole
+        // key list, which would fail on an unrelated reordering.
+        $this->assertArrayNotHasKey('model', $response->json('data.0'));
     }
 
     public function test_the_destinations_endpoint_is_admin_only(): void

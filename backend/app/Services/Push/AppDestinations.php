@@ -17,12 +17,27 @@ use Illuminate\Support\Collection;
 class AppDestinations
 {
     /**
-     * Slug segment charset. Deliberately narrower than "anything but a slash":
-     * every slug in this project is produced by Str::slug (lowercase, digits,
-     * hyphens), and a permissive pattern here would let a path like
-     * `/cursos/..%2Fadmin` through to the app's router.
+     * Slug segment charset: RFC 3986 "unreserved" characters, minus a segment
+     * that is entirely dots.
+     *
+     * NOT narrowed to Str::slug's output (lowercase, digits, hyphens), even
+     * though every slug currently in the database happens to match that. Slugs
+     * are only auto-generated when the admin leaves the field blank — see
+     * Admin\PostController::store(), and StorePostRequest, whose rule is
+     * `['string', 'max:255', 'unique']` with no pattern at all. A manually
+     * entered `Promo_Verano_2026` is a perfectly legal slug today, and the app
+     * opens it fine, since `/noticias/:slug` matches any segment.
+     *
+     * Rejecting it here would have produced a false negative with a message
+     * that actively misleads — "la app no tiene ninguna pantalla en
+     * /noticias/Promo_Verano_2026" would be untrue, sending the admin to look
+     * for a routing problem that does not exist.
+     *
+     * Still deliberately not "anything but a slash". Excluded, and covered by
+     * tests: `%` (so `%2F` cannot smuggle in a separator), and a `.`/`..`
+     * segment (path traversal).
      */
-    private const SLUG_PATTERN = '[a-z0-9]+(?:-[a-z0-9]+)*';
+    private const SLUG_PATTERN = '(?!\.{1,2}$)[A-Za-z0-9._~-]+';
 
     /** @return Collection<int, array<string, mixed>> */
     public function all(): Collection
