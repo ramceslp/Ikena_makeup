@@ -70,6 +70,7 @@ describe('NavBar — unified admin menu', () => {
       '/admin/appointments',
       '/admin/certificate',
       '/admin/noticias',
+      '/admin/notificaciones',
       '/admin/products',
       '/admin/services',
     ])

@@ -51,6 +51,9 @@ const AdminPosts = () => import('../views/admin/AdminPosts.vue')
 const AdminPostCreate = () => import('../views/admin/AdminPostCreate.vue')
 const AdminPostEdit = () => import('../views/admin/AdminPostEdit.vue')
 
+// Push notifications — admin
+const AdminNotifications = () => import('../views/admin/AdminNotifications.vue')
+
 // Booking admin
 const AdminAppointments = () => import('../views/admin/AdminAppointments.vue')
 const AdminAgendaBlocks = () => import('../views/admin/AdminAgendaBlocks.vue')
@@ -264,6 +267,14 @@ const routes = [
     path: '/admin/noticias/:id/edit',
     name: 'AdminPostEdit',
     component: AdminPostEdit,
+    meta: { requiresAdmin: true },
+  },
+
+  // ── Admin: Push notifications ─────────────────────────────────────────────
+  {
+    path: '/admin/notificaciones',
+    name: 'AdminNotifications',
+    component: AdminNotifications,
     meta: { requiresAdmin: true },
   },
 
