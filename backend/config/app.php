@@ -74,12 +74,28 @@ return [
     |--------------------------------------------------------------------------
     |
     | Here you may specify the default timezone for your application, which
-    | will be used by the PHP date and date-time functions. The timezone
-    | is set to "UTC" by default as it is suitable for most use cases.
+    | will be used by the PHP date and date-time functions.
+    |
+    | This is DELIBERATELY not Laravel's "UTC" default. The business is a
+    | single venue in Ecuador: every appointment, agenda block and opening
+    | hour is defined, entered and read in America/Guayaquil local time, and
+    | booking.timezone has always said so. Leaving the framework on UTC meant
+    | every bare now() in the codebase silently disagreed with the domain by
+    | five hours, and each boundary that had to bridge the gap was expected to
+    | remember on its own. Two of them did not, and both shipped as real bugs
+    | — see StoreBookingRequest::rules() (same-day bookings rejected every
+    | evening) and DashboardController::buildSalesOverTime().
+    |
+    | Ecuador observes no DST, which removes the usual argument against
+    | storing local wall-clock time: there is no ambiguous or skipped hour to
+    | land on. ConfigTimezoneTest asserts that assumption still holds.
+    |
+    | MUST stay equal to config('booking.timezone'). ConfigTimezoneTest pins
+    | that invariant so the two cannot drift apart again.
     |
     */
 
-    'timezone' => 'UTC',
+    'timezone' => env('APP_TIMEZONE', 'America/Guayaquil'),
 
     /*
     |--------------------------------------------------------------------------
