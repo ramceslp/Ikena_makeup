@@ -590,8 +590,16 @@ placeholder was returning 500 while its siblings returned 200. Both `NewsCard.vu
   channel a proper Spanish label users can manage.
 - **Notification icon** is the default Capacitor launcher glyph. A dedicated monochrome
   `ic_stat_*` drawable is the Android convention.
-- The same broken-image weakness still exists in `App/src/components/home/LatestNewsGrid.vue`
-  and `FeaturedNewsHero.vue` — pre-existing, out of scope for this change.
+- ~~The same broken-image weakness still exists in the home news components.~~
+  **Done** — PR #71 (`5e2854d`). The fix was extended past the two App components originally
+  noted: the same defect existed on all four `frontend/` news surfaces too, and fixing only
+  one client would have left the identical bug on the other. Six surfaces in total; the
+  App's `News.vue` / `NewsDetail.vue` were already covered by #67.
+
+  The featured heroes were the worst case: their gradient-mesh fallback is a `v-else` on
+  whether the URL *exists*, so a URL that failed to *load* left the section with neither an
+  image nor its backdrop. Grids track failure per post id, not with one flag — the emulator
+  showed one placeholder returning 500 while its siblings returned 200.
 
 **Commits on `feat/push-notifications-foundation`:**
 - `e4a18f9` feat(backend): add push broadcast foundation with send history log
