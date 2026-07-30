@@ -54,3 +54,30 @@ export async function registerForPush(onToken, onError) {
   }
   await PushNotifications.register()
 }
+
+// Same attach-once discipline as listenersAttached above, tracked separately
+// because the two listener sets are attached at different points in the boot
+// sequence: registration listeners only when a registration is actually
+// attempted, delivery listeners on every enabled boot (see stores/push.js).
+let deliveryListenersAttached = false
+
+/**
+ * Attaches the two delivery listeners (idempotent):
+ *
+ *  - 'pushNotificationReceived' fires when a notification arrives while the
+ *    app is in the FOREGROUND. Android does not draw a tray notification in
+ *    that case, so this is the only signal the app gets.
+ *  - 'pushNotificationActionPerformed' fires when the user TAPS a
+ *    notification, including a cold start from the tray.
+ *
+ * Deliberately does not navigate on 'received': the user is already looking
+ * at some screen, and yanking them elsewhere because a message arrived would
+ * be hostile. Only a tap expresses intent to go somewhere.
+ */
+export function addNotificationListeners(onReceived, onAction) {
+  if (deliveryListenersAttached) return
+
+  PushNotifications.addListener('pushNotificationReceived', (notification) => onReceived(notification))
+  PushNotifications.addListener('pushNotificationActionPerformed', (action) => onAction(action))
+  deliveryListenersAttached = true
+}
