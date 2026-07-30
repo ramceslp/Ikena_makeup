@@ -20,6 +20,13 @@
 /public/storage
 /storage/*.key
 /storage/pail
+# Firebase service-account private key (FIREBASE_CREDENTIALS in .env).
+# This is the SERVER credential — a different file from the Android client's
+# App/android/app/google-services.json. It contains a private_key granting
+# full Firebase Admin access to the project, so it must never be committed,
+# and must never be placed anywhere under App/android/ (that tree is the
+# Android project and can end up inside a distributable APK).
+/storage/app/firebase/
 /vendor
 _ide_helper.php
 Homestead.json
