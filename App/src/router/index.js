@@ -37,6 +37,22 @@ const routes = [
     name: 'course-detail',
     component: () => import('../views/CourseDetail.vue'),
   },
+  // News catalog + detail (push-notifications Slice 5b). Home.vue's
+  // FeaturedNewsHero and LatestNewsGrid have linked to /noticias and
+  // /noticias/{slug} since they shipped, but neither route existed, so
+  // "Leer más" was a dead tap. These routes fix that and are the landing
+  // point for the "new post published" push notification's deep link
+  // (see stores/push.js).
+  {
+    path: '/noticias',
+    name: 'news',
+    component: () => import('../views/News.vue'),
+  },
+  {
+    path: '/noticias/:slug',
+    name: 'news-detail',
+    component: () => import('../views/NewsDetail.vue'),
+  },
   // Product + Service catalog/booking (mobile-capacitor-setup Phase 7). No
   // admin/instructor routes exist anywhere in this router — see the spec's
   // Mobile App Boundaries ("admin route unreachable from app") and
