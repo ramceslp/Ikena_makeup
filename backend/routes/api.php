@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\Admin\AppointmentController as AdminAppointmentCont
 use App\Http\Controllers\Api\Admin\CertificateSettingController as AdminCertificateSettingController;
 use App\Http\Controllers\Api\Admin\PostController as AdminPostController;
 use App\Http\Controllers\Api\Admin\ProductController as AdminProductController;
+use App\Http\Controllers\Api\Admin\PushNotificationController as AdminPushNotificationController;
 use App\Http\Controllers\Api\Admin\ServiceController as AdminServiceController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BookingController;
@@ -180,6 +181,11 @@ Route::middleware(['auth:sanctum', RejectScopedCheckoutToken::class])->group(fun
         Route::get('/appointments', [AdminAppointmentController::class, 'index']);
         Route::patch('/appointments/{appointment}/mark-paid', [AdminAppointmentController::class, 'markPaid']);
         Route::patch('/appointments/{appointment}/cancel', [AdminAppointmentController::class, 'cancel']);
+
+        // Push notifications — unified send history + custom broadcasts
+        Route::get('/push-notifications', [AdminPushNotificationController::class, 'index']);
+        Route::post('/push-notifications', [AdminPushNotificationController::class, 'store']);
+        Route::get('/push-notifications/stats', [AdminPushNotificationController::class, 'stats']);
 
         // Venue agenda block CRUD (VAGA-001)
         Route::get('/agenda', [AdminAgendaBlockController::class, 'index']);
