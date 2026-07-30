@@ -13,7 +13,7 @@ use Illuminate\Http\Request;
 
 /**
  * PushNotificationController — the admin's notification centre
- * (push-notifications Slice 3, decision D3: sdd/push-notifications/HANDOFF.md).
+ * (push-notifications Slice 3, decision D3: docs/push-notifications/HANDOFF.md).
  *
  * index() serves the unified history: automatic triggers (a news post
  * published, a course made available) AND custom admin sends, newest first.
