@@ -13,6 +13,12 @@ const routes = [
     path: '/login',
     name: 'login',
     component: () => import('../views/Login.vue'),
+    // Only route without the app's navigation chrome. AppShell reads this
+    // flag (see components/layout/AppShell.vue) — an auth entry screen is
+    // full-screen by convention, and the tab bar would offer destinations
+    // that all bounce straight back here. Every other route keeps full
+    // chrome so navigation stays reachable from deep pages.
+    meta: { hideChrome: true },
   },
   // Product + Service catalog/booking (mobile-capacitor-setup Phase 7). No
   // admin/instructor routes exist anywhere in this router — see the spec's

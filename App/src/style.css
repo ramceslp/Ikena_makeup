@@ -148,6 +148,126 @@
   --radius-xl: 0.75rem;
 }
 
+/* =========================================================================
+   APP SHELL — safe areas + fixed-bar offsets
+   =========================================================================
+   This app runs inside an Android WebView with a status bar / notch at the
+   top and a gesture bar at the bottom. Two hard requirements come out of
+   that (Skill: safe-area-awareness, fixed-element-offset):
+
+   1. env(safe-area-inset-*) resolves ONLY when the viewport meta carries
+      `viewport-fit=cover`. It already does — see index.html. Do not remove it.
+   2. The insets are owned HERE, in CSS. Do NOT reintroduce a Capacitor
+      plugin that injects safe-area CSS at runtime: an earlier session hit
+      `Error injecting safe area CSS: TypeError: Cannot read properties of
+      null (reading 'style')` because such a plugin touches the DOM before
+      the app mounts. CSS has no such ordering problem.
+
+   Graceful degradation: the custom properties default to 0px and are only
+   upgraded to env() inside an @supports guard, so a WebView with no env()
+   support falls back to a valid 0px instead of invalidating the whole
+   declaration. max(..., --app-edge-gap) then guarantees the bottom bar never
+   collapses flush against the screen edge even when the inset really is 0
+   (e.g. a device with hardware nav buttons).
+
+   Top bar: `sticky top-0` and therefore IN normal flow, so it needs no
+   companion offset on the content — it pushes content down by itself. Its
+   own padding-top is what clears the status bar / notch.
+   Bottom tab bar: `fixed`, so it is OUT of flow and the content wrapper must
+   reserve the inset. That reservation lives on .app-content ONLY, so no view
+   or section component ever has to think about it.
+*/
+:root {
+  --safe-area-top: 0px;
+  --safe-area-bottom: 0px;
+
+  /* Content height of the bars (excluding the safe-area padding they add). */
+  --app-topbar-h: 56px; /* matches the h-14 inner row in TopAppBar.vue */
+  --app-bottomnav-h: 56px; /* matches the min-h-14 tab row in BottomTabBar.vue */
+
+  /* Minimum breathing room against a screen edge when there is no inset. */
+  --app-edge-gap: 8px;
+}
+
+@supports (padding: env(safe-area-inset-top)) {
+  :root {
+    --safe-area-top: env(safe-area-inset-top, 0px);
+    --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+@layer components {
+  /* Sticky top bar: pad past the status bar / notch. */
+  .app-topbar {
+    padding-top: var(--safe-area-top);
+  }
+
+  /* Fixed bottom tab bar: lift the tap targets clear of the gesture bar. */
+  .app-bottomnav {
+    padding-bottom: max(var(--safe-area-bottom), var(--app-edge-gap));
+  }
+
+  /* Router-outlet wrapper WITH chrome. Solves fixed-element-offset /
+     scroll-and-fixed-coexistence once, for every view. */
+  .app-content {
+    padding-bottom: calc(
+      var(--app-bottomnav-h) + max(var(--safe-area-bottom), var(--app-edge-gap))
+    );
+  }
+
+  /* Router-outlet wrapper for a route with meta.hideChrome (e.g. /login).
+     No bars to clear, but the notch and gesture bar are still there. */
+  .app-content-bare {
+    padding-top: var(--safe-area-top);
+    padding-bottom: max(var(--safe-area-bottom), var(--app-edge-gap));
+  }
+
+  /* For in-page anchors: keep the target from landing under the sticky bar. */
+  .app-anchor-offset {
+    scroll-margin-top: calc(var(--app-topbar-h) + var(--safe-area-top) + 8px);
+  }
+}
+
+/* =========================================================================
+   ICONS — Material Symbols Outlined
+   =========================================================================
+   index.html loads the Material Symbols Outlined webfont, and Google's own
+   stylesheet ships the .material-symbols-outlined helper class. This is a
+   local restatement of the essential parts of that class so the icons still
+   resolve to glyphs if the remote helper class does not arrive.
+
+   GOTCHA: Material Symbols renders via font LIGATURES — the element's text
+   content is the icon name ("arrow_forward"). If the webfont itself fails to
+   load, the user sees that literal text. That is why font-feature-settings
+   and the family assignment are restated here.
+
+   Deliberately in @layer base: the utilities layer always beats the base
+   layer, so existing call sites that size icons with Tailwind (text-[18px],
+   text-4xl, ...) keep winning over the font-size below. Never move this into
+   an unlayered rule — it would start overriding every icon size in the app.
+
+   NEVER use an emoji as an icon (Skill: no-emoji-icons).
+*/
+@layer base {
+  .material-symbols-outlined {
+    font-family: "Material Symbols Outlined", sans-serif;
+    font-weight: normal;
+    font-style: normal;
+    font-size: 24px;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    font-feature-settings: "liga";
+    -webkit-font-feature-settings: "liga";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
 /*
   Scroll-reveal motion (Phase 2). Paired with the v-reveal directive.
   The hidden state is gated behind `prefers-reduced-motion: no-preference`, so a
