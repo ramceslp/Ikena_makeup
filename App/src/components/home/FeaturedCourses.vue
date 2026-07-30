@@ -3,11 +3,15 @@ import { ref, onMounted } from 'vue'
 import { useCoursesStore } from '../../stores/courses.js'
 import { formatPrice } from '../../utils/formatPrice.js'
 
-// Ported from frontend/src/components/home/FeaturedCourses.vue. The
-// scroll-triggered `v-reveal` entrance animation directive is intentionally
-// NOT ported here -- it is a cosmetic-only effect (no spec scenario depends
-// on it) and porting it would require also registering a new global
-// directive + its CSS classes, which is out of scope for this phase.
+// Ported from frontend/src/components/home/FeaturedCourses.vue.
+//
+// The `v-reveal` directive IS registered now (main.js, Phase 4) -- the earlier
+// note here said otherwise, on the grounds that porting a cosmetic-only effect
+// did not justify a new global directive. Motion on the home screen became a
+// deliberate goal, so that trade-off was re-decided.
+//
+// Only the `.trazo` heading variant is used: the plain translate/opacity
+// entrance on the card grid stays unported, so cards still render at rest.
 const coursesStore = useCoursesStore()
 
 const courses = ref([])
@@ -28,7 +32,7 @@ onMounted(async () => {
           <p class="font-label-sm text-label-sm text-primary uppercase tracking-widest mb-2">
             Formación Artística
           </p>
-          <h2 class="font-headline-lg text-headline-lg text-deep-marsala">
+          <h2 v-reveal.trazo class="font-headline-lg text-headline-lg text-deep-marsala">
             Cursos Destacados
           </h2>
         </div>
