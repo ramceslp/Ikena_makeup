@@ -29,7 +29,7 @@ dist-ssr
 #
 # Not to be confused with the Firebase SERVICE ACCOUNT key, which is a genuine
 # secret, belongs under backend/storage/app/firebase/, and must never live in
-# this directory tree at all — see sdd/push-notifications/HANDOFF.md §8.
+# this directory tree at all — see docs/push-notifications/HANDOFF.md §8.
 android/app/google-services.json
 
 # Editor directories and files
