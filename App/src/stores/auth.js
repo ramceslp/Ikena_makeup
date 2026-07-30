@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import api from '../services/api.js'
-import { set, getCached, TOKEN_KEY, USER_KEY } from '../services/storage.js'
+import { set, remove, getCached, TOKEN_KEY, USER_KEY } from '../services/storage.js'
 import { usePushStore } from './push.js'
 
 // Trimmed port of frontend/src/stores/auth.js: the app only supports native
@@ -59,6 +59,52 @@ export const useAuthStore = defineStore('auth', {
         })
 
       return response.data
+    },
+
+    /**
+     * Ends the session. Ported from frontend/src/stores/auth.js's logout(),
+     * with the web's two localStorage.removeItem() calls replaced by
+     * storage.js's remove() on the same Preferences-backed keys (which also
+     * evicts them from the in-memory cache the Axios request interceptor
+     * reads — see services/storage.js).
+     *
+     * Surfaced ONLY from the Profile screen, never from the bottom tab bar:
+     * logout is destructive-adjacent and must stay spatially separated from
+     * ordinary navigation items.
+     *
+     * Contract: this action NEVER rejects. Local state is cleared no matter
+     * what, because:
+     *   - POST /api/logout is best-effort. Offline, or with an already-expired
+     *     token, it fails — but the user still asked to sign out, and leaving
+     *     a dead token cached would just strand them on a broken session.
+     *   - remove() can reject if the native Preferences bridge errors out.
+     *     Reactive state is already cleared by then, so the user is visually
+     *     signed out; a rethrow here would only hand the caller an unhandled
+     *     rejection. Same "record, don't propagate" convention as
+     *     stores/cart.js's _persist().
+     *
+     * Deliberately does NOT touch stores/push.js. Its init() crashes the
+     * native process when Firebase is unconfigured, and there is no
+     * device-token revocation step in the app's contract.
+     */
+    async logout() {
+      try {
+        // Revokes the Sanctum bearer token server-side. Awaited BEFORE the
+        // token is dropped from state/storage, because the Axios request
+        // interceptor reads that same cached token to authorize this call.
+        await api.post('/logout')
+      } catch (err) {
+        console.error('Server-side logout failed; clearing local session anyway:', err)
+      }
+
+      this.user = null
+      this.token = null
+
+      try {
+        await Promise.all([remove(TOKEN_KEY), remove(USER_KEY)])
+      } catch (err) {
+        console.error('Failed to clear the persisted session from storage:', err)
+      }
     },
   },
 })

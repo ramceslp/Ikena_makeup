@@ -21,7 +21,16 @@ vi.mock('../stores/push.js', () => ({
   usePushStore: vi.fn(() => pushState),
 }))
 
+// Logout (destructive-adjacent) is exercised as a pure view test too — same
+// convention as Login.test.js mocking stores/auth.js so the click handler
+// drives a controllable fake instead of the real store's HTTP/Preferences
+// calls.
+vi.mock('../stores/auth.js', () => ({
+  useAuthStore: vi.fn(),
+}))
+
 import api from '../services/api.js'
+import { useAuthStore } from '../stores/auth.js'
 import Profile from '../views/Profile.vue'
 
 function makeRouter() {
@@ -70,6 +79,7 @@ describe('Profile.vue (App) — history [Spec: history loads / no history yet]',
     pushState.registered = false
     pushState.permissionState = null
     pushState.error = null
+    useAuthStore.mockReturnValue({ logout: vi.fn().mockResolvedValue(undefined) })
     router = makeRouter()
     await router.push('/profile')
   })
@@ -187,5 +197,96 @@ describe('Profile.vue (App) — history [Spec: history loads / no history yet]',
     await flushPromises()
 
     expect(wrapper.find('[data-notification-status]').text()).toContain('Error')
+  })
+})
+
+// ── Logout ────────────────────────────────────────────────────────────────
+// Surfaced ONLY from Profile.vue, in its own "danger zone" region, separate
+// from the history card and never in the bottom tab bar (Skill:
+// destructive-nav-separation). Requires an explicit inline confirmation
+// step before it fires (Skill: confirmation-dialogs) since it ends the
+// session. authStore.logout() itself never rejects and never redirects on
+// its own (see stores/auth.js/auth.store.test.js) — Profile.vue's handler
+// owns the post-logout navigation to /login, asserted here as a pure view
+// test against a mocked store (same convention as Login.test.js).
+describe('Profile.vue (App) — logout', () => {
+  let router
+  let logoutMock
+
+  beforeEach(async () => {
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+    pushState.registered = false
+    pushState.permissionState = null
+    pushState.error = null
+    logoutMock = vi.fn().mockResolvedValue(undefined)
+    useAuthStore.mockReturnValue({ logout: logoutMock })
+    mockApi({ orders: [] })
+    router = makeRouter()
+    await router.push('/profile')
+  })
+
+  it('renders the logout action inside its own danger-zone region, not inside the history card', async () => {
+    const wrapper = mount(Profile, { global: { plugins: [router] } })
+    await flushPromises()
+
+    const dangerZone = wrapper.find('[data-danger-zone]')
+    expect(dangerZone.exists()).toBe(true)
+    expect(dangerZone.find('[data-logout-btn]').exists()).toBe(true)
+    // The danger zone must not be nested inside the purchase-history card —
+    // spatial separation, not just a different button style.
+    expect(wrapper.find('[data-danger-zone] [data-history-empty]').exists()).toBe(false)
+  })
+
+  it('tapping "Cerrar sesión" shows an inline confirmation instead of logging out immediately', async () => {
+    const wrapper = mount(Profile, { global: { plugins: [router] } })
+    await flushPromises()
+
+    await wrapper.find('[data-logout-btn]').trigger('click')
+
+    expect(logoutMock).not.toHaveBeenCalled()
+    expect(wrapper.find('[data-logout-confirm]').exists()).toBe(true)
+  })
+
+  it('tapping "Cancelar" dismisses the confirmation without logging out', async () => {
+    const wrapper = mount(Profile, { global: { plugins: [router] } })
+    await flushPromises()
+    await wrapper.find('[data-logout-btn]').trigger('click')
+
+    await wrapper.find('[data-logout-cancel]').trigger('click')
+
+    expect(logoutMock).not.toHaveBeenCalled()
+    expect(wrapper.find('[data-logout-confirm]').exists()).toBe(false)
+    expect(wrapper.find('[data-logout-btn]').exists()).toBe(true)
+  })
+
+  it('confirming logout calls authStore.logout() and redirects to /login', async () => {
+    const wrapper = mount(Profile, { global: { plugins: [router] } })
+    await flushPromises()
+    await wrapper.find('[data-logout-btn]').trigger('click')
+
+    await wrapper.find('[data-logout-confirm-btn]').trigger('click')
+    await flushPromises()
+
+    expect(logoutMock).toHaveBeenCalledTimes(1)
+    expect(router.currentRoute.value.path).toBe('/login')
+  })
+
+  it('shows a loading state on the confirm button while logout is in flight, and disables both buttons', async () => {
+    let resolveLogout
+    logoutMock.mockReturnValueOnce(new Promise((resolve) => { resolveLogout = resolve }))
+
+    const wrapper = mount(Profile, { global: { plugins: [router] } })
+    await flushPromises()
+    await wrapper.find('[data-logout-btn]').trigger('click')
+    await wrapper.find('[data-logout-confirm-btn]').trigger('click')
+
+    expect(wrapper.find('[data-logout-confirm-btn]').text()).toContain('Cerrando sesión')
+    expect(wrapper.find('[data-logout-confirm-btn]').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('[data-logout-cancel]').attributes('disabled')).toBeDefined()
+
+    resolveLogout()
+    await flushPromises()
+    expect(router.currentRoute.value.path).toBe('/login')
   })
 })

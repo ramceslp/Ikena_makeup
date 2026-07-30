@@ -46,7 +46,7 @@ defineEmits(['retry'])
   </div>
 
   <!-- Error -->
-  <div v-else-if="error" data-history-error class="text-center py-16">
+  <div v-else-if="error" data-history-error class="text-center state-y">
     <span class="material-symbols-outlined text-error text-5xl mb-4" aria-hidden="true">error</span>
     <p class="font-body-lg text-body-lg text-on-surface">{{ error }}</p>
     <button
@@ -60,7 +60,7 @@ defineEmits(['retry'])
   </div>
 
   <!-- Empty state [Spec: no history yet] -->
-  <div v-else-if="!orders.length" data-history-empty class="text-center py-16">
+  <div v-else-if="!orders.length" data-history-empty class="text-center state-y">
     <span class="material-symbols-outlined text-blush-canvas text-5xl mb-3" aria-hidden="true">
       receipt_long
     </span>
