@@ -20,6 +20,23 @@ const routes = [
     // chrome so navigation stays reachable from deep pages.
     meta: { hideChrome: true },
   },
+  // Courses catalog + detail. Read-only browsing only: this app has no
+  // /learn lesson player, no checkout/enroll flow, and no review UI (see
+  // stores/courses.js's file-level comment for the full boundary), so
+  // CourseDetail.vue ships with no purchase CTA. The bottom tab bar's
+  // "Cursos" tab (BottomTabBar.vue) already links here by name — its
+  // `router.hasRoute('courses')` defensive guard exists specifically for the
+  // window where these routes didn't exist yet.
+  {
+    path: '/cursos',
+    name: 'courses',
+    component: () => import('../views/Courses.vue'),
+  },
+  {
+    path: '/cursos/:slug',
+    name: 'course-detail',
+    component: () => import('../views/CourseDetail.vue'),
+  },
   // Product + Service catalog/booking (mobile-capacitor-setup Phase 7). No
   // admin/instructor routes exist anywhere in this router — see the spec's
   // Mobile App Boundaries ("admin route unreachable from app") and

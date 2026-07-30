@@ -13,6 +13,8 @@ describe('router (App) — no path to admin/instructor views [Spec: admin route 
     const paths = router.getRoutes().map((r) => r.path)
     expect(paths).toContain('/')
     expect(paths).toContain('/login')
+    expect(paths).toContain('/cursos')
+    expect(paths).toContain('/cursos/:slug')
     expect(paths).toContain('/products')
     expect(paths).toContain('/products/:slug')
     expect(paths).toContain('/services')
