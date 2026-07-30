@@ -40,6 +40,17 @@ vi.mock('@capacitor/core', () => ({
   },
 }))
 
+// This file exercises the store's normal (feature-enabled) behavior, so
+// PUSH_ENABLED is mocked true regardless of the real build's
+// VITE_PUSH_ENABLED value (unset in the Vitest env -- see vite.config.js --
+// which would otherwise make PUSH_ENABLED false here too and short-circuit
+// every test below via the guard added to init()). The disabled-flag guard
+// itself is regression-tested separately in push.store.pushDisabled.test.js,
+// where PUSH_ENABLED is mocked false instead.
+vi.mock('../config/env.js', () => ({
+  PUSH_ENABLED: true,
+}))
+
 import api from '../services/api.js'
 import { get, set, remove, getCached } from '../services/storage.js'
 import { checkPushPermission, requestPushPermission, registerForPush } from '../services/pushNotifications.js'

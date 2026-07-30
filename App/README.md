@@ -47,6 +47,40 @@ VITE_API_URL=https://api.your-production-domain.com/api
 Vite/Vitest (`VITE_API_URL=... npx vitest run`), which is how CI should set
 it for production builds.
 
+## Push notifications
+
+Push notifications are **disabled by default** (`VITE_PUSH_ENABLED`, resolved
+by `src/config/env.js`'s `resolvePushEnabled()`, gated in
+`src/stores/push.js`'s `init()`). This is deliberate, not an oversight: with
+no `android/app/google-services.json` in this repo,
+`PushNotifications.register()` throws natively (`FirebaseApp is not
+initialized`) on Capacitor's own plugin-invocation thread — a throw that is
+**unreachable from any JS `try/catch`** and kills the entire app process the
+moment a user grants the notification permission. `android/app/build.gradle`
+wraps the Google Services Gradle plugin in a `try/catch` that only logs at
+`info` level, so the build will **not** warn you about a missing
+`google-services.json` — it just compiles an app that crashes at runtime.
+
+Both steps below are required — either one alone leaves push either
+unusable or crash-prone:
+
+1. Create a Firebase project, register an Android app under it with package
+   name **`com.ikenamakeup.app`**, and download the resulting
+   `google-services.json` into `App/android/app/`. `android/build.gradle`
+   already declares `classpath 'com.google.gms:google-services:4.4.4'`
+   (line 11) and the app module auto-applies the plugin once the file is
+   present — no Gradle edits needed.
+2. Set `VITE_PUSH_ENABLED=true` in the appropriate env file (e.g.
+   `App/.env.development.local` for local emulator/device testing, or your
+   CI/CD build environment for production), following the same
+   `.env`-precedence rules as `VITE_API_URL` above.
+
+**Do not set `VITE_PUSH_ENABLED=true` without step 1.** The flag only stops
+this app from *asking* to crash — if `google-services.json` is still
+missing when the flag is on, `PushNotifications.register()` will still
+throw natively and still kill the process. The build gives you no warning
+either way.
+
 ## Scripts
 
 ```bash

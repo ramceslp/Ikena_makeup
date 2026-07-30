@@ -3,6 +3,7 @@ import { Capacitor } from '@capacitor/core'
 import api from '../services/api.js'
 import { checkPushPermission, requestPushPermission, registerForPush } from '../services/pushNotifications.js'
 import { get, set, remove, getCached, TOKEN_KEY, PUSH_TOKEN_KEY } from '../services/storage.js'
+import { PUSH_ENABLED } from '../config/env.js'
 
 // Device-token push registration (mobile-capacitor-setup Phase 8, tasks
 // 8.6-8.8, design.md Decision 2). Registers with the backend's
@@ -64,6 +65,25 @@ export const usePushStore = defineStore('push', {
         // "permission denied" spec scenario -- there is no native
         // permission system to check or deny on web), and nothing is
         // logged, since there is nothing to retry or report.
+        return
+      }
+
+      if (!PUSH_ENABLED) {
+        // Build-time kill switch (config/env.js's PUSH_ENABLED) -- see its
+        // doc comment for the full incident writeup. Short version:
+        // PushNotifications.register() throws natively on a Capacitor
+        // plugin thread when android/app/google-services.json is absent,
+        // that throw is unreachable from any try/catch in this file, and it
+        // kills the entire app process. Checked here, before
+        // checkPushPermission()/requestPushPermission(), not just before
+        // registerForPush() below -- prompting the user for a permission
+        // that can never be honored (register() will crash regardless of
+        // the answer) is worse UX than not asking at all.
+        //
+        // Same reasoning as the web no-op branch above: a deliberately
+        // disabled optional feature is not a failure, so `registered` stays
+        // false and `error` stays null -- there is nothing to retry or
+        // report.
         return
       }
 
