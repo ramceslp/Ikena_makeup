@@ -302,6 +302,92 @@
 }
 
 /*
+  "Cinta" (Phase 4): the marquee band between the news grid and the courses
+  section. Layout and motion for SpecialtiesRibbon.vue.
+
+  Seamless loop: each track holds the SAME list twice and travels -50%, which
+  is exactly one copy, so at the end of a cycle copy #2 sits where copy #1
+  started and the restart is invisible. Render the copies differently and the
+  band visibly jumps once per cycle.
+
+  Transform-only, so it stays on the compositor: this is the one animation on
+  the page that never ends, and the reader may leave the screen open. Nothing
+  here animates colour, width or filter for that reason.
+
+  `width: max-content` is what lets the track be wider than the band; the band
+  itself clips with `overflow: clip` rather than `hidden`, so it never becomes a
+  scroll container (see the Velo block above for why that matters here).
+
+  Reduced motion stops it dead. The band still shows the first copy, so the
+  terms stay readable — it simply stops travelling.
+*/
+.cinta-track {
+  display: flex;
+  width: max-content;
+}
+
+.cinta-group {
+  display: flex;
+  align-items: center;
+  flex: none;
+}
+
+.cinta-group li {
+  display: flex;
+  align-items: center;
+  gap: 1.1rem;
+  padding: 0 1.1rem;
+  white-space: nowrap;
+}
+
+/* Bead separator between terms. A pseudo-element rather than a border so the
+   spacing stays symmetrical whichever term is at the edge of the loop. */
+.cinta-group li::after {
+  content: "";
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--color-blush-canvas) 70%, transparent);
+  flex: none;
+}
+
+.cinta-track--reverse .cinta-group li::after {
+  width: 0.25rem;
+  height: 0.25rem;
+  background: color-mix(in srgb, var(--color-blush-canvas) 55%, transparent);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .cinta-track {
+    will-change: transform;
+    animation: cinta-slide 34s linear infinite;
+  }
+
+  /* The second row runs the other way and slower, so the two never settle into
+     one block sliding as a unit — which is what makes the band read as texture
+     rather than as a single scrolling sentence. */
+  .cinta-track--reverse {
+    animation-direction: reverse;
+    animation-duration: 46s;
+  }
+
+  /* Lets a reader stop the band to actually read it. Pointer-only by nature,
+     which is fine: it is an affordance, not a requirement. */
+  .cinta:hover .cinta-track {
+    animation-play-state: paused;
+  }
+}
+
+@keyframes cinta-slide {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+/*
   Makeup-texture decoration (Phase 3): a soft "highlighter bloom" built from the
   brand-color radial gradients. Purely decorative — call sites mark it
   aria-hidden and pointer-events-none. It drifts slowly unless the user prefers
