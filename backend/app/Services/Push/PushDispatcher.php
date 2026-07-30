@@ -11,7 +11,7 @@ use Illuminate\Support\Str;
 /**
  * PushDispatcher — decides WHETHER a push should go out, writes the history
  * row, and queues the broadcast (push-notifications Slice 2:
- * sdd/push-notifications/HANDOFF.md §5.3).
+ * docs/push-notifications/HANDOFF.md §5.3).
  *
  * The single place that owns per-trigger wording. App\Notifications\PushBroadcast
  * is deliberately generic, so the copy a user actually reads lives here and is
