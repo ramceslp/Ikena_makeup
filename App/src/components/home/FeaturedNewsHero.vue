@@ -20,24 +20,38 @@ const slugLink = computed(() => {
   if (!post.value) return null
   return `/noticias/${post.value.slug}`
 })
+
+// A cover_image_url that is present but fails to LOAD is a different case
+// from one that is absent, and the hero handles only the second. Without
+// this the browser draws its broken-image glyph across the whole backdrop
+// AND the signature gradient-mesh fallback below never runs, because its
+// v-else only tests whether the URL exists.
+//
+// Treating a failed load as no image at all restores the intended fallback:
+// the hero simply renders on the gradient, which is a deliberate design,
+// not a degraded state.
+const coverFailed = ref(false)
 </script>
 
 <template>
   <section data-featured-news-hero class="relative overflow-hidden min-h-[400px] flex items-center bg-surface-muted">
     <!-- Background image when available -->
-    <div v-if="post?.cover_image_url" class="absolute inset-0 z-0 overflow-hidden">
+    <div v-if="post?.cover_image_url && !coverFailed" class="absolute inset-0 z-0 overflow-hidden">
       <img
         :src="post.cover_image_url"
         alt=""
         aria-hidden="true"
+        data-hero-cover
         class="w-full h-full object-cover object-center"
+        @error="coverFailed = true"
       />
       <div class="absolute inset-0 bg-gradient-to-r from-background via-background/60 to-transparent z-10" />
       <div class="makeup-mesh absolute inset-0 z-10 opacity-40 mix-blend-screen" aria-hidden="true" />
       <div class="absolute inset-0 bg-gradient-to-t from-deep-marsala/25 via-transparent to-transparent z-10" />
     </div>
-    <!-- Fallback: signature gradient mesh -->
-    <div v-else class="absolute inset-0 z-0 bg-surface-muted overflow-hidden">
+    <!-- Fallback: signature gradient mesh. Also the destination when a cover
+         URL exists but fails to load — see coverFailed. -->
+    <div v-else data-hero-gradient class="absolute inset-0 z-0 bg-surface-muted overflow-hidden">
       <div class="makeup-mesh absolute -inset-[10%]" aria-hidden="true" />
     </div>
 

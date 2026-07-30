@@ -212,4 +212,27 @@ describe('NewsDetail.vue — post detail page', () => {
     )
     expect(ctaAnchor).toBeDefined()
   })
+
+  /**
+   * A cover that fails to load is hidden rather than replaced: the headline
+   * directly below already carries the meaning, so an empty decorative
+   * block would add nothing.
+   */
+  it('hides a cover image that fails to load', async () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    api.get.mockResolvedValue({
+      data: { data: { ...fakePost, cover_image_url: 'http://broken.test/x.jpg' } },
+    })
+
+    const wrapper = await mountNewsDetail(pinia)
+    await flushPromises()
+
+    expect(wrapper.find('[data-cover-image]').exists()).toBe(true)
+
+    await wrapper.find('[data-cover-image]').trigger('error')
+
+    expect(wrapper.find('[data-cover-image]').exists()).toBe(false)
+    expect(wrapper.text()).toContain(fakePost.title)
+  })
 })

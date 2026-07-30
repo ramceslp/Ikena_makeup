@@ -18,6 +18,26 @@ function getCtaHref(post) {
 function getSlugLink(post) {
   return `/noticias/${post.slug}`
 }
+
+// A cover_image_url that is present but fails to LOAD is a different case
+// from one that is absent, and it looks worse: the browser draws its
+// broken-image glyph plus the alt text, which overflows the thumbnail.
+// Observed on the emulator when a seeded placeholder host returned a 500
+// while its siblings returned 200 — so this is a per-card condition, not a
+// per-component one, and cannot be tracked with a single flag.
+//
+// Keyed by post id rather than array index: the grid is replaced wholesale
+// by fetchLatest(), and an index-keyed map would mark the wrong card if the
+// ordering ever changed.
+const failedCovers = ref({})
+
+function markCoverFailed(post) {
+  failedCovers.value[post.id] = true
+}
+
+function hasCover(post) {
+  return Boolean(post.cover_image_url) && !failedCovers.value[post.id]
+}
 </script>
 
 <template>
@@ -53,12 +73,14 @@ function getSlugLink(post) {
           <!-- Cover image -->
           <div class="aspect-video bg-blush-canvas/10 overflow-hidden">
             <img
-              v-if="post.cover_image_url"
+              v-if="hasCover(post)"
               :src="post.cover_image_url"
               :alt="post.title"
+              data-card-cover
               class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              @error="markCoverFailed(post)"
             />
-            <div v-else class="w-full h-full flex items-center justify-center">
+            <div v-else data-card-cover-placeholder class="w-full h-full flex items-center justify-center">
               <span class="material-symbols-outlined text-4xl text-blush-canvas/40" aria-hidden="true">article</span>
             </div>
           </div>

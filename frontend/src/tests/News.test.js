@@ -224,4 +224,27 @@ describe('News.vue — public news list', () => {
     )
     expect(ctaAnchor).toBeDefined()
   })
+
+  /**
+   * A cover_image_url that is present but fails to LOAD renders the
+   * browser's broken-image glyph plus overflowing alt text. Tracked per post
+   * id, since one card's image can fail while its siblings load.
+   */
+  it('falls back to the placeholder when a cover image fails to load', async () => {
+    api.get.mockResolvedValue({
+      data: {
+        data: [{ ...fakePosts[0], cover_image_url: 'http://broken.test/x.jpg' }],
+        meta: { current_page: 1, last_page: 1, total: 1 },
+      },
+    })
+
+    const wrapper = mountNews(createPinia())
+    await flushPromises()
+
+    expect(wrapper.find('[data-card-cover]').exists()).toBe(true)
+
+    await wrapper.find('[data-card-cover]').trigger('error')
+
+    expect(wrapper.find('[data-card-cover]').exists()).toBe(false)
+  })
 })

@@ -161,4 +161,48 @@ describe('LatestNewsGrid.vue — latest news section', () => {
     )
     expect(external).toBeUndefined()
   })
+
+  /**
+   * A cover_image_url that is present but fails to LOAD is a different case
+   * from one that is absent, and only the second was handled. The browser
+   * draws its broken-image glyph plus the alt text, which overflows the
+   * thumbnail. Seen for real when a seeded placeholder host returned 500 for
+   * one post while returning 200 for its siblings — hence per-post tracking
+   * rather than a single flag.
+   */
+  it('falls back to the placeholder when a cover image fails to load', async () => {
+    api.get.mockResolvedValue({
+      data: { data: [{ ...fakePosts[0], cover_image_url: 'http://broken.test/x.jpg' }] },
+    })
+
+    const wrapper = mountGrid()
+    await flushPromises()
+
+    expect(wrapper.find('[data-card-cover]').exists()).toBe(true)
+
+    await wrapper.find('[data-card-cover]').trigger('error')
+
+    expect(wrapper.find('[data-card-cover]').exists()).toBe(false)
+  })
+
+  it('does not let one broken cover hide the others', async () => {
+    api.get.mockResolvedValue({
+      data: {
+        data: [
+          { ...fakePosts[0], id: 1, cover_image_url: 'http://broken.test/a.jpg' },
+          { ...fakePosts[1], id: 2, cover_image_url: 'http://ok.test/b.jpg' },
+          { ...fakePosts[2], id: 3, cover_image_url: 'http://ok.test/c.jpg' },
+        ],
+      },
+    })
+
+    const wrapper = mountGrid()
+    await flushPromises()
+
+    expect(wrapper.findAll('[data-card-cover]')).toHaveLength(3)
+
+    await wrapper.findAll('[data-card-cover]')[0].trigger('error')
+
+    expect(wrapper.findAll('[data-card-cover]')).toHaveLength(2)
+  })
 })

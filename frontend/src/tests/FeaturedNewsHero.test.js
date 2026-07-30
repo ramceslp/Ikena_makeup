@@ -145,4 +145,27 @@ describe('FeaturedNewsHero.vue — featured post hero', () => {
     const xss = anchors.find((a) => a.attributes('href')?.startsWith('javascript:'))
     expect(xss).toBeUndefined()
   })
+
+  /**
+   * The v-else gradient-mesh fallback only tested whether cover_image_url
+   * existed, so a URL that failed to LOAD left the hero with neither an
+   * image nor its backdrop — just the browser's broken-image glyph across
+   * the whole section.
+   */
+  it('falls back to the gradient when the cover image fails to load', async () => {
+    api.get.mockResolvedValueOnce({
+      data: { data: { ...fakePost, cover_image_url: 'http://broken.test/x.jpg' } },
+    })
+
+    const wrapper = mountHero()
+    await flushPromises()
+
+    expect(wrapper.find('[data-hero-cover]').exists()).toBe(true)
+
+    await wrapper.find('[data-hero-cover]').trigger('error')
+
+    expect(wrapper.find('[data-hero-cover]').exists()).toBe(false)
+    // The hero still renders its content on the gradient backdrop.
+    expect(wrapper.text()).toContain(fakePost.title)
+  })
 })
