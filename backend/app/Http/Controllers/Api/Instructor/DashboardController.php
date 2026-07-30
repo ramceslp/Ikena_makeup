@@ -123,17 +123,31 @@ class DashboardController extends Controller
      */
     private function buildSalesOverTime(array $courseIds): array
     {
+        // Anchor to the first day of the current month BEFORE subtracting.
+        // subMonths() on a day-of-month that the target month does not have
+        // overflows into the following month: from 2026-07-29, subMonths(5)
+        // targets the non-existent 2026-02-29 and normalises to 2026-03-01,
+        // which collides with subMonths(4) (2026-03-29). Both format to
+        // "2026-03", array_fill_keys() below collapses them into one key, and
+        // the "6-month" timeline silently returns 5 entries with February's
+        // revenue missing entirely. Day 1 exists in every month, so anchoring
+        // here makes the collision impossible by construction rather than
+        // relying on today's date being safe.
+        $monthStart = Carbon::now()->startOfMonth();
+
         // Generate the 6-month window (oldest first)
         $months = [];
         for ($i = 5; $i >= 0; $i--) {
-            $months[] = Carbon::now()->subMonths($i)->format('Y-m');
+            $months[] = $monthStart->copy()->subMonths($i)->format('Y-m');
         }
 
         // Zero-filled template indexed by "YYYY-MM"
         $template = array_fill_keys($months, ['revenue_cents' => 0, 'sales' => 0]);
 
         if (! empty($courseIds)) {
-            $windowStart = Carbon::now()->subMonths(5)->startOfMonth();
+            // Same anchoring requirement: an overflowed start would begin the
+            // query a month late and drop the oldest month's orders.
+            $windowStart = $monthStart->copy()->subMonths(5);
 
             // Fetch only the columns needed for aggregation — no raw date SQL
             Order::whereIn('course_id', $courseIds)
