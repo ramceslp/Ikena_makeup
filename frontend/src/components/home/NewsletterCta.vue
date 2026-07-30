@@ -18,7 +18,9 @@ function onSubmit() {
 <template>
   <section class="py-24 bg-surface-container-low">
     <div class="max-w-4xl mx-auto px-gutter text-center space-y-8">
-      <h2 class="font-headline-lg text-headline-lg text-deep-marsala">
+      <!-- mx-auto: .trazo sets width:fit-content while it paints, which would
+           otherwise pull this heading off-centre for the length of the wipe. -->
+      <h2 v-reveal.trazo class="font-headline-lg text-headline-lg text-deep-marsala mx-auto">
         Únete a nuestra comunidad artística
       </h2>
       <p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl mx-auto">

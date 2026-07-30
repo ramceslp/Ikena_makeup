@@ -28,7 +28,7 @@ function formatPrice(price) {
           <p class="font-label-sm text-label-sm text-primary uppercase tracking-widest mb-2">
             Experiencias Profesionales
           </p>
-          <h2 class="font-headline-lg text-headline-lg text-deep-marsala">
+          <h2 v-reveal.trazo class="font-headline-lg text-headline-lg text-deep-marsala">
             Servicios Destacados
           </h2>
         </div>
