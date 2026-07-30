@@ -40,14 +40,20 @@ vi.mock('@capacitor/core', () => ({
 
 vi.mock('../config/env.js', () => ({ PUSH_ENABLED: true, API_URL: 'http://localhost' }))
 
+// `resolve` is stubbed as "this path exists" by default; the tests that care
+// about an unreachable link override it per-case. Real matching is exercised
+// against the actual router in router.test.js.
 vi.mock('../router/index.js', () => ({
-  default: { push: vi.fn().mockResolvedValue(undefined) },
+  default: {
+    push: vi.fn().mockResolvedValue(undefined),
+    resolve: vi.fn(() => ({ matched: [{}], name: 'stub' })),
+  },
 }))
 
 import router from '../router/index.js'
 import { getCached, get } from '../services/storage.js'
 import { addNotificationListeners } from '../services/pushNotifications.js'
-import { usePushStore, extractRoute } from '../stores/push.js'
+import { usePushStore, extractRoute, isReachableRoute } from '../stores/push.js'
 
 describe('push store — notification delivery', () => {
   let store
@@ -55,6 +61,7 @@ describe('push store — notification delivery', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     setActivePinia(createPinia())
+    router.resolve.mockReturnValue({ matched: [{}], name: 'stub' })
     store = usePushStore()
   })
 
@@ -94,6 +101,48 @@ describe('push store — notification delivery', () => {
   })
 
   // -------------------------------------------------------------------
+  // isReachableRoute — the blank-screen guard
+  //
+  // vue-router 4 resolves a push() to an unknown path WITHOUT rejecting: it
+  // returns an empty `matched` array and only warns on the console. The
+  // try/catch around the navigation therefore never fired, and AppShell drew
+  // its chrome around an empty <RouterView> — a blank screen, silently.
+  // -------------------------------------------------------------------
+
+  describe('isReachableRoute', () => {
+    it('accepts a path that matches a real route', () => {
+      router.resolve.mockReturnValueOnce({ matched: [{}], name: 'course-detail' })
+
+      expect(isReachableRoute('/cursos/bridal')).toBe(true)
+    })
+
+    it('rejects a path that matches nothing', () => {
+      router.resolve.mockReturnValueOnce({ matched: [], name: undefined })
+
+      expect(isReachableRoute('/courses/bridal')).toBe(false)
+    })
+
+    /**
+     * The catch-all added alongside this guard matches literally every string,
+     * so `matched.length > 0` on its own would report every path as reachable
+     * and hand the guard right back to the bug it was written for.
+     */
+    it('rejects a path that only matches the catch-all', () => {
+      router.resolve.mockReturnValueOnce({ matched: [{}], name: 'not-found' })
+
+      expect(isReachableRoute('/anything')).toBe(false)
+    })
+
+    it('rejects a path resolve() itself throws on', () => {
+      router.resolve.mockImplementationOnce(() => {
+        throw new URIError('URI malformed')
+      })
+
+      expect(isReachableRoute('/cursos/%E0%A4%A')).toBe(false)
+    })
+  })
+
+  // -------------------------------------------------------------------
   // Tap -> navigate
   // -------------------------------------------------------------------
 
@@ -116,6 +165,37 @@ describe('push store — notification delivery', () => {
       await store._onNotificationTapped({ notification: { data: {} } })
 
       expect(router.push).not.toHaveBeenCalled()
+    })
+
+    /**
+     * The reported bug: a notification whose deep link the app has no route
+     * for (e.g. `/courses/x` copied from the WEB panel, where the app's route
+     * is `/cursos/x`). Navigating anyway left the user on a blank screen.
+     * Staying put means the app stays on Home, which is a working app.
+     */
+    it('does not navigate when the deep link matches no route in this build', async () => {
+      router.resolve.mockReturnValueOnce({ matched: [], name: undefined })
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      await store._onNotificationTapped({
+        notification: { data: { route: '/courses/maquillaje-de-novias' } },
+      })
+
+      expect(router.push).not.toHaveBeenCalled()
+      expect(consoleError).toHaveBeenCalled()
+
+      consoleError.mockRestore()
+    })
+
+    it('does not navigate when the deep link only matches the catch-all', async () => {
+      router.resolve.mockReturnValueOnce({ matched: [{}], name: 'not-found' })
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      await store._onNotificationTapped({ notification: { data: { route: '/nope' } } })
+
+      expect(router.push).not.toHaveBeenCalled()
+
+      consoleError.mockRestore()
     })
 
     /**

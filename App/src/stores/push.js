@@ -63,6 +63,36 @@ export function extractRoute(data) {
   return route
 }
 
+/**
+ * Whether a path actually opens a screen in THIS build of the app.
+ *
+ * Needed because vue-router 4 does not reject `push()` to an unknown path — it
+ * resolves with an empty `matched` array and only warns on the console. So the
+ * try/catch around the navigation below never fired, and a bad deep link
+ * rendered AppShell's chrome around an empty <RouterView>: the blank screen
+ * this whole fix exists for.
+ *
+ * A path is also unreachable when it matches only the catch-all: `/:pathMatch`
+ * matches literally everything, so `matched.length > 0` alone would now be true
+ * for every string on earth.
+ *
+ * Server-side validation against config/push_destinations.php already stops
+ * such a link being SENT. This is the receiving half, and it is not redundant:
+ * notifications sent before that validation shipped are still sitting in
+ * people's trays, and a link can name a screen that exists in a newer app
+ * version than the one installed.
+ */
+export function isReachableRoute(route) {
+  try {
+    const resolved = router.resolve(route)
+
+    return resolved.matched.length > 0 && resolved.name !== 'not-found'
+  } catch {
+    // resolve() throws on a malformed path (bad percent-encoding, for one).
+    return false
+  }
+}
+
 export const usePushStore = defineStore('push', {
   state: () => ({
     permissionState: null, // null (not yet checked) | 'granted' | 'denied' | 'prompt' | 'prompt-with-rationale'
@@ -258,11 +288,25 @@ export const usePushStore = defineStore('push', {
 
       if (route === null) return
 
+      // Checked BEFORE navigating, not caught after: router.push() to an
+      // unmatched path resolves successfully (see isReachableRoute), so the
+      // catch below never saw the failure this guard now prevents.
+      //
+      // Staying put beats routing to the 404 view. The user tapped a
+      // notification expecting content; the app opens on Home either way, and
+      // Home is a working app. The catch-all view is for links the user
+      // followed deliberately, where an explanation is the useful answer.
+      if (!isReachableRoute(route)) {
+        console.error('Push notification deep link matches no route in this build:', route)
+
+        return
+      }
+
       try {
         await router.push(route)
       } catch (err) {
-        // Most likely an unmatched path — e.g. a notification for a screen
-        // shipped in a newer app version than the one installed.
+        // A guard rejection or redirect (e.g. /profile while logged out sends
+        // the user to /login) surfaces here as a navigation failure.
         console.error('Failed to open push notification deep link:', route, err)
       }
     },

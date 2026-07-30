@@ -37,8 +37,14 @@ vi.mock('../services/pushNotifications.js', () => ({
 
 // The store imports the router to open deep links on a notification tap.
 // Delivery/deep-link behavior is covered in push.store.delivery.test.js.
+// `resolve` must be stubbed too: the store checks a deep link resolves before
+// navigating (isReachableRoute), because vue-router does not reject a push()
+// to an unmatched path.
 vi.mock('../router/index.js', () => ({
-  default: { push: vi.fn().mockResolvedValue(undefined) },
+  default: {
+    push: vi.fn().mockResolvedValue(undefined),
+    resolve: vi.fn(() => ({ matched: [{}], name: 'stub' })),
+  },
 }))
 
 vi.mock('@capacitor/core', () => ({
