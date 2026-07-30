@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "985025577658",
+    "project_id": "ikena-36919",
+    "storage_bucket": "ikena-36919.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:985025577658:android:b644e12929884f98737883",
+        "android_client_info": {
+          "package_name": "com.ikenamakeup.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAdTWtxrB5TZsAjAHUzLDjtR-WK5-7C0o8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

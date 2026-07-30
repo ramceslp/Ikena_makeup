@@ -8,6 +8,8 @@ use App\Models\PushNotificationLog;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
+use Kreait\Firebase\Contract\Messaging;
+use Kreait\Firebase\Messaging\MulticastSendReport;
 use Tests\TestCase;
 
 /**
@@ -17,9 +19,19 @@ class AdminPushNotificationControllerTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * The real queue manager, captured before Queue::fake() replaces it, so
+     * the synchronous-dispatch test below can put it back. Queue::fake()
+     * intercepts dispatch entirely — with it in place a job never runs, not
+     * even on the `sync` connection.
+     */
+    private mixed $realQueue;
+
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->realQueue = $this->app['queue'];
 
         Queue::fake();
         config(['push.enabled' => true]);
@@ -207,6 +219,32 @@ class AdminPushNotificationControllerTest extends TestCase
             ->assertJsonPath('data.status', PushNotificationLog::STATUS_SKIPPED);
 
         Queue::assertNothingPushed();
+    }
+
+    /**
+     * With QUEUE_CONNECTION=sync — this project's current setting — dispatch()
+     * runs the broadcast inline before the controller returns. The job updates
+     * its own model instance, so the response must re-read the row rather than
+     * report the stale 'pending' it was created with. An API that contradicts
+     * its own stored state is worse than a slow one.
+     */
+    public function test_the_response_reports_the_real_status_when_the_queue_runs_synchronously(): void
+    {
+        config(['queue.default' => 'sync']);
+        Queue::swap($this->realQueue);
+
+        $messaging = $this->createMock(Messaging::class);
+        $messaging->method('sendMulticast')->willReturn(MulticastSendReport::withItems([]));
+        $this->app->instance(Messaging::class, $messaging);
+
+        $response = $this->actingAs($this->admin())
+            ->postJson('/api/admin/push-notifications', ['title' => 'X', 'body' => 'Y'])
+            ->assertCreated();
+
+        $stored = PushNotificationLog::find($response->json('data.id'));
+
+        $this->assertSame($stored->status, $response->json('data.status'));
+        $this->assertSame(PushNotificationLog::STATUS_SENT, $response->json('data.status'));
     }
 
     // ---------------------------------------------------------------------

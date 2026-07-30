@@ -47,11 +47,18 @@ class PushNotificationController extends Controller
     /**
      * POST /api/admin/push-notifications
      *
-     * Returns 201 with the newly created history row. The response reports the
-     * QUEUED state, not a delivery outcome — success and failure counts are
-     * filled in by App\Jobs\BroadcastPushNotification once FCM answers, and the
-     * admin sees them by refreshing the history. Blocking the request on a
-     * multi-batch fan-out to every device would be the wrong trade.
+     * Returns 201 with the newly created history row.
+     *
+     * On a real queue connection the row comes back still 'pending' — success
+     * and failure counts are filled in by App\Jobs\BroadcastPushNotification
+     * once FCM answers, and the admin sees them by refreshing the history.
+     *
+     * The refresh() below matters when QUEUE_CONNECTION is `sync` (the current
+     * setting in this project's .env), where dispatch() runs the job inline
+     * before this method returns. The job loads and updates its OWN model
+     * instance, so without the refresh this response would report 'pending'
+     * while the database already says 'sent' — an API contradicting its own
+     * stored state. It is a cheap no-op on an async connection.
      *
      * A row whose status comes back 'skipped' means config('push.enabled') is
      * false — Firebase is not configured yet (HANDOFF §8). That is surfaced
@@ -69,7 +76,7 @@ class PushNotificationController extends Controller
             sentBy: $request->user()->id,
         );
 
-        $log->load('sender');
+        $log->refresh()->load('sender');
 
         return response()->json([
             'data' => new PushNotificationLogResource($log),
