@@ -68,9 +68,13 @@ export default {
 
     el.classList.add(variant.hiddenClass)
 
+    // A custom property rather than `transition-delay` directly: custom
+    // properties inherit into pseudo-elements, and `trazo`'s glow lives on
+    // ::after. An inline transition-delay would reach the text and not the
+    // pigment, and the two would drift apart by the stagger amount.
     const index = Number(binding.value) || 0
     if (index > 0) {
-      el.style.transitionDelay = `${index * STAGGER_STEP}ms`
+      el.style.setProperty('--reveal-delay', `${index * STAGGER_STEP}ms`)
     }
 
     const observer = new IntersectionObserver(
@@ -89,7 +93,7 @@ export default {
           const cleanup = (event) => {
             if (!String(event.propertyName ?? '').includes(variant.settledProperty)) return
             el.classList.remove(variant.hiddenClass, REVEALED_CLASS)
-            el.style.transitionDelay = ''
+            el.style.removeProperty('--reveal-delay')
             el.removeEventListener('transitionend', cleanup)
           }
           el.addEventListener('transitionend', cleanup)

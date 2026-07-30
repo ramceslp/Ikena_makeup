@@ -157,9 +157,12 @@
   .reveal {
     opacity: 0;
     transform: translateY(24px);
+    /* --reveal-delay is set by the directive when a stagger index is passed
+       (v-reveal="i"). It is a custom property rather than an inline
+       transition-delay so it also reaches pseudo-elements — see reveal.js. */
     transition:
-      opacity 500ms cubic-bezier(0.16, 1, 0.3, 1),
-      transform 500ms cubic-bezier(0.16, 1, 0.3, 1);
+      opacity 500ms cubic-bezier(0.16, 1, 0.3, 1) var(--reveal-delay, 0ms),
+      transform 500ms cubic-bezier(0.16, 1, 0.3, 1) var(--reveal-delay, 0ms);
   }
 
   .reveal.is-revealed {
@@ -217,9 +220,14 @@
     mask-repeat: no-repeat;
     -webkit-mask-position: 100% 0;
     mask-position: 100% 0;
+    /* The hold before the stroke starts. Three of these headings sit inside a
+       `v-reveal` wrapper whose own 500ms fade begins at the same moment, so
+       without it the block was still settling while the title was already half
+       painted. The pause lets the section arrive first, then the heading gets
+       written onto it. Any stagger index adds on top. */
     transition:
-      mask-position 760ms cubic-bezier(0.16, 1, 0.3, 1),
-      -webkit-mask-position 760ms cubic-bezier(0.16, 1, 0.3, 1);
+      mask-position 760ms cubic-bezier(0.16, 1, 0.3, 1) calc(240ms + var(--reveal-delay, 0ms)),
+      -webkit-mask-position 760ms cubic-bezier(0.16, 1, 0.3, 1) calc(240ms + var(--reveal-delay, 0ms));
   }
 
   .trazo.is-revealed {
@@ -252,9 +260,12 @@
        blush tint on the right edge — and the end state has to be clean on its
        own, because the directive's class cleanup is not guaranteed to run for
        a heading that was already on screen at load. */
+    /* Same hold as the mask, so the pigment stays locked to the stroke. The
+       fade-out is timed to land as the stroke does: 240ms hold + 760ms sweep
+       = 1000ms, so it starts at 860ms and finishes just past the end. */
     transition:
-      background-position 760ms cubic-bezier(0.16, 1, 0.3, 1),
-      opacity 260ms linear 620ms;
+      background-position 760ms cubic-bezier(0.16, 1, 0.3, 1) calc(240ms + var(--reveal-delay, 0ms)),
+      opacity 260ms linear calc(860ms + var(--reveal-delay, 0ms));
   }
 
   .trazo.is-revealed::after {
@@ -308,10 +319,13 @@
   (Firefox, as of 152) the hero simply renders at rest — never blank.
 */
 .velo-media {
-  /* Overscale so the drift never exposes an edge: the overhang is 9% per side
-     and the animation travels 5% × 1.18 ≈ 5.9%. Applied unconditionally, so the
-     framing is identical with or without motion. */
-  transform: scale(1.18) translate3d(0, -3%, 0);
+  /* Overscale so the drift never exposes an edge: the overhang is 13% per side
+     and the animation travels 8% × 1.26 ≈ 10.1%, leaving ~3% of margin. The
+     scale has to grow with the travel — at the original 1.18 an 8% drift would
+     have run past the overhang and shown the container behind the photo.
+     Applied unconditionally, so the framing is identical with or without
+     motion. */
+  transform: scale(1.26) translate3d(0, -4%, 0);
 }
 
 @supports (animation-timeline: scroll()) {
@@ -332,8 +346,8 @@
 }
 
 @keyframes velo-drift {
-  from { transform: scale(1.18) translate3d(0, -5%, 0); }
-  to   { transform: scale(1.18) translate3d(0, 5%, 0); }
+  from { transform: scale(1.26) translate3d(0, -8%, 0); }
+  to   { transform: scale(1.26) translate3d(0, 8%, 0); }
 }
 
 /* Stops at 0.65, not 0 — the veil still has to carry the headline's contrast

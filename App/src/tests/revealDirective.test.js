@@ -85,10 +85,26 @@ describe('v-reveal — default variant', () => {
     expect(el.classList.contains('is-revealed')).toBe(true)
   })
 
-  it('staggers by index through transition-delay', () => {
+  /**
+   * The stagger rides a custom property, not an inline transition-delay:
+   * custom properties inherit into pseudo-elements, and the trazo variant's
+   * glow lives on ::after. An inline delay would reach the text but not the
+   * pigment, and the two would separate by the stagger amount.
+   */
+  it('staggers by index through the --reveal-delay custom property', () => {
     const wrapper = mountWithDirective('<p v-reveal="2">Hola</p>')
 
-    expect(wrapper.find('p').element.style.transitionDelay).toBe('140ms')
+    expect(wrapper.find('p').element.style.getPropertyValue('--reveal-delay')).toBe('140ms')
+  })
+
+  it('clears the stagger property once the entrance settles', () => {
+    const wrapper = mountWithDirective('<p v-reveal="2">Hola</p>')
+    const el = wrapper.find('p').element
+
+    observers[0].trigger(el)
+    el.dispatchEvent(transitionEnd('transform'))
+
+    expect(el.style.getPropertyValue('--reveal-delay')).toBe('')
   })
 })
 
