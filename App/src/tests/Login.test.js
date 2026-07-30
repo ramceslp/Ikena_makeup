@@ -113,6 +113,68 @@ describe('Login.vue (App) — native Google Sign-In', () => {
     consoleErrorSpy.mockRestore()
   })
 
+  // [DEFECT 2 fix] Login renders with meta.hideChrome: true (no top bar, no
+  // bottom tab bar), so the only way back was the Android back gesture --
+  // invisible and undiscoverable (Skill: escape-routes, gesture-alternative).
+  // A visible close/back button now covers this. It must not blindly call
+  // router.back(): a user who deep-links straight into /login has no prior
+  // in-app history entry to go back to, and blindly calling back() would
+  // leave the app (or do nothing useful) instead of landing somewhere safe.
+  describe('close/back button [Spec: escape-routes]', () => {
+    it('renders a labeled, real <button> close control', () => {
+      const wrapper = mount(Login, { global: { plugins: [router] } })
+
+      const closeBtn = wrapper.find('[data-login-close]')
+      expect(closeBtn.exists()).toBe(true)
+      expect(closeBtn.element.tagName).toBe('BUTTON')
+      expect(closeBtn.attributes('aria-label')).toBeTruthy()
+    })
+
+    it('goes back to the previous screen when in-app history exists', async () => {
+      // vue-router's createWebHistory writes {back, current, forward, ...}
+      // onto window.history.state on every navigation, so `state.back` being
+      // non-null is the real signal (in production) that there is a prior
+      // in-app entry to return to.
+      window.history.replaceState({ back: '/' }, '', '/login')
+      const backSpy = vi.spyOn(router, 'back').mockImplementation(() => {})
+
+      const wrapper = mount(Login, { global: { plugins: [router] } })
+      await wrapper.find('[data-login-close]').trigger('click')
+
+      expect(backSpy).toHaveBeenCalledTimes(1)
+      backSpy.mockRestore()
+    })
+
+    it('navigates to home instead of calling back() when there is no history (deep link)', async () => {
+      // No prior entry: state.back is absent/null, as it would be on a cold
+      // app start that lands straight on /login.
+      window.history.replaceState({}, '', '/login')
+      const pushSpy = vi.spyOn(router, 'push')
+      const backSpy = vi.spyOn(router, 'back').mockImplementation(() => {})
+
+      const wrapper = mount(Login, { global: { plugins: [router] } })
+      await wrapper.find('[data-login-close]').trigger('click')
+
+      expect(backSpy).not.toHaveBeenCalled()
+      expect(pushSpy).toHaveBeenCalledWith({ name: 'home' })
+      backSpy.mockRestore()
+      pushSpy.mockRestore()
+    })
+
+    it('does NOT target route.query.redirect -- that is the post-login destination, not the close target', async () => {
+      router.addRoute({ path: '/profile', component: { template: '<div data-profile/>' }, name: 'profile' })
+      window.history.replaceState({}, '', '/login')
+      await router.push('/login?redirect=%2Fprofile')
+      const pushSpy = vi.spyOn(router, 'push')
+
+      const wrapper = mount(Login, { global: { plugins: [router] } })
+      await wrapper.find('[data-login-close]').trigger('click')
+
+      expect(pushSpy).toHaveBeenCalledWith({ name: 'home' })
+      pushSpy.mockRestore()
+    })
+  })
+
   it('disables the button while a sign-in attempt is in flight', async () => {
     let resolveSignIn
     signInWithGoogle.mockReturnValueOnce(
