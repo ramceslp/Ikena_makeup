@@ -9,6 +9,7 @@ use App\Http\Resources\PostCardResource;
 use App\Http\Resources\PostDetailResource;
 use App\Models\Post;
 use App\Models\PostImage;
+use App\Services\Push\PushDispatcher;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -37,7 +38,7 @@ class PostController extends Controller
      * POST /api/admin/posts
      * Create a new post; auto-generate unique slug from title; sanitize body.
      */
-    public function store(StorePostRequest $request): JsonResponse
+    public function store(StorePostRequest $request, PushDispatcher $pushDispatcher): JsonResponse
     {
         $data = $request->validated();
 
@@ -69,6 +70,12 @@ class PostController extends Controller
             $post->save();
         }
 
+        // Push broadcast for a post created already published. Placed after the
+        // cover upload so the notification is never sent for a post that then
+        // fails to finish saving. No-ops for drafts — PushDispatcher owns that
+        // rule (push-notifications Slice 2).
+        $pushDispatcher->forPost($post);
+
         $post->load('author', 'images');
 
         return response()->json([
@@ -93,7 +100,7 @@ class PostController extends Controller
      * POST /api/admin/posts/{post}  (multipart; _method=PATCH)
      * Update post fields; handle slug override; re-sanitize body; auto-set published_at.
      */
-    public function update(UpdatePostRequest $request, Post $post): JsonResponse
+    public function update(UpdatePostRequest $request, Post $post, PushDispatcher $pushDispatcher): JsonResponse
     {
         $data = $request->validated();
 
@@ -129,6 +136,11 @@ class PostController extends Controller
             $post->cover_image_path = $path;
             $post->save();
         }
+
+        // Push broadcast on the draft -> published transition. Fires at most
+        // once per post: PushDispatcher stamps push_notified_at, so editing an
+        // already-published post never re-notifies.
+        $pushDispatcher->forPost($post);
 
         $post->load('author', 'images');
 
