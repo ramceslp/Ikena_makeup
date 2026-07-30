@@ -51,3 +51,50 @@ describe('courses store (trimmed: fetchCourses only, see Home.vue)', () => {
     expect(store.courses).toEqual([])
   })
 })
+
+// fetchCourse (detail) + fetchCategories, needed by CourseDetail.vue and
+// Courses.vue's category filter. Same extension precedent as
+// products.store.test.js's "Phase 7" block and services.store.test.js's
+// equivalent -- see stores/courses.js's file-level comment. Enroll/lesson/
+// review/certificate actions are intentionally NOT ported -- no /learn
+// player, no checkout, no review UI exist in this app.
+describe('courses store — fetchCourse + fetchCategories', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+  })
+
+  it('fetchCourse GETs /courses/:slug and populates currentCourse', async () => {
+    const fakeCourse = { id: 1, slug: 'maquillaje-nupcial', title: 'Maquillaje Nupcial' }
+    api.get.mockResolvedValueOnce({ data: { data: fakeCourse } })
+
+    const store = useCoursesStore()
+    const result = await store.fetchCourse('maquillaje-nupcial')
+
+    expect(api.get).toHaveBeenCalledWith('/courses/maquillaje-nupcial')
+    expect(store.currentCourse).toEqual(fakeCourse)
+    expect(result).toEqual(fakeCourse)
+  })
+
+  it('fetchCourse sets a Spanish error message and re-throws on failure', async () => {
+    const notFound = new Error('Not Found')
+    notFound.response = { status: 404 }
+    api.get.mockRejectedValueOnce(notFound)
+
+    const store = useCoursesStore()
+    await expect(store.fetchCourse('missing')).rejects.toThrow('Not Found')
+
+    expect(store.error).toBe('Error al cargar el curso')
+  })
+
+  it('fetchCategories GETs /categories and populates categories once, skipping subsequent calls', async () => {
+    api.get.mockResolvedValueOnce({ data: { data: [{ id: 1, name: 'Ojos', slug: 'ojos' }] } })
+
+    const store = useCoursesStore()
+    await store.fetchCategories()
+    await store.fetchCategories()
+
+    expect(api.get).toHaveBeenCalledTimes(1)
+    expect(store.categories).toEqual([{ id: 1, name: 'Ojos', slug: 'ojos' }])
+  })
+})
