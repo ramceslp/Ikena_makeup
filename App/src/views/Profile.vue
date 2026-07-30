@@ -1,7 +1,9 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useProfileStore } from '../stores/profile.js'
 import { usePushStore } from '../stores/push.js'
+import { useAuthStore } from '../stores/auth.js'
 import api from '../services/api.js'
 import PurchaseHistory from '../components/profile/PurchaseHistory.vue'
 
@@ -13,8 +15,10 @@ import PurchaseHistory from '../components/profile/PurchaseHistory.vue'
 // actions exist to wire a form to), and spec.md's "Profile and History"
 // requirement group is scoped entirely to purchase/appointment history — no
 // scenario in this phase covers profile editing or password changes.
+const router = useRouter()
 const profileStore = useProfileStore()
 const pushStore = usePushStore()
+const authStore = useAuthStore()
 
 // Same three-state connectivity probe as Home.vue/Products.vue/Services.vue
 // (Phase 6-7 convention, reused verbatim rather than inventing a new
@@ -82,6 +86,27 @@ const notificationStatus = computed(() => {
   if (pushStore.error) return 'Error'
   return 'Pendiente'
 })
+
+// ── Logout (destructive-adjacent) ───────────────────────────────────────
+// Surfaced ONLY here, in its own spatially-separated "danger zone" card —
+// never in the bottom tab bar or next to primary actions (Skill:
+// destructive-nav-separation). Requires an explicit inline confirmation
+// step before it fires (Skill: confirmation-dialogs) since it ends the
+// session. authStore.logout() never rejects and never redirects on its own
+// (see stores/auth.js's header comment) — this handler owns the
+// post-logout navigation back to /login.
+const confirmingLogout = ref(false)
+const loggingOut = ref(false)
+
+async function handleLogout() {
+  loggingOut.value = true
+  try {
+    await authStore.logout()
+    await router.push('/login')
+  } finally {
+    loggingOut.value = false
+  }
+}
 </script>
 
 <template>
@@ -89,7 +114,7 @@ const notificationStatus = computed(() => {
     <div
       v-if="connectivityState === 'error'"
       data-profile-error
-      class="flex flex-col items-center gap-4 py-24 px-6 text-center"
+      class="flex flex-col items-center gap-4 state-y px-6 text-center"
     >
       <p class="font-body-lg text-body-lg text-on-surface-variant">
         No pudimos cargar tu perfil. Verifica tu conexión e intenta de nuevo.
@@ -108,7 +133,7 @@ const notificationStatus = computed(() => {
     <div
       v-else-if="connectivityState === 'checking'"
       data-profile-checking
-      class="flex flex-col items-center gap-4 py-24 px-6 text-center"
+      class="flex flex-col items-center gap-4 state-y px-6 text-center"
     >
       <p class="font-body-lg text-body-lg text-on-surface-variant">
         Cargando...
@@ -116,9 +141,9 @@ const notificationStatus = computed(() => {
     </div>
 
     <template v-else-if="connectivityState === 'ok'">
-      <section class="py-12 bg-background min-h-screen">
-        <div class="max-w-container-max mx-auto px-gutter">
-          <div class="mb-8 flex items-center justify-between flex-wrap gap-3">
+      <section class="section-y bg-background min-h-screen">
+        <div class="max-w-container-max mx-auto px-gutter flex flex-col gap-8">
+          <div class="flex items-center justify-between flex-wrap gap-3">
             <h1 class="font-headline-lg text-headline-lg text-deep-marsala">Mi perfil</h1>
 
             <div
@@ -138,6 +163,62 @@ const notificationStatus = computed(() => {
               :error="profileStore.error"
               @retry="profileStore.fetchOrders()"
             />
+          </div>
+
+          <!-- Danger zone: logout lives in its own bordered, danger-toned
+               region, well below the history card, never beside primary
+               actions or in the tab bar (Skill: destructive-nav-separation). -->
+          <div data-danger-zone class="bg-surface rounded-2xl border border-error/30 p-6">
+            <h2 class="font-title-lg text-title-lg text-on-surface mb-1">Cerrar sesión</h2>
+            <p class="font-body-sm text-body-sm text-on-surface-variant mb-4">
+              Tendrás que iniciar sesión nuevamente con Google para volver a acceder a tu cuenta.
+            </p>
+
+            <button
+              v-if="!confirmingLogout"
+              type="button"
+              data-logout-btn
+              class="inline-flex items-center gap-2 min-h-11 px-5 py-3 rounded-xl border-2 border-error text-error font-label-md text-label-md transition-colors hover:bg-error hover:text-on-error focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+              @click="confirmingLogout = true"
+            >
+              <span class="material-symbols-outlined text-[20px]" aria-hidden="true">logout</span>
+              Cerrar sesión
+            </button>
+
+            <!-- Inline confirmation (Skill: confirmation-dialogs) — no overlay/
+                 modal needed for a single yes/no choice, which also avoids any
+                 z-index conflict with the fixed nav bars. -->
+            <div
+              v-else
+              data-logout-confirm
+              role="alertdialog"
+              aria-label="Confirmar cierre de sesión"
+              class="flex flex-col gap-3"
+            >
+              <p class="font-body-md text-body-md text-on-surface">
+                ¿Seguro que quieres cerrar sesión?
+              </p>
+              <div class="flex gap-3">
+                <button
+                  type="button"
+                  data-logout-cancel
+                  :disabled="loggingOut"
+                  class="flex-1 min-h-11 px-4 py-3 rounded-xl border border-outline text-on-surface-variant font-label-md text-label-md transition-colors hover:bg-surface-container-low disabled:opacity-60 disabled:cursor-not-allowed"
+                  @click="confirmingLogout = false"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  data-logout-confirm-btn
+                  :disabled="loggingOut"
+                  class="flex-1 min-h-11 px-4 py-3 rounded-xl bg-error text-on-error font-label-md text-label-md transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  @click="handleLogout"
+                >
+                  {{ loggingOut ? 'Cerrando sesión…' : 'Sí, cerrar sesión' }}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </section>

@@ -17,6 +17,8 @@ vi.mock('../services/api.js', () => ({
 
 vi.mock('../services/storage.js', () => ({
   set: vi.fn().mockResolvedValue(undefined),
+  // logout() (navigation-shell phase) clears the persisted session keys.
+  remove: vi.fn().mockResolvedValue(undefined),
   getCached: vi.fn(),
   TOKEN_KEY: 'ikena_auth_token',
   USER_KEY: 'ikena_user',
@@ -32,7 +34,7 @@ vi.mock('../stores/push.js', () => ({
 }))
 
 import api from '../services/api.js'
-import { set, getCached } from '../services/storage.js'
+import { set, remove, getCached } from '../services/storage.js'
 import { useAuthStore } from '../stores/auth.js'
 
 describe('auth store', () => {
@@ -40,6 +42,7 @@ describe('auth store', () => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
     getCached.mockReturnValue(null)
+    remove.mockResolvedValue(undefined)
     pushInit.mockClear().mockResolvedValue(undefined)
   })
 
@@ -132,5 +135,85 @@ describe('auth store', () => {
 
     await expect(store.loginWithGoogle('plugin-id-token')).resolves.toBeDefined()
     expect(store.isAuthenticated).toBe(true)
+  })
+
+  // ── logout (navigation shell) ────────────────────────────────────────────
+  // Ported from frontend/src/stores/auth.js's logout(): revoke the Sanctum
+  // token server-side (best-effort), then always clear local state. The
+  // localStorage.removeItem() pair becomes storage.js's remove() on the
+  // Preferences-backed keys. Surfaced ONLY from the Profile screen — never the
+  // tab bar (Skill: destructive-nav-separation).
+
+  async function loggedIn() {
+    api.post.mockResolvedValueOnce({ data: { user: { id: 7, name: 'Ada' }, token: 'tok' } })
+    const store = useAuthStore()
+    await store.loginWithGoogle('plugin-id-token')
+    vi.clearAllMocks()
+    remove.mockResolvedValue(undefined)
+    return store
+  }
+
+  it('logout clears user/token state and flips isAuthenticated back to false', async () => {
+    const store = await loggedIn()
+    api.post.mockResolvedValueOnce({ data: {} })
+
+    await store.logout()
+
+    expect(store.user).toBeNull()
+    expect(store.token).toBeNull()
+    expect(store.isAuthenticated).toBe(false)
+  })
+
+  it('logout removes both persisted session keys from storage', async () => {
+    const store = await loggedIn()
+    api.post.mockResolvedValueOnce({ data: {} })
+
+    await store.logout()
+
+    expect(remove).toHaveBeenCalledWith('ikena_auth_token')
+    expect(remove).toHaveBeenCalledWith('ikena_user')
+  })
+
+  it('logout revokes the bearer token server-side via POST /api/logout', async () => {
+    const store = await loggedIn()
+    api.post.mockResolvedValueOnce({ data: {} })
+
+    await store.logout()
+
+    expect(api.post).toHaveBeenCalledWith('/logout')
+  })
+
+  it('logout still clears the local session when the backend call fails (offline / already-expired token)', async () => {
+    const store = await loggedIn()
+    api.post.mockRejectedValueOnce(new Error('Network Error'))
+
+    await expect(store.logout()).resolves.toBeUndefined()
+
+    expect(store.user).toBeNull()
+    expect(store.token).toBeNull()
+    expect(remove).toHaveBeenCalledWith('ikena_auth_token')
+    expect(remove).toHaveBeenCalledWith('ikena_user')
+  })
+
+  it('logout never rejects even when the native Preferences bridge errors out', async () => {
+    const store = await loggedIn()
+    api.post.mockResolvedValueOnce({ data: {} })
+    remove.mockRejectedValue(new Error('Preferences bridge unavailable'))
+
+    // A rejected logout() would leave the Profile screen's handler with an
+    // unhandled rejection while the user is already visually signed out.
+    await expect(store.logout()).resolves.toBeUndefined()
+
+    expect(store.user).toBeNull()
+    expect(store.token).toBeNull()
+  })
+
+  it('logout does NOT touch the push store (its init() crashes the native process unconfigured)', async () => {
+    const store = await loggedIn()
+    api.post.mockResolvedValueOnce({ data: {} })
+
+    await store.logout()
+
+    expect(pushInit).not.toHaveBeenCalled()
   })
 })

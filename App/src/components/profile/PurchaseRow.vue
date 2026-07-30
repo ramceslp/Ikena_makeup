@@ -109,7 +109,7 @@ const dateStr = computed(() => props.order.paid_at ?? props.order.created_at)
 
       <!-- Deposit amount + status -->
       <div class="flex flex-col items-end gap-1 flex-shrink-0">
-        <span class="font-title-sm text-title-sm text-on-surface">
+        <span class="font-title-sm text-title-sm text-on-surface tabular-nums">
           {{ formatCurrency(order.appointment?.deposit_amount_cents, order.currency) }}
         </span>
         <BaseBadge :variant="status?.variant || 'blush'" pill>
@@ -140,7 +140,7 @@ const dateStr = computed(() => props.order.paid_at ?? props.order.created_at)
 
       <!-- Amount + status -->
       <div class="flex flex-col items-end gap-1 flex-shrink-0">
-        <span class="font-title-sm text-title-sm text-on-surface">
+        <span class="font-title-sm text-title-sm text-on-surface tabular-nums">
           {{ formatCurrency(order.amount_cents, order.currency) }}
         </span>
         <span
@@ -163,6 +163,7 @@ const dateStr = computed(() => props.order.paid_at ?? props.order.created_at)
           v-if="order.course?.thumbnail"
           :src="order.course.thumbnail"
           :alt="order.course?.title"
+          loading="lazy"
           class="w-full h-full object-cover"
         />
         <span v-else class="material-symbols-outlined text-outline text-2xl" aria-hidden="true">
@@ -178,7 +179,7 @@ const dateStr = computed(() => props.order.paid_at ?? props.order.created_at)
 
       <!-- Amount + status -->
       <div class="flex flex-col items-end gap-1 flex-shrink-0">
-        <span class="font-title-sm text-title-sm text-on-surface">
+        <span class="font-title-sm text-title-sm text-on-surface tabular-nums">
           {{ formatCurrency(order.amount_cents, order.currency) }}
         </span>
         <!-- Failed uses error-container tokens (BaseBadge has no error variant) -->
