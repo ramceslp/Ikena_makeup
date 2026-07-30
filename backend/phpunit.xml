@@ -33,5 +33,14 @@
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
         <env name="PAYMENT_DRIVER" value="fake"/>
+        <!--
+            force="true" because this must not depend on the developer's .env.
+            Once a real FIREBASE_CREDENTIALS is configured locally, an inherited
+            PUSH_ENABLED=true makes every test that publishes a post or a course
+            reach out to Firebase for real and fail on the missing/instantiated
+            credential. Tests that exercise the send path opt in explicitly with
+            config(['push.enabled' => true]) plus a mocked Messaging client.
+        -->
+        <env name="PUSH_ENABLED" value="false" force="true"/>
     </php>
 </phpunit>
