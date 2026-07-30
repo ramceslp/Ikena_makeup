@@ -101,6 +101,65 @@ describe('resolveGuard (App)', () => {
   })
 })
 
+// A path with no route used to render NOTHING: vue-router 4 resolves an
+// unmatched push() without rejecting (empty `matched`, console warning only),
+// so AppShell drew its top and bottom bars around an empty <RouterView>. That
+// is the blank screen a custom push notification with a bad deep link produced
+// — silently, with the admin's send history still reporting success.
+describe('router (App) — unmatched paths land on the 404 view, never on nothing', () => {
+  it('registers a catch-all route', () => {
+    const paths = router.getRoutes().map((r) => r.path)
+
+    expect(paths).toContain('/:pathMatch(.*)*')
+  })
+
+  it.each([
+    // The reported bug: the WEB panel's course URL. The app's is /cursos/:slug.
+    ['a path copied from the web panel', '/courses/maquillaje-de-novias'],
+    ['a mistyped catalog path', '/productos/labial'],
+    ['a screen from a newer app version', '/nueva-pantalla'],
+    ['a deep unknown path', '/a/b/c'],
+  ])('resolves %s to the not-found view', (_label, path) => {
+    const resolved = router.resolve(path)
+
+    expect(resolved.matched.length).toBeGreaterThan(0)
+    expect(resolved.name).toBe('not-found')
+  })
+
+  /**
+   * vue-router matches in declaration order, so a catch-all sitting anywhere
+   * but last would swallow the routes below it — the app would 404 on its own
+   * home screen. Cheap to assert, catastrophic to get wrong.
+   */
+  it('declares the catch-all last, so it cannot shadow a real route', () => {
+    const paths = router.getRoutes().map((r) => r.path)
+
+    expect(paths.at(-1)).toBe('/:pathMatch(.*)*')
+  })
+
+  it.each([
+    ['home', '/'],
+    ['the news catalog', '/noticias'],
+    ['a news detail', '/noticias/mi-noticia'],
+    ['a course detail', '/cursos/bridal'],
+    ['a product detail', '/products/labial'],
+    ['profile', '/profile'],
+  ])('still resolves %s to its own route', (_label, path) => {
+    expect(router.resolve(path).name).not.toBe('not-found')
+  })
+
+  /**
+   * A 404 must be reachable by anyone. Carrying requiresAuth would bounce a
+   * logged-out user who tapped a stale link to /login for a page that does not
+   * exist either way.
+   */
+  it('leaves the catch-all unguarded', () => {
+    const catchAll = router.getRoutes().find((r) => r.name === 'not-found')
+
+    expect(catchAll.meta?.requiresAuth).toBeUndefined()
+  })
+})
+
 // [Judgment Day fix, PR8d Round 1]: the real registered router.beforeEach
 // dynamically imports stores/auth.js with no .catch(). If that import
 // rejects (a chunk-load failure -- the same failure class services/api.js's

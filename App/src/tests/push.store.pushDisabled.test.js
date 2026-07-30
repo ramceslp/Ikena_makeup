@@ -43,7 +43,10 @@ vi.mock('../services/pushNotifications.js', () => ({
 }))
 
 vi.mock('../router/index.js', () => ({
-  default: { push: vi.fn().mockResolvedValue(undefined) },
+  default: {
+    push: vi.fn().mockResolvedValue(undefined),
+    resolve: vi.fn(() => ({ matched: [{}], name: 'stub' })),
+  },
 }))
 
 vi.mock('@capacitor/core', () => ({

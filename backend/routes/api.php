@@ -186,6 +186,7 @@ Route::middleware(['auth:sanctum', RejectScopedCheckoutToken::class])->group(fun
         Route::get('/push-notifications', [AdminPushNotificationController::class, 'index']);
         Route::post('/push-notifications', [AdminPushNotificationController::class, 'store']);
         Route::get('/push-notifications/stats', [AdminPushNotificationController::class, 'stats']);
+        Route::get('/push-notifications/destinations', [AdminPushNotificationController::class, 'destinations']);
 
         // Venue agenda block CRUD (VAGA-001)
         Route::get('/agenda', [AdminAgendaBlockController::class, 'index']);

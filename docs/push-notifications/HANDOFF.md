@@ -581,6 +581,63 @@ overflowing the thumbnail and colliding with the "Destacada" badge. A seeded lor
 placeholder was returning 500 while its siblings returned 200. Both `NewsCard.vue` and
 `NewsDetail.vue` now treat a failed load as no image. Re-verified on the emulator.
 
+### 2026-07-30 — session 2e (custom deep links opened a blank screen)
+
+Reported by the user from live use: a custom broadcast sent with a destination
+arrived correctly, but tapping it opened a blank page.
+
+**Root cause — three things lining up, none of which reported anything:**
+
+1. **`vue-router` 4 does not reject `push()` to an unmatched path.** It resolves,
+   with an empty `matched` array and a console warning nobody reads on a phone.
+   The `try/catch` in `stores/push.js::_onNotificationTapped` — written for
+   exactly this case, per its own comment — therefore never fired.
+2. **The App router had no catch-all.** So `AppShell` rendered its top and bottom
+   bars around an empty `<RouterView>`. That is the blank screen: not an error
+   state, *nothing*.
+3. **`route` was a free-text field validated only by `regex:/^\/(?!\/)/`.** That
+   established the string was an internal path, never that it led anywhere.
+
+**The trap that made it likely** — the web panel and the app do NOT share a route
+vocabulary, and nothing said so:
+
+| Screen | Web (`frontend/`) | App (`App/`) |
+|---|---|---|
+| Course detail | `/courses/{slug}` | **`/cursos/{slug}`** |
+| News | `/noticias/{slug}` | `/noticias/{slug}` ✅ |
+| Products | `/products/{slug}` | `/products/{slug}` ✅ |
+| Anything `/admin/*` | exists | **does not exist** |
+
+Copying a course URL out of the admin's own address bar produced a path that
+passed validation, was stored, was delivered to every device, was recorded as
+`sent` — and opened nothing.
+
+**Fix, in three layers** (each one alone would have left a hole):
+
+| Layer | Change |
+|---|---|
+| Source | `config/push_destinations.php` — the catalogue of screens the app can open. `Services/Push/AppDestinations` turns it into both picker options and a validator, from ONE reading. |
+| Send | The admin composes with a **destination picker + slug**, not a path. `StorePushNotificationRequest` collapses them into the same `route` string the pipeline already stored — nothing downstream changed. `Rules\AppDestination` rejects a path the app has no route for, *and* a slug matching no published record. |
+| Receive | App router gains a catch-all → `views/NotFound.vue`. `stores/push.js` gains `isReachableRoute()`, checked **before** navigating — for the notifications sent before this fix that are still sitting in people's trays. |
+
+**Deliberate asymmetry in `AppDestinationsSyncTest`**: it reads the REAL
+`App/src/router/index.js` and fails only when the catalogue offers something the
+router lacks. The reverse (a route not offered in the picker) costs an option
+nobody sees; this direction reaches a user. Same idea as
+`androidNotificationChannel.test.js`, across the PHP↔JS boundary this time.
+
+**Two subtleties worth keeping:**
+
+- `isReachableRoute` must reject a path matching *only* the catch-all. Adding the
+  404 route makes `matched.length > 0` true for every string on earth, which
+  would have handed the guard straight back to the bug.
+- On an unreachable link the app **stays put** rather than routing to the 404.
+  The user tapped expecting content; the app opens on Home either way, and Home
+  is a working app. The 404 view is for links a user followed deliberately.
+
+Suites after the change: backend **828**, app **408**, frontend **923**, all
+green; `npx vite build --mode development` clean.
+
 ### Follow-ups worth doing (none blocking)
 
 - ~~**`Missing Default Notification Channel metadata in AndroidManifest`** (logcat warning).~~
@@ -608,6 +665,13 @@ placeholder was returning 500 while its siblings returned 200. Both `NewsCard.vu
   "Miscellaneous" alongside the new one — cosmetic, and only on those installs.
 - **Notification icon** is the default Capacitor launcher glyph. A dedicated monochrome
   `ic_stat_*` drawable is the Android convention.
+- **The slug field in the compose form is still typed by hand.** The server rejects one that
+  matches no published record, so it cannot produce a broken notification — but picking the
+  post/course/product from a list would beat remembering its slug. Needs a lookup endpoint per
+  content type, which is why it was not done here.
+- **History rows written before session 2e may hold unreachable paths.** They are harmless
+  (the app now declines to navigate, landing the user on Home) and are left as-is: the history
+  is a record of what was actually sent, so rewriting it would be a lie.
 - ~~The same broken-image weakness still exists in the home news components.~~
   **Done** — PR #71 (`5e2854d`). The fix was extended past the two App components originally
   noted: the same defect existed on all four `frontend/` news surfaces too, and fixing only

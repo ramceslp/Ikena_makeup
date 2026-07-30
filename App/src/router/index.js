@@ -97,6 +97,25 @@ const routes = [
     component: () => import('../views/Profile.vue'),
     meta: { requiresAuth: true },
   },
+  // Catch-all — MUST stay last, vue-router matches in declaration order.
+  //
+  // Until this existed, an unmatched path rendered NOTHING: vue-router 4
+  // resolves a push() to an unknown route without rejecting (empty `matched`
+  // array, only a console warning), so AppShell drew its top and bottom bars
+  // around an empty <RouterView>. That is the blank screen a custom push
+  // notification with a bad deep link produced — silently, with the send
+  // history still reporting success.
+  //
+  // Deliberately NOT named with the 'admin'/'instructor' substrings that
+  // router.test.js forbids, and deliberately claiming no auth meta: a 404 must
+  // be reachable by anyone, including a logged-out user who tapped a stale
+  // link, or the guard would redirect them to /login for a page that does not
+  // exist either way.
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'not-found',
+    component: () => import('../views/NotFound.vue'),
+  },
 ]
 
 const router = createRouter({

@@ -48,11 +48,28 @@ function log(overrides = {}) {
 
 const HISTORY_URL = '/admin/push-notifications'
 const STATS_URL = '/admin/push-notifications/stats'
+const DESTINATIONS_URL = '/admin/push-notifications/destinations'
 
-/** Routes GETs by URL so history and stats can be stubbed independently. */
-function stubGets({ logs = [log()], meta = null, stats = { device_count: 12, push_enabled: true } } = {}) {
+/**
+ * Mirrors config/push_destinations.php closely enough to exercise both shapes
+ * the picker has to handle: a destination that is a whole screen, and one that
+ * points at a single item and therefore needs a slug.
+ */
+const DESTINATIONS = [
+  { key: 'news', label: 'Noticias', pattern: '/noticias', requires_slug: false },
+  { key: 'course-detail', label: 'Un curso concreto', pattern: '/cursos/{slug}', requires_slug: true },
+]
+
+/** Routes GETs by URL so history, stats and destinations stub independently. */
+function stubGets({
+  logs = [log()],
+  meta = null,
+  stats = { device_count: 12, push_enabled: true },
+  destinations = DESTINATIONS,
+} = {}) {
   api.get.mockImplementation((url) => {
     if (url === STATS_URL) return Promise.resolve({ data: { data: stats } })
+    if (url === DESTINATIONS_URL) return Promise.resolve({ data: { data: destinations } })
     return Promise.resolve({
       data: { data: logs, meta: meta ?? { current_page: 1, last_page: 1, total: logs.length } },
     })
@@ -191,14 +208,16 @@ describe('AdminNotifications', () => {
 
     await wrapper.find('[data-title-input]').setValue('Promo')
     await wrapper.find('[data-body-input]').setValue('Solo por hoy')
-    await wrapper.find('[data-route-input]').setValue('/cursos')
+    await wrapper.find('[data-destination-select]').setValue('news')
     await wrapper.find('form').trigger('submit.prevent')
     await flushPromises()
 
+    // The destination key travels, not a path: the app's route vocabulary
+    // lives on the server (config/push_destinations.php) and nowhere else.
     expect(api.post).toHaveBeenCalledWith(HISTORY_URL, {
       title: 'Promo',
       body: 'Solo por hoy',
-      route: '/cursos',
+      destination: 'news',
     })
     expect(wrapper.find('[data-send-success]').exists()).toBe(true)
     expect(wrapper.find('[data-title-input]').element.value).toBe('')
@@ -242,7 +261,7 @@ describe('AdminNotifications', () => {
     api.post.mockRejectedValue({
       response: {
         status: 422,
-        data: { errors: { route: ['The route must be an internal path starting with a single "/".'] } },
+        data: { errors: { route: ['La app no tiene ninguna pantalla en "/courses/bridal".'] } },
       },
     })
 
@@ -251,11 +270,173 @@ describe('AdminNotifications', () => {
 
     await wrapper.find('[data-title-input]').setValue('X')
     await wrapper.find('[data-body-input]').setValue('Y')
-    await wrapper.find('[data-route-input]').setValue('https://evil.com')
+    await wrapper.find('[data-destination-select]').setValue('news')
     await wrapper.find('form').trigger('submit.prevent')
     await flushPromises()
 
-    expect(wrapper.find('[data-send-error]').text()).toContain('internal path')
+    expect(wrapper.find('[data-send-error]').text()).toContain('no tiene ninguna pantalla')
+  })
+
+  // -------------------------------------------------------------------
+  // Destination picker
+  //
+  // Replaced a free-text path field, which shipped a real bug: a course URL
+  // copied from THIS panel (/courses/{slug}) is not the app's route for that
+  // screen (/cursos/{slug}), and vue-router resolves an unmatched path without
+  // complaining — so the notification arrived, the history said "sent", and
+  // tapping it opened a blank screen on the phone.
+  // -------------------------------------------------------------------
+
+  it('offers the destinations the server allows, plus a "no destination" option', async () => {
+    stubGets()
+
+    const wrapper = mountView(pinia)
+    await flushPromises()
+
+    const options = wrapper.findAll('[data-destination-select] option')
+
+    expect(options).toHaveLength(DESTINATIONS.length + 1)
+    expect(options[0].attributes('value')).toBe('')
+    expect(options.map((o) => o.attributes('value'))).toEqual(['', 'news', 'course-detail'])
+  })
+
+  it('has no free-text field for a raw path', async () => {
+    stubGets()
+
+    const wrapper = mountView(pinia)
+    await flushPromises()
+
+    expect(wrapper.find('[data-route-input]').exists()).toBe(false)
+  })
+
+  it('asks for a slug only when the chosen destination points at one item', async () => {
+    stubGets()
+
+    const wrapper = mountView(pinia)
+    await flushPromises()
+
+    expect(wrapper.find('[data-slug-input]').exists()).toBe(false)
+
+    await wrapper.find('[data-destination-select]').setValue('news')
+    expect(wrapper.find('[data-slug-input]').exists()).toBe(false)
+
+    await wrapper.find('[data-destination-select]').setValue('course-detail')
+    expect(wrapper.find('[data-slug-input]').exists()).toBe(true)
+  })
+
+  it('sends the slug alongside the destination', async () => {
+    stubGets()
+    api.post.mockResolvedValue({ data: { data: log({ status: 'pending' }) } })
+
+    const wrapper = mountView(pinia)
+    await flushPromises()
+
+    await wrapper.find('[data-title-input]').setValue('Nuevo curso')
+    await wrapper.find('[data-body-input]').setValue('Ya podés inscribirte')
+    await wrapper.find('[data-destination-select]').setValue('course-detail')
+    await wrapper.find('[data-slug-input]').setValue('maquillaje-de-novias')
+    await wrapper.find('form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(api.post).toHaveBeenCalledWith(HISTORY_URL, {
+      title: 'Nuevo curso',
+      body: 'Ya podés inscribirte',
+      destination: 'course-detail',
+      slug: 'maquillaje-de-novias',
+    })
+  })
+
+  /**
+   * The failure mode is invisible until someone taps the notification on their
+   * phone, so the resolved path is shown back before sending.
+   */
+  it('previews the exact path the app will open', async () => {
+    stubGets()
+
+    const wrapper = mountView(pinia)
+    await flushPromises()
+
+    expect(wrapper.find('[data-route-preview]').exists()).toBe(false)
+
+    await wrapper.find('[data-destination-select]').setValue('news')
+    expect(wrapper.find('[data-route-preview]').text()).toContain('/noticias')
+
+    await wrapper.find('[data-destination-select]').setValue('course-detail')
+    // No slug yet — there is no complete path to promise.
+    expect(wrapper.find('[data-route-preview]').exists()).toBe(false)
+
+    await wrapper.find('[data-slug-input]').setValue('bridal')
+    expect(wrapper.find('[data-route-preview]').text()).toContain('/cursos/bridal')
+  })
+
+  it('blocks the send while a destination that needs a slug has none', async () => {
+    stubGets()
+
+    const wrapper = mountView(pinia)
+    await flushPromises()
+
+    await wrapper.find('[data-title-input]').setValue('X')
+    await wrapper.find('[data-body-input]').setValue('Y')
+    await wrapper.find('[data-destination-select]').setValue('course-detail')
+
+    expect(wrapper.find('[data-send-btn]').attributes('disabled')).toBeDefined()
+
+    await wrapper.find('[data-slug-input]').setValue('bridal')
+    expect(wrapper.find('[data-send-btn]').attributes('disabled')).toBeUndefined()
+  })
+
+  /**
+   * A slug typed for one destination must not ride along into another that
+   * does not take one — it would silently become part of a different path.
+   */
+  it('clears a stale slug when the destination changes', async () => {
+    stubGets()
+    api.post.mockResolvedValue({ data: { data: log({ status: 'pending' }) } })
+
+    const wrapper = mountView(pinia)
+    await flushPromises()
+
+    await wrapper.find('[data-title-input]').setValue('X')
+    await wrapper.find('[data-body-input]').setValue('Y')
+    await wrapper.find('[data-destination-select]').setValue('course-detail')
+    await wrapper.find('[data-slug-input]').setValue('bridal')
+    await wrapper.find('[data-destination-select]').setValue('news')
+    await wrapper.find('form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(api.post).toHaveBeenCalledWith(HISTORY_URL, {
+      title: 'X',
+      body: 'Y',
+      destination: 'news',
+    })
+  })
+
+  /**
+   * The picker is an optional aid on a form whose main job is still composing
+   * a message; a failed fetch must not take the compose card down with it.
+   */
+  it('still composes a linkless notification when the destinations fail to load', async () => {
+    stubGets()
+    api.get.mockImplementation((url) => {
+      if (url === DESTINATIONS_URL) return Promise.reject(new Error('boom'))
+      if (url === STATS_URL) return Promise.resolve({ data: { data: { device_count: 1, push_enabled: true } } })
+      return Promise.resolve({
+        data: { data: [log()], meta: { current_page: 1, last_page: 1, total: 1 } },
+      })
+    })
+    api.post.mockResolvedValue({ data: { data: log({ status: 'pending', route: null }) } })
+
+    const wrapper = mountView(pinia)
+    await flushPromises()
+
+    expect(wrapper.findAll('[data-destination-select] option')).toHaveLength(1)
+
+    await wrapper.find('[data-title-input]').setValue('Aviso')
+    await wrapper.find('[data-body-input]').setValue('Cerramos el lunes')
+    await wrapper.find('form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(api.post).toHaveBeenCalledWith(HISTORY_URL, { title: 'Aviso', body: 'Cerramos el lunes' })
   })
 
   it('refreshes the history after a successful send', async () => {

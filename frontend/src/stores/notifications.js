@@ -16,6 +16,11 @@ export const useNotificationsStore = defineStore('notifications', {
     logs: [],
     meta: null,
     stats: null,
+    // The screens a notification may open in the mobile app. Fetched rather
+    // than hard-coded here: the compose form's picker and the server's
+    // validator must be the same list, or the form eventually offers an option
+    // the server rejects (see backend/config/push_destinations.php).
+    destinations: [],
     loading: false,
     sending: false,
     error: null,
@@ -59,6 +64,23 @@ export const useNotificationsStore = defineStore('notifications', {
     },
 
     /**
+     * The destinations the compose form offers as a picker.
+     *
+     * Silent on failure, like fetchStats: the form falls back to its "no
+     * destination" state, which sends a linkless notification — degraded but
+     * correct. Blocking the whole compose card because an optional deep-link
+     * picker could not load would be worse.
+     */
+    async fetchDestinations() {
+      try {
+        const response = await api.get('/admin/push-notifications/destinations')
+        this.destinations = response.data.data
+      } catch {
+        this.destinations = []
+      }
+    },
+
+    /**
      * Sends a custom broadcast. Resolves with the created history row.
      *
      * That row reports the QUEUED state, not a delivery outcome — the backend
@@ -66,19 +88,26 @@ export const useNotificationsStore = defineStore('notifications', {
      * with status 'skipped' means Firebase is not configured on the server;
      * the view surfaces that distinctly rather than claiming a successful send.
      */
-    async send({ title, body, route }) {
+    async send({ title, body, destination, slug }) {
       this.sending = true
       this.sendError = null
       try {
         const payload = { title, body }
-        if (route) payload.route = route
+
+        // The server expands destination + slug into the stored path. Sending
+        // a pre-built `route` from here would put the app's route vocabulary in
+        // a second place, which is how the two drift.
+        if (destination) {
+          payload.destination = destination
+          if (slug) payload.slug = slug
+        }
 
         const response = await api.post('/admin/push-notifications', payload)
         return response.data.data
       } catch (err) {
         // Surface the first field-level validation message when there is one —
-        // "The route must be an internal path..." is far more actionable than
-        // a generic failure notice.
+        // "La app no tiene ninguna pantalla en /courses/x..." is far more
+        // actionable than a generic failure notice.
         const errors = err.response?.data?.errors
         const firstFieldError = errors ? Object.values(errors)[0]?.[0] : null
 
