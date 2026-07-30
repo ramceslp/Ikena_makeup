@@ -65,7 +65,7 @@ class BookingTest extends TestCase
     private function makeBlockForToday(array $overrides = []): AgendaBlock
     {
         return AgendaBlock::factory()->create(array_merge([
-            'day_of_week' => Carbon::today()->dayOfWeek,
+            'day_of_week' => $this->bookingToday()->dayOfWeek,
             'specific_date' => null,
             'open_time' => '09:00',
             'close_time' => '18:00',
@@ -111,9 +111,25 @@ class BookingTest extends TestCase
         ]);
     }
 
+    /**
+     * "Today" as the booking endpoints define it.
+     *
+     * Every date these tests build MUST be resolved in booking.timezone
+     * (America/Guayaquil), NOT in app.timezone (UTC). AvailableSlotsRequest
+     * range-checks against `Carbon::now(config('booking.timezone'))`, and the
+     * two zones disagree on the calendar date for the five hours between
+     * 19:00 Guayaquil and midnight UTC. Using Carbon::today() here meant the
+     * suite's notion of "yesterday" was the endpoint's "today" during that
+     * window, so the past-date test failed for five hours of every day.
+     */
+    private function bookingToday(): Carbon
+    {
+        return Carbon::now(config('booking.timezone'))->startOfDay();
+    }
+
     private function today(): string
     {
-        return Carbon::today()->format('Y-m-d');
+        return $this->bookingToday()->format('Y-m-d');
     }
 
     // -------------------------------------------------------------------------
@@ -243,7 +259,7 @@ class BookingTest extends TestCase
 
         // Horizon is exclusive: today + look_ahead_days is the first out-of-range day.
         $lookAheadDays = (int) config('booking.venue.look_ahead_days');
-        $outOfRange = Carbon::today()->addDays($lookAheadDays)->format('Y-m-d');
+        $outOfRange = $this->bookingToday()->addDays($lookAheadDays)->format('Y-m-d');
 
         $this->getJson("/api/services/{$service->id}/available-slots?date={$outOfRange}")
             ->assertStatus(422);
@@ -252,7 +268,7 @@ class BookingTest extends TestCase
     public function test_available_slots_date_param_past_date_returns_422(): void
     {
         [$service] = $this->makeBookableService();
-        $past = Carbon::yesterday()->format('Y-m-d');
+        $past = $this->bookingToday()->subDay()->format('Y-m-d');
 
         $this->getJson("/api/services/{$service->id}/available-slots?date={$past}")
             ->assertStatus(422);
@@ -366,6 +382,53 @@ class BookingTest extends TestCase
             'scheduled_time' => '10:00',
             'whatsapp' => '+593099912345',
         ])->assertStatus(422);
+    }
+
+    /**
+     * Regression guard for the removal of `after_or_equal:today` from
+     * StoreBookingRequest::rules().
+     *
+     * That field rule resolved "today" in app.timezone (UTC), contradicting
+     * this endpoint's documented America/Guayaquil contract and rejecting
+     * valid same-day bookings every evening. It was removed in favour of the
+     * booking-timezone check in withValidator() — which was, and is, the only
+     * correct boundary. Nothing covered the past-date rejection at the time
+     * the rule was removed, so this test exists to keep that hole closed:
+     * a past date must still be refused, just via the right timezone and the
+     * window error message rather than Laravel's date-rule message.
+     */
+    public function test_booking_past_date_returns_422(): void
+    {
+        Sanctum::actingAs($this->makeUser());
+        [$service] = $this->makeBookableService();
+
+        $this->postJson('/api/bookings', [
+            'service_id' => $service->id,
+            'scheduled_date' => $this->bookingToday()->subDay()->format('Y-m-d'),
+            'scheduled_time' => '10:00',
+            'whatsapp' => '+593099912345',
+        ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['scheduled_date']);
+    }
+
+    /**
+     * The complement of the test above, and the actual user-facing bug that
+     * `after_or_equal:today` caused: booking TODAY must succeed at every hour
+     * of the day, including the five-hour window where UTC has already rolled
+     * over to tomorrow but Guayaquil has not.
+     */
+    public function test_booking_today_is_accepted_regardless_of_utc_rollover(): void
+    {
+        Sanctum::actingAs($this->makeUser());
+        [$service] = $this->makeBookableService();
+
+        $this->postJson('/api/bookings', [
+            'service_id' => $service->id,
+            'scheduled_date' => $this->bookingToday()->format('Y-m-d'),
+            'scheduled_time' => '10:00',
+            'whatsapp' => '+593099912345',
+        ])->assertStatus(201);
     }
 
     // -------------------------------------------------------------------------

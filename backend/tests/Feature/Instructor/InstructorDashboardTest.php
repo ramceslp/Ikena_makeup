@@ -215,9 +215,15 @@ class InstructorDashboardTest extends TestCase
         $course     = $this->courseFor($instructor);
         Sanctum::actingAs($instructor);
 
-        // Months relative to "now" (2026-06-15 per env)
-        $twoMonthsAgo = Carbon::now()->subMonths(2)->startOfMonth()->addDays(5);
-        $lastMonth    = Carbon::now()->subMonth()->startOfMonth()->addDays(10);
+        // Months relative to the real "now" — this suite does NOT freeze the
+        // clock. Anchor to the first of the month BEFORE subtracting, matching
+        // DashboardController::buildSalesOverTime(): subtracting months from a
+        // day-of-month the target month lacks overflows into the next month
+        // (from 2026-04-30, subMonths(2) yields 2026-03-02, not February), so
+        // an unanchored version silently tests a different month than it names.
+        $monthStart   = Carbon::now()->startOfMonth();
+        $twoMonthsAgo = $monthStart->copy()->subMonths(2)->addDays(5);
+        $lastMonth    = $monthStart->copy()->subMonth()->addDays(10);
 
         // Two paid orders two months ago, one paid order last month
         $this->paidOrderFor($student, $course, 2000, $twoMonthsAgo);

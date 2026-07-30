@@ -30,7 +30,18 @@ class StoreBookingRequest extends FormRequest
     {
         return [
             'service_id'     => ['required', 'integer', 'exists:services,id'],
-            'scheduled_date' => ['required', 'date', 'after_or_equal:today'],
+            // Deliberately NO 'after_or_equal:today' here. That rule resolves
+            // "today" through app.timezone (UTC), which contradicts this
+            // class's own timezone contract documented above: the field is
+            // America/Guayaquil (UTC-5) wall-clock time. Between 19:00
+            // Guayaquil and midnight UTC the two disagree on the date, so the
+            // rule rejected same-day bookings as being in the past for five
+            // hours of every evening — prime booking time. Field rules also run
+            // BEFORE withValidator(), so its 422 pre-empted the correct check.
+            // The past-date boundary is owned by withValidator() below, which
+            // evaluates it in booking.timezone (same logic as
+            // AvailableSlotsRequest) and is the single source of truth.
+            'scheduled_date' => ['required', 'date'],
             'scheduled_time' => ['required', 'date_format:H:i'],
             'whatsapp'       => ['required', 'string', 'max:20'],
         ];
