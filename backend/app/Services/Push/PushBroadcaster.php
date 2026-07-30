@@ -11,7 +11,7 @@ use NotificationChannels\Fcm\FcmChannel;
 /**
  * PushBroadcaster — sends one notification to an explicit list of device
  * tokens and reports how many landed (push-notifications Slice 1, decision D1:
- * sdd/push-notifications/HANDOFF.md).
+ * docs/push-notifications/HANDOFF.md).
  *
  * Calls NotificationChannels\Fcm\FcmChannel DIRECTLY rather than going through
  * the Notification facade, and that is the whole point of this class. Three

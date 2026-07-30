@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Schema;
  * Create `push_notification_logs` — one row per push broadcast, covering BOTH
  * automatic triggers (a news post published, a course made available) and
  * custom sends composed by an admin (push-notifications Slice 1, decision D3:
- * sdd/push-notifications/HANDOFF.md).
+ * docs/push-notifications/HANDOFF.md).
  *
  * A single unified timeline — rather than an admin-only history — is what lets
  * the panel answer "was the course-published push actually sent?", which is the

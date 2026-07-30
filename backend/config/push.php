@@ -25,7 +25,7 @@ return [
      | swallowing the event.
      |
      | Turning this on requires the manual Firebase setup documented in
-     | sdd/push-notifications/HANDOFF.md §8.
+     | docs/push-notifications/HANDOFF.md §8.
      |
      */
 

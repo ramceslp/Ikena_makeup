@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Add `push_notified_at` to `posts` and `courses` — the idempotency guard for
  * the automatic push triggers (push-notifications Slice 1:
- * sdd/push-notifications/HANDOFF.md §5.2).
+ * docs/push-notifications/HANDOFF.md §5.2).
  *
  * A trigger fires only when this column is NULL, and stamps it on dispatch.
  * Without it the "new post" push would re-send every time an admin corrects a

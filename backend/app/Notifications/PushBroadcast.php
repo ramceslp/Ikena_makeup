@@ -10,7 +10,7 @@ use NotificationChannels\Fcm\Resources\Notification as FcmNotification;
 /**
  * PushBroadcast — the single FCM message shape used by every broadcast in this
  * feature: a published news post, a newly available course, and a custom admin
- * send (push-notifications Slice 1: sdd/push-notifications/HANDOFF.md).
+ * send (push-notifications Slice 1: docs/push-notifications/HANDOFF.md).
  *
  * Deliberately ONE generic notification rather than a subclass per trigger.
  * The per-trigger wording lives in App\Services\Push\PushDispatcher, which

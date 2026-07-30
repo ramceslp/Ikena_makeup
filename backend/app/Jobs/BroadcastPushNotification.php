@@ -14,7 +14,7 @@ use Throwable;
 /**
  * BroadcastPushNotification — delivers one already-recorded
  * `push_notification_logs` row to every registered device
- * (push-notifications Slice 1: sdd/push-notifications/HANDOFF.md).
+ * (push-notifications Slice 1: docs/push-notifications/HANDOFF.md).
  *
  * Queued (QUEUE_CONNECTION defaults to `database` in config/queue.php) so that
  * publishing a post never blocks on an FCM round trip — a broadcast to every

@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * PushNotificationLog — the audit trail behind the admin "notification history"
  * screen (push-notifications Slice 1, decision D3:
- * sdd/push-notifications/HANDOFF.md).
+ * docs/push-notifications/HANDOFF.md).
  *
  * One row per broadcast attempt. Written by App\Services\Push\PushDispatcher
  * before the send is queued (status 'pending', or 'skipped' when
