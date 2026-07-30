@@ -1,7 +1,13 @@
 import { defineStore } from 'pinia'
 import { Capacitor } from '@capacitor/core'
 import api from '../services/api.js'
-import { checkPushPermission, requestPushPermission, registerForPush } from '../services/pushNotifications.js'
+import {
+  checkPushPermission,
+  requestPushPermission,
+  registerForPush,
+  addNotificationListeners,
+} from '../services/pushNotifications.js'
+import router from '../router/index.js'
 import { get, set, remove, getCached, TOKEN_KEY, PUSH_TOKEN_KEY } from '../services/storage.js'
 import { PUSH_ENABLED } from '../config/env.js'
 
@@ -28,11 +34,42 @@ import { PUSH_ENABLED } from '../config/env.js'
 // curious user, but no current view reads it -- this is a deliberate,
 // considered choice given the twice-confirmed "state set but never
 // rendered" bug class from PR8a/8b, not an oversight repeating it.
+/**
+ * Reads `data.route` from an FCM payload and returns it only if it is a safe
+ * internal path, otherwise null.
+ *
+ * The backend already constrains this field (StorePushNotificationRequest
+ * rejects anything not matching /^\/(?!\/)/), so this is defence in depth
+ * rather than the only check — a push payload is attacker-influenceable in a
+ * way an ordinary API response is not, since anyone holding the FCM server
+ * key could craft one, and it is handed straight to the router.
+ *
+ * Rejects:
+ *  - anything not starting with '/'  → 'https://evil.com', 'javascript:...'
+ *  - a protocol-relative '//host'    → the router would treat it as an
+ *                                      external origin
+ *
+ * FCM delivers all data values as strings, so a non-string here means a
+ * malformed payload and is rejected too.
+ */
+export function extractRoute(data) {
+  const route = data?.route
+
+  if (typeof route !== 'string') return null
+  if (!route.startsWith('/')) return null
+  if (route.startsWith('//')) return null
+
+  return route
+}
+
 export const usePushStore = defineStore('push', {
   state: () => ({
     permissionState: null, // null (not yet checked) | 'granted' | 'denied' | 'prompt' | 'prompt-with-rationale'
     registered: false,
     error: null,
+    // Last notification delivered while the app was in the foreground. Set so
+    // a future in-app banner can render it; no view reads it yet.
+    lastReceived: null,
   }),
 
   actions: {
@@ -87,6 +124,18 @@ export const usePushStore = defineStore('push', {
         return
       }
 
+      // Attached HERE, before every remaining early return, and deliberately
+      // so. The common case on a returning user is the `alreadyRegistered`
+      // branch below, which exits init() immediately — if the delivery
+      // listeners were attached after it, tapping a notification would do
+      // nothing on exactly the devices that have been using the app longest.
+      // The not-logged-in return above it has the same problem on a cold
+      // start from a tapped notification. Attaching is idempotent and cheap.
+      addNotificationListeners(
+        (notification) => this._onNotificationReceived(notification),
+        (action) => this._onNotificationTapped(action),
+      )
+
       if (!getCached(TOKEN_KEY)) {
         // Not logged in yet — loginWithGoogle() calls init() again right
         // after a session exists.
@@ -137,6 +186,43 @@ export const usePushStore = defineStore('push', {
         // next init() call since nothing was persisted.
         console.error('Failed to start push registration:', err)
         this.error = 'register-call-failed'
+      }
+    },
+
+    /**
+     * A notification arrived while the app was in the foreground. Recorded
+     * only — see addNotificationListeners' doc comment for why this must not
+     * navigate.
+     */
+    _onNotificationReceived(notification) {
+      this.lastReceived = {
+        title: notification?.title ?? null,
+        body: notification?.body ?? null,
+        route: extractRoute(notification?.data),
+      }
+    },
+
+    /**
+     * The user tapped a notification (from the tray, possibly cold-starting
+     * the app). Navigates to the deep link the backend attached as
+     * `data.route`.
+     *
+     * Never throws: this runs from a fire-and-forget native listener, so an
+     * uncaught rejection would surface as an unhandled promise rejection
+     * rather than anything actionable. A failed navigation simply leaves the
+     * user on whatever screen the app opened to, which is a working app.
+     */
+    async _onNotificationTapped(action) {
+      const route = extractRoute(action?.notification?.data)
+
+      if (route === null) return
+
+      try {
+        await router.push(route)
+      } catch (err) {
+        // Most likely an unmatched path — e.g. a notification for a screen
+        // shipped in a newer app version than the one installed.
+        console.error('Failed to open push notification deep link:', route, err)
       }
     },
 

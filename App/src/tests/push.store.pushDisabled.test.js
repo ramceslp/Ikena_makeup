@@ -38,6 +38,11 @@ vi.mock('../services/pushNotifications.js', () => ({
   checkPushPermission: vi.fn(),
   requestPushPermission: vi.fn(),
   registerForPush: vi.fn(),
+  addNotificationListeners: vi.fn(),
+}))
+
+vi.mock('../router/index.js', () => ({
+  default: { push: vi.fn().mockResolvedValue(undefined) },
 }))
 
 vi.mock('@capacitor/core', () => ({

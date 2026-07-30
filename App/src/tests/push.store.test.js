@@ -31,6 +31,13 @@ vi.mock('../services/pushNotifications.js', () => ({
   checkPushPermission: vi.fn(),
   requestPushPermission: vi.fn(),
   registerForPush: vi.fn(),
+  addNotificationListeners: vi.fn(),
+}))
+
+// The store imports the router to open deep links on a notification tap.
+// Delivery/deep-link behavior is covered in push.store.delivery.test.js.
+vi.mock('../router/index.js', () => ({
+  default: { push: vi.fn().mockResolvedValue(undefined) },
 }))
 
 vi.mock('@capacitor/core', () => ({

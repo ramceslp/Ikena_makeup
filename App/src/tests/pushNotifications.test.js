@@ -92,4 +92,69 @@ describe('pushNotifications service', () => {
 
     expect(onError).toHaveBeenCalledWith(pluginError)
   })
+
+  // -------------------------------------------------------------------
+  // Delivery listeners (push-notifications Slice 5)
+  // -------------------------------------------------------------------
+
+  it('addNotificationListeners subscribes to both delivery events', async () => {
+    const { PushNotifications } = await import('@capacitor/push-notifications')
+
+    const { addNotificationListeners } = await import('../services/pushNotifications.js')
+    addNotificationListeners(vi.fn(), vi.fn())
+
+    const events = PushNotifications.addListener.mock.calls.map((call) => call[0])
+    expect(events).toContain('pushNotificationReceived')
+    expect(events).toContain('pushNotificationActionPerformed')
+  })
+
+  it('addNotificationListeners forwards a foreground notification to onReceived', async () => {
+    const { PushNotifications } = await import('@capacitor/push-notifications')
+
+    const { addNotificationListeners } = await import('../services/pushNotifications.js')
+    const onReceived = vi.fn()
+    addNotificationListeners(onReceived, vi.fn())
+
+    const handler = PushNotifications.addListener.mock.calls.find(
+      (call) => call[0] === 'pushNotificationReceived'
+    )[1]
+    const notification = { title: 'Nueva noticia', body: 'Mirá esto', data: { route: '/noticias/x' } }
+    handler(notification)
+
+    expect(onReceived).toHaveBeenCalledWith(notification)
+  })
+
+  it('addNotificationListeners forwards a tap to onAction', async () => {
+    const { PushNotifications } = await import('@capacitor/push-notifications')
+
+    const { addNotificationListeners } = await import('../services/pushNotifications.js')
+    const onAction = vi.fn()
+    addNotificationListeners(vi.fn(), onAction)
+
+    const handler = PushNotifications.addListener.mock.calls.find(
+      (call) => call[0] === 'pushNotificationActionPerformed'
+    )[1]
+    const action = { actionId: 'tap', notification: { data: { route: '/cursos/x' } } }
+    handler(action)
+
+    expect(onAction).toHaveBeenCalledWith(action)
+  })
+
+  /**
+   * init() runs at every app boot AND after every login, so a non-idempotent
+   * attach would fire each callback twice for a single notification.
+   */
+  it('addNotificationListeners attaches only once per app process', async () => {
+    const { PushNotifications } = await import('@capacitor/push-notifications')
+
+    const { addNotificationListeners } = await import('../services/pushNotifications.js')
+    addNotificationListeners(vi.fn(), vi.fn())
+    addNotificationListeners(vi.fn(), vi.fn())
+    addNotificationListeners(vi.fn(), vi.fn())
+
+    const deliveryCalls = PushNotifications.addListener.mock.calls.filter((call) =>
+      ['pushNotificationReceived', 'pushNotificationActionPerformed'].includes(call[0])
+    )
+    expect(deliveryCalls).toHaveLength(2)
+  })
 })
