@@ -375,129 +375,132 @@
 }
 
 /*
-  Scroll-reveal motion (Phase 2). Paired with the v-reveal directive.
-  The hidden state is gated behind `prefers-reduced-motion: no-preference`, so a
-  user who opts out of motion always sees content at rest (never stuck at 0).
-  Uses transform/opacity only (GPU-friendly, no layout reflow). Ease-out curve
-  for an entrance that decelerates into place.
-*/
-@media (prefers-reduced-motion: no-preference) {
-  .reveal {
-    opacity: 0;
-    transform: translateY(24px);
-    /* --reveal-delay is set by the directive when a stagger index is passed
-       (v-reveal="i"). It is a custom property rather than an inline
-       transition-delay so it also reaches pseudo-elements — see reveal.js. */
-    transition:
-      opacity 500ms cubic-bezier(0.16, 1, 0.3, 1) var(--reveal-delay, 0ms),
-      transform 500ms cubic-bezier(0.16, 1, 0.3, 1) var(--reveal-delay, 0ms);
-  }
+  "Trazo" (Phase 4): section headings paint in left-to-right, like a lipstick
+  swipe, with a soft blush glow riding just ahead of the exposed edge. Identical
+  to the web version — unlike "Velo", nothing here is viewport-relative, so
+  there is no dvh/vh split.
 
-  .reveal.is-revealed {
-    opacity: 1;
-    transform: none;
+  Scroll-scrubbed, not triggered: the stroke's progress IS the scroll position,
+  so the heading is drawn by the reader's own gesture rather than playing a
+  canned animation once tripped. No JavaScript is involved — the class is static
+  in the template and the timeline does the rest. This is why App/ has no
+  `v-reveal` directive at all: the headings were its only caller.
+
+  Range (`cover 15% cover 36%`): measured on the emulator at a 914px viewport
+  with an 80px heading — the stroke starts ~149px after the heading first peeks
+  over the bottom edge and is finished ~358px in, with the heading still low on
+  screen (~y 556 of 914). Finishing early is the whole point — a scrubbed wipe
+  invites the one failure a triggered one cannot have: a reader who stops
+  mid-scroll, left with a half-written title.
+
+  ⚠️ The LAST heading on the page constrains the range end. It only completes if
+  the page has ~36% of a coverDistance (viewport + heading) of scroll left below
+  it. At 18%–42% the newsletter heading finished at scroll 5336 of a 5388
+  maximum — 52px of runway to spare, i.e. it landed as the reader hit the
+  bottom. 36% buys that back. Adding a shorter final section, or trimming what
+  sits below it, spends it again: re-measure rather than assume.
+
+  ⚠️ Any ancestor with `overflow: hidden` freezes this. `hidden` creates a
+  scroll container, `view()` resolves against the NEAREST one, and a container
+  that never scrolls pins progress at a constant — the heading would stay half
+  painted for the life of the page. Use `overflow: clip`, which clips
+  identically without becoming a scroll container. Same trap as the Velo block
+  above; trazoHeadings.test.js walks each heading's ancestors to guard it.
+
+  ⚠️ The hidden state is a mask, never `clip-path`. The soft mask stop reads as
+  a bristle edge where a clip gives a razor line, and it leaves the element's
+  geometry intact — which is what would keep the heading recoverable if this
+  ever went back to an IntersectionObserver trigger, since Chromium computes
+  intersection AFTER clipping and a clipped heading reports intersectionRatio 0
+  while sitting mid-viewport. Measured in this WebView: rect.top 417 inside a
+  914px viewport, isIntersecting false.
+
+  Gated on BOTH `prefers-reduced-motion: no-preference` and `@supports
+  (animation-timeline: view())`. A user who opts out of motion, or a WebView
+  without scroll timelines, gets a plain heading — no mask, no glow, and never a
+  half-painted title.
+*/
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .trazo {
+      position: relative;
+      /* fit-content so the stroke travels the width of the TEXT, not of the
+         block: left as a block it would finish over the last glyph and then
+         keep sweeping empty space for the rest of the container. The box is
+         permanent now that nothing strips the class, so centred headings need
+         `mx-auto` at the call site. */
+      width: fit-content;
+      max-width: 100%;
+      /* The mask is 2.6x the heading, so the heading samples ~38% of it. Parked
+         right (100%) it sits past the gradient's transparent stop and is fully
+         hidden; slid to 0% it sits entirely inside the opaque stop. The soft
+         stop between them is the stroke's leading edge. */
+      -webkit-mask-image: linear-gradient(90deg, #000 0 45%, transparent 58%);
+      mask-image: linear-gradient(90deg, #000 0 45%, transparent 58%);
+      -webkit-mask-size: 260% 100%;
+      mask-size: 260% 100%;
+      -webkit-mask-repeat: no-repeat;
+      mask-repeat: no-repeat;
+      -webkit-mask-position: 100% 0;
+      mask-position: 100% 0;
+      animation: trazo-wipe linear both;
+      animation-timeline: view();
+      animation-range: cover 15% cover 36%;
+    }
+
+    /* Pigment trailing the edge. It lives inside the heading's box so the same
+       mask clips it, which is what makes it read as colour being laid down
+       rather than a light sweeping past. z-index keeps it behind the glyphs.
+
+       It takes its own `view()` instead of sharing a named timeline: its box
+       differs from the heading's by the negative inset alone, which works out
+       to ~2px of scroll across the whole range. */
+    .trazo::after {
+      content: "";
+      position: absolute;
+      inset: -0.12em -0.25em -0.18em -0.25em;
+      z-index: -1;
+      background: linear-gradient(
+        90deg,
+        transparent 0 30%,
+        color-mix(in srgb, var(--color-blush-canvas) 90%, transparent) 46%,
+        transparent 62%
+      );
+      background-size: 260% 100%;
+      background-position: 100% 0;
+      background-repeat: no-repeat;
+      filter: blur(9px);
+      pointer-events: none;
+      animation: trazo-pigment linear both;
+      animation-timeline: view();
+      animation-range: cover 15% cover 36%;
+    }
   }
 }
 
-/*
-  "Trazo" (Phase 4): section headings paint in left-to-right, like a lipstick
-  swipe, with a soft blush glow riding just ahead of the exposed edge. Paired
-  with the `v-reveal.trazo` directive variant. Identical to the web version —
-  unlike "Velo", nothing here is viewport-relative, so there is no dvh/vh split.
-
-  Triggered, not scroll-scrubbed: a brush stroke has its own tempo, and binding
-  it to `animation-timeline: view()` would make it crawl on a slow scroll and
-  snap on a flick. The reasoning lives in directives/reveal.js.
-
-  The glow is a pseudo-element sharing the heading's clip, so only the part over
-  already-painted text is visible — that is what makes it read as pigment being
-  laid down rather than a light sweeping past. It shares the wipe's duration and
-  easing so the two stay locked together, with the glow slightly ahead.
-
-  Both states sit behind `prefers-reduced-motion: no-preference`, so a user who
-  opts out never sees a masked heading.
-
-  ⚠️ The hidden state MUST NOT be `clip-path`. Chromium computes intersection
-  after clipping, so a heading hidden with `inset(0 100% 0 0)` reports
-  intersectionRatio 0 while sitting mid-viewport — the observer never fires, the
-  class is never added, and the heading stays invisible for the life of the
-  page. The hidden state would suppress the very trigger meant to clear it.
-  Measured in the Android WebView: rect.top 417 inside a 914px viewport,
-  isIntersecting false. A mask is a paint-only effect and leaves the element's
-  geometry — and therefore the observer — alone.
-*/
-@media (prefers-reduced-motion: no-preference) {
-  .trazo {
-    position: relative;
-    /* fit-content so the stroke travels the width of the TEXT, not of the
-       block. Left as a block it would finish over the last glyph and then keep
-       sweeping empty space for the rest of the container. The directive strips
-       the class once the wipe settles, so this never becomes a permanent
-       layout change. */
-    width: fit-content;
-    max-width: 100%;
-    /* The mask is 2.6x the heading, so the heading samples ~38% of it. Parked
-       right (100%) it sits past the gradient's transparent stop and is fully
-       hidden; slid to 0% it sits entirely inside the opaque stop. The soft
-       stop between them is the stroke's leading edge — a bristle edge rather
-       than the razor line a clip would give. */
-    -webkit-mask-image: linear-gradient(90deg, #000 0 45%, transparent 58%);
-    mask-image: linear-gradient(90deg, #000 0 45%, transparent 58%);
-    -webkit-mask-size: 260% 100%;
-    mask-size: 260% 100%;
-    -webkit-mask-repeat: no-repeat;
-    mask-repeat: no-repeat;
+@keyframes trazo-wipe {
+  from {
     -webkit-mask-position: 100% 0;
     mask-position: 100% 0;
-    /* The hold before the stroke starts. Three of these headings sit inside a
-       `v-reveal` wrapper whose own 500ms fade begins at the same moment, so
-       without it the block was still settling while the title was already half
-       painted. The pause lets the section arrive first, then the heading gets
-       written onto it. Any stagger index adds on top. */
-    transition:
-      mask-position 760ms cubic-bezier(0.16, 1, 0.3, 1) calc(240ms + var(--reveal-delay, 0ms)),
-      -webkit-mask-position 760ms cubic-bezier(0.16, 1, 0.3, 1) calc(240ms + var(--reveal-delay, 0ms));
   }
-
-  .trazo.is-revealed {
+  to {
     -webkit-mask-position: 0 0;
     mask-position: 0 0;
   }
+}
 
-  /* Pigment trailing the edge. It lives inside the heading's box so the same
-     mask clips it, which is what makes it read as colour being laid down
-     rather than a light sweeping past. z-index keeps it behind the glyphs. */
-  .trazo::after {
-    content: "";
-    position: absolute;
-    inset: -0.12em -0.25em -0.18em -0.25em;
-    z-index: -1;
-    background: linear-gradient(
-      90deg,
-      transparent 0 30%,
-      color-mix(in srgb, var(--color-blush-canvas) 90%, transparent) 46%,
-      transparent 62%
-    );
-    background-size: 260% 100%;
+/* The glow fades over the last stretch instead of parking at full strength: at
+   the end position part of the gradient's ramp is still inside the heading's
+   box, which would leave a permanent blush tint on the right edge. */
+@keyframes trazo-pigment {
+  from {
     background-position: 100% 0;
-    background-repeat: no-repeat;
-    filter: blur(9px);
-    pointer-events: none;
     opacity: 1;
-    /* Fades out as the stroke lands. Without this the gradient's ramp is still
-       partly inside the heading's box at the end position, leaving a permanent
-       blush tint on the right edge — and the end state has to be clean on its
-       own, because the directive's class cleanup is not guaranteed to run for
-       a heading that was already on screen at load. */
-    /* Same hold as the mask, so the pigment stays locked to the stroke. The
-       fade-out is timed to land as the stroke does: 240ms hold + 760ms sweep
-       = 1000ms, so it starts at 860ms and finishes just past the end. */
-    transition:
-      background-position 760ms cubic-bezier(0.16, 1, 0.3, 1) calc(240ms + var(--reveal-delay, 0ms)),
-      opacity 260ms linear calc(860ms + var(--reveal-delay, 0ms));
   }
-
-  .trazo.is-revealed::after {
+  82% {
+    opacity: 1;
+  }
+  to {
     background-position: 0 0;
     opacity: 0;
   }

@@ -4,10 +4,9 @@ import BaseButton from '../ui/BaseButton.vue'
 
 // Ported from frontend/src/components/catalog/ProductCatalog.vue
 // (mobile-capacitor-setup Phase 7). Dropped the `v-reveal` scroll-reveal
-// directive from this grid. The directive itself IS registered now (main.js,
-// Phase 4, for the `.trazo` heading variant), but the per-card entrance stays
-// off here: staggering a long WebView catalog grid is a heavier effect than
-// painting one heading, and no spec scenario depends on it.
+// directive from this grid: staggering a long WebView catalog grid is a much
+// heavier effect than the home headings' CSS stroke, and no spec scenario
+// depends on it. App/ has no such directive at all as a result.
 defineProps({
   products: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },

@@ -6,9 +6,8 @@ import PurchaseRow from './PurchaseRow.vue'
 // history yet]), with two App-specific deviations:
 //   1. Dropped the `v-reveal` scroll-reveal directive from the ported list —
 //      same call already made for ProductCatalog.vue/ServiceCatalog.vue in
-//      Phase 7. The directive is registered as of Phase 4 of the home motion
-//      work, but only its `.trazo` heading variant is in use; this list still
-//      renders at rest.
+//      Phase 7, and App/ carries no such directive at all. This list renders
+//      at rest.
 //   2. Added an `error` prop + `@retry` emit, in the SAME loading → error →
 //      empty → list order ProductCatalog.vue already established in Phase 7.
 //      The web version never surfaced a fetch failure here at all (Profile.vue's

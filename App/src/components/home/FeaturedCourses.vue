@@ -5,13 +5,11 @@ import { formatPrice } from '../../utils/formatPrice.js'
 
 // Ported from frontend/src/components/home/FeaturedCourses.vue.
 //
-// The `v-reveal` directive IS registered now (main.js, Phase 4) -- the earlier
-// note here said otherwise, on the grounds that porting a cosmetic-only effect
-// did not justify a new global directive. Motion on the home screen became a
-// deliberate goal, so that trade-off was re-decided.
-//
-// Only the `.trazo` heading variant is used: the plain translate/opacity
-// entrance on the card grid stays unported, so cards still render at rest.
+// The heading's `.trazo` stroke is pure CSS (style.css, scrubbed by
+// `animation-timeline: view()`), so App/ needs no `v-reveal` directive: it was
+// briefly registered for this, and removed once the stroke stopped needing
+// JavaScript. The web version's per-card translate/opacity entrance stays
+// unported, so the card grid still renders at rest.
 const coursesStore = useCoursesStore()
 
 const courses = ref([])
@@ -32,7 +30,7 @@ onMounted(async () => {
           <p class="font-label-sm text-label-sm text-primary uppercase tracking-widest mb-2">
             Formación Artística
           </p>
-          <h2 v-reveal.trazo class="font-headline-lg text-headline-lg text-deep-marsala">
+          <h2 class="trazo font-headline-lg text-headline-lg text-deep-marsala">
             Cursos Destacados
           </h2>
         </div>

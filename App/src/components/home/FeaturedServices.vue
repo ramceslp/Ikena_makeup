@@ -4,8 +4,8 @@ import { useServicesStore } from '../../stores/services.js'
 import { formatPrice } from '../../utils/formatPrice.js'
 
 // Ported from frontend/src/components/home/FeaturedServices.vue.
-// The `v-reveal` directive is registered (main.js, Phase 4) but only its
-// `.trazo` heading variant is used here -- see FeaturedCourses.vue.
+// The heading's `.trazo` stroke is pure CSS and the card grid renders at rest
+// -- see FeaturedCourses.vue.
 const servicesStore = useServicesStore()
 
 const services = ref([])
@@ -26,7 +26,7 @@ onMounted(async () => {
           <p class="font-label-sm text-label-sm text-primary uppercase tracking-widest mb-2">
             Experiencias Profesionales
           </p>
-          <h2 v-reveal.trazo class="font-headline-lg text-headline-lg text-deep-marsala">
+          <h2 class="trazo font-headline-lg text-headline-lg text-deep-marsala">
             Servicios Destacados
           </h2>
         </div>

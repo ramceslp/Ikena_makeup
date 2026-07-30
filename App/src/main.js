@@ -4,7 +4,6 @@ import App from './App.vue'
 import router from './router'
 import { hydrate } from './services/storage.js'
 import { usePushStore } from './stores/push.js'
-import reveal from './directives/reveal.js'
 import './style.css'
 
 // @capacitor/preferences is async, so the cached auth session (token/user)
@@ -27,10 +26,6 @@ async function bootstrap() {
   const app = createApp(App)
   app.use(pinia)
   app.use(router)
-  // Registered so `v-reveal.trazo` can paint the section headings (Phase 4).
-  // The matching `.reveal` CSS had been ported in Phase 2 and sat unused until
-  // this directive arrived.
-  app.directive('reveal', reveal)
   app.mount('#app')
 
   // Push registration (tasks 8.6-8.8): the other trigger point besides a

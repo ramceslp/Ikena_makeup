@@ -45,7 +45,7 @@ function getSlugLink(post) {
           <p class="font-label-sm text-label-sm text-primary uppercase tracking-widest mb-2">
             Últimas Noticias
           </p>
-          <h2 v-reveal.trazo class="font-headline-lg text-headline-lg text-deep-marsala">
+          <h2 class="trazo font-headline-lg text-headline-lg text-deep-marsala">
             Actualidad &amp; Novedades
           </h2>
         </div>
