@@ -1,4 +1,5 @@
 <script setup>
+import { ref } from 'vue'
 import BaseBadge from '../ui/BaseBadge.vue'
 
 // Catalog card for a single news post. Mirrors components/course/CourseCard.vue's
@@ -35,6 +36,17 @@ function truncate(text, length = 120) {
   if (!text) return ''
   return text.length > length ? `${text.slice(0, length)}...` : text
 }
+
+// A cover_image_url that is present but fails to LOAD is a different case
+// from one that is absent, and it looks far worse: the browser renders its
+// broken-image glyph plus the alt text, which overflows the thumbnail and
+// collides with the "Destacada" badge. Seen for real on the emulator when a
+// seeded placeholder host returned a 500.
+//
+// Falling back to the same neutral block used when there is no cover at all
+// makes a dead image indistinguishable from no image, which is the right
+// outcome — a reader gains nothing from knowing the fetch failed.
+const coverFailed = ref(false)
 </script>
 
 <template>
@@ -46,14 +58,17 @@ function truncate(text, length = 120) {
     <!-- Cover -->
     <div class="relative aspect-video overflow-hidden bg-surface-container">
       <img
-        v-if="post.cover_image_url"
+        v-if="post.cover_image_url && !coverFailed"
         :src="post.cover_image_url"
         :alt="post.title"
+        data-cover-image
         class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
         loading="lazy"
+        @error="coverFailed = true"
       />
       <div
         v-else
+        data-cover-placeholder
         class="w-full h-full flex items-center justify-center bg-gradient-to-br from-blush-canvas/30 to-primary/20"
       >
         <span class="material-symbols-outlined text-4xl text-primary/50" aria-hidden="true">newspaper</span>

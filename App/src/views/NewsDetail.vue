@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { usePostsStore } from '../stores/posts.js'
 import { safeCtaUrl } from '../utils/cta.js'
@@ -20,6 +20,13 @@ const loading = computed(() => postsStore.loading)
 const error = computed(() => postsStore.error)
 
 const ctaHref = computed(() => (post.value ? safeCtaUrl(post.value.cta_url) : null))
+
+// See components/news/NewsCard.vue for the reasoning. Here the failure is
+// even more visible: the cover is a full-width 16:9 block, so a broken-image
+// glyph and its alt text sit at the very top of the article. Hiding the
+// element entirely is better than the alternative on a detail page — the
+// headline immediately below already says what the picture would have.
+const coverFailed = ref(false)
 
 const typeLabel = {
   noticia: 'Noticia',
@@ -82,8 +89,17 @@ onMounted(async () => {
       </RouterLink>
 
       <!-- Cover -->
-      <div v-if="post.cover_image_url" class="rounded-2xl overflow-hidden aspect-video bg-surface-container">
-        <img :src="post.cover_image_url" :alt="post.title" class="w-full h-full object-cover" />
+      <div
+        v-if="post.cover_image_url && !coverFailed"
+        class="rounded-2xl overflow-hidden aspect-video bg-surface-container"
+      >
+        <img
+          :src="post.cover_image_url"
+          :alt="post.title"
+          data-cover-image
+          class="w-full h-full object-cover"
+          @error="coverFailed = true"
+        />
       </div>
 
       <!-- Meta -->

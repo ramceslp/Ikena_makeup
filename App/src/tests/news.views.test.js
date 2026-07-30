@@ -87,6 +87,27 @@ describe('News catalog', () => {
     )
   })
 
+  /**
+   * A cover_image_url that is set but fails to LOAD is worse than none: the
+   * browser draws its broken-image glyph plus the alt text, which overflows
+   * the thumbnail and collides with the "Destacada" badge. Observed for real
+   * on the emulator when a seeded placeholder host returned a 500.
+   */
+  it('falls back to the placeholder when a cover image fails to load', async () => {
+    api.get.mockResolvedValue(listResponse([card({ cover_image_url: 'http://broken.test/x.jpg' })]))
+
+    const wrapper = mountNews()
+    await flushPromises()
+
+    expect(wrapper.find('[data-cover-image]').exists()).toBe(true)
+    expect(wrapper.find('[data-cover-placeholder]').exists()).toBe(false)
+
+    await wrapper.find('[data-cover-image]').trigger('error')
+
+    expect(wrapper.find('[data-cover-image]').exists()).toBe(false)
+    expect(wrapper.find('[data-cover-placeholder]').exists()).toBe(true)
+  })
+
   it('shows an empty state when there are no posts', async () => {
     api.get.mockResolvedValue(listResponse([]))
     const wrapper = mountNews()
@@ -241,6 +262,20 @@ describe('News detail', () => {
     await flushPromises()
 
     expect(wrapper.find('[data-cta-link]').exists()).toBe(false)
+  })
+
+  it('hides a cover image that fails to load', async () => {
+    api.get.mockResolvedValue(detail({ cover_image_url: 'http://broken.test/x.jpg' }))
+    const wrapper = await mountDetail()
+    await flushPromises()
+
+    expect(wrapper.find('[data-cover-image]').exists()).toBe(true)
+
+    await wrapper.find('[data-cover-image]').trigger('error')
+
+    expect(wrapper.find('[data-cover-image]').exists()).toBe(false)
+    // The headline immediately below already carries the meaning.
+    expect(wrapper.text()).toContain('Nueva colección de labiales')
   })
 
   it('renders the image gallery when present', async () => {
