@@ -229,6 +229,112 @@
 }
 
 /* =========================================================================
+   VERTICAL RHYTHM — the single knob for "how compact does the app feel?"
+   =========================================================================
+   Every section-level vertical space in the app comes from the four classes
+   below, and every one of them reads a custom property declared in this one
+   block. To retune compactness later, change ONLY the numbers in :root here.
+   Do NOT hand-write py-16 / py-20 / py-24 / mb-10 on a section again — that
+   is exactly what made the app feel roomy and inconsistent, because each
+   component had invented its own value.
+
+   All values sit on the 4/8dp Material grid (Skill: spacing-scale) and form
+   four deliberate tiers (Skill: section-spacing-hierarchy). Mobile-first: the
+   base value is the phone value, and md: (>=768px, i.e. tablet/landscape)
+   scales up. Phones only ever see the base value.
+
+   TIERS — pick by role, not by how it looks:
+
+   .section-y        Tier 1 — a normal full-width content <section>.
+                     48px phone / 64px md.   Replaces py-20 / py-24.
+                     This is THE default. Use it on every home child section,
+                     catalog band, and content block.
+
+   .section-y-sm     Tier 2 — a page-header strip or a secondary/dense band
+                     that must read as subordinate to Tier 1.
+                     32px phone / 40px md.   Replaces py-16.
+
+   .section-header   Tier 3 — space BELOW a section's header block (the
+                     eyebrow + title + "ver todo" link cluster) and before
+                     its content grid. This is a margin, not padding.
+                     24px phone / 32px md.   Replaces mb-10.
+
+   .state-y          Tier 4 — transient state blocks: loading, error, empty.
+                     32px phone / 40px md.   Replaces py-24 / py-12.
+                     These are the tightest tier on purpose: a spinner or an
+                     error message centred inside 96px of padding reads as a
+                     broken screen, not as a deliberate state.
+
+   Tier 2 and Tier 4 currently share the same numbers because they sit on the
+   same rhythm step. They are still two separate knobs so a later tuning pass
+   can move one without dragging the other along.
+
+   Compaction achieved vs. the pre-shell values: Tier 1 -40% on phone
+   (80px -> 48px), Tier 2 -50% (64px -> 32px), Tier 3 -40% (40px -> 24px),
+   Tier 4 -67% (96px -> 32px). Sections stay visually separated because the
+   home sections also alternate their background surface, so separation is
+   chromatic as well as spatial (Skill: whitespace-balance — compact must not
+   become cramped).
+*/
+:root {
+  --rhythm-section: 48px;
+  --rhythm-section-md: 64px;
+
+  --rhythm-section-sm: 32px;
+  --rhythm-section-sm-md: 40px;
+
+  --rhythm-section-header: 24px;
+  --rhythm-section-header-md: 32px;
+
+  --rhythm-state: 32px;
+  --rhythm-state-md: 40px;
+}
+
+@layer components {
+  .section-y {
+    padding-top: var(--rhythm-section);
+    padding-bottom: var(--rhythm-section);
+  }
+
+  .section-y-sm {
+    padding-top: var(--rhythm-section-sm);
+    padding-bottom: var(--rhythm-section-sm);
+  }
+
+  .section-header {
+    margin-bottom: var(--rhythm-section-header);
+  }
+
+  .state-y {
+    padding-top: var(--rhythm-state);
+    padding-bottom: var(--rhythm-state);
+  }
+
+  /* md: = 48rem, matching --breakpoint-md so these track Tailwind's own
+     breakpoint. Written as min-width (not range syntax) for older WebViews. */
+  @media (min-width: 48rem) {
+    .section-y {
+      padding-top: var(--rhythm-section-md);
+      padding-bottom: var(--rhythm-section-md);
+    }
+
+    .section-y-sm {
+      padding-top: var(--rhythm-section-sm-md);
+      padding-bottom: var(--rhythm-section-sm-md);
+    }
+
+    .section-header {
+      margin-bottom: var(--rhythm-section-header-md);
+    }
+
+    .state-y {
+      padding-top: var(--rhythm-state-md);
+      padding-bottom: var(--rhythm-state-md);
+    }
+  }
+}
+
+/* =========================================================================
    ICONS — Material Symbols Outlined
    =========================================================================
    index.html loads the Material Symbols Outlined webfont, and Google's own

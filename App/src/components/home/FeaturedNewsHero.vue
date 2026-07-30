@@ -23,7 +23,7 @@ const slugLink = computed(() => {
 </script>
 
 <template>
-  <section data-featured-news-hero class="relative overflow-hidden min-h-[480px] flex items-center bg-surface-muted">
+  <section data-featured-news-hero class="relative overflow-hidden min-h-[400px] flex items-center bg-surface-muted">
     <!-- Background image when available -->
     <div v-if="post?.cover_image_url" class="absolute inset-0 z-0 overflow-hidden">
       <img
@@ -41,7 +41,13 @@ const slugLink = computed(() => {
       <div class="makeup-mesh absolute -inset-[10%]" aria-hidden="true" />
     </div>
 
-    <div data-hero-content class="relative z-20 w-full max-w-container-max mx-auto px-gutter py-20" v-if="post">
+    <!-- Bespoke height, not the .section-y tier: the hero is the first
+         impression and earns a taller, more generous scale than the rest of
+         the home sections. Compacted less aggressively than the ~40% cut
+         applied elsewhere (480px min-h / py-20 -> 400px min-h / py-16) so it
+         still reads as "hero", while leaving enough of the viewport for the
+         next section to peek in on a 375x667 phone (content-priority). -->
+    <div data-hero-content class="relative z-20 w-full max-w-container-max mx-auto px-gutter py-16" v-if="post">
       <div class="max-w-2xl space-y-6">
         <div class="inline-flex items-center gap-2">
           <span
