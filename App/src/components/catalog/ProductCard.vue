@@ -81,7 +81,7 @@ defineProps({
 
       <!-- Footer: price + CTA -->
       <div class="mt-auto border-t border-blush-canvas/20 pt-4 flex items-center justify-between gap-2">
-        <span class="font-title-md text-title-md text-primary">
+        <span class="font-title-md text-title-md text-primary tabular-nums">
           {{ formatPrice(product.price) }}
         </span>
         <RouterLink :to="`/products/${product.slug}`">

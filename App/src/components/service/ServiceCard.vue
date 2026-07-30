@@ -93,7 +93,7 @@ function availabilityLabel(type) {
 
       <!-- Footer: price + CTA -->
       <div class="mt-auto border-t border-blush-canvas/20 pt-4 flex items-center justify-between">
-        <span class="font-title-md text-title-md text-primary flex items-center gap-2">
+        <span class="font-title-md text-title-md text-primary flex items-center gap-2 tabular-nums">
           <BaseBadge v-if="isFree(service.price)" variant="secondary">Gratis</BaseBadge>
           <template v-else>{{ formatPrice(service.price) }}</template>
         </span>

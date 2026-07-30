@@ -16,7 +16,7 @@ defineEmits(['retry', 'page-change'])
 </script>
 
 <template>
-  <section class="py-20 bg-background">
+  <section class="section-y bg-background">
     <div class="max-w-container-max mx-auto px-gutter">
       <!-- Loading skeleton -->
       <div v-if="loading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12">
@@ -36,7 +36,7 @@ defineEmits(['retry', 'page-change'])
       </div>
 
       <!-- Error -->
-      <div v-else-if="error" class="text-center py-16">
+      <div v-else-if="error" class="text-center state-y">
         <span class="material-symbols-outlined text-error text-5xl mb-4" aria-hidden="true">error</span>
         <p class="font-body-lg text-body-lg text-on-surface">{{ error }}</p>
         <button
@@ -50,7 +50,7 @@ defineEmits(['retry', 'page-change'])
       </div>
 
       <!-- Empty -->
-      <div v-else-if="!services.length" class="text-center py-16">
+      <div v-else-if="!services.length" class="text-center state-y">
         <span class="material-symbols-outlined text-blush-canvas text-5xl mb-4" aria-hidden="true">search_off</span>
         <p class="font-body-lg text-body-lg text-on-surface-variant">No se encontraron servicios</p>
         <p class="font-body-md text-body-md text-outline mt-1">Prueba con otros filtros de búsqueda</p>
@@ -77,7 +77,7 @@ defineEmits(['retry', 'page-change'])
           Anterior
         </BaseButton>
 
-        <span class="font-body-md text-body-md text-on-surface-variant">
+        <span class="font-body-md text-body-md text-on-surface-variant tabular-nums">
           Página {{ meta.current_page }} de {{ meta.last_page }}
         </span>
 

@@ -95,7 +95,7 @@ onBeforeUnmount(() => {
     <div
       v-if="connectivityState === 'error'"
       data-catalog-error
-      class="flex flex-col items-center gap-4 py-24 px-6 text-center"
+      class="flex flex-col items-center gap-4 state-y px-6 text-center"
     >
       <p class="font-body-lg text-body-lg text-on-surface-variant">
         No pudimos cargar el catálogo. Verifica tu conexión e intenta de nuevo.
@@ -114,7 +114,7 @@ onBeforeUnmount(() => {
     <div
       v-else-if="connectivityState === 'checking'"
       data-catalog-checking
-      class="flex flex-col items-center gap-4 py-24 px-6 text-center"
+      class="flex flex-col items-center gap-4 state-y px-6 text-center"
     >
       <p class="font-body-lg text-body-lg text-on-surface-variant">
         Cargando...
@@ -123,13 +123,13 @@ onBeforeUnmount(() => {
 
     <template v-else-if="connectivityState === 'ok'">
       <!-- Page header -->
-      <section class="py-16 bg-gradient-to-b from-blush-canvas/20 to-background">
+      <section class="section-y-sm bg-gradient-to-b from-blush-canvas/20 to-background">
         <div class="max-w-container-max mx-auto px-gutter text-center">
           <h1 class="font-headline-lg text-headline-lg text-deep-marsala mb-3">
             Catálogo de Productos
           </h1>
-          <p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl mx-auto">
-            Descubre nuestros productos profesionales de maquillaje seleccionados especialmente para ti.
+          <p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl mx-auto truncate">
+            Maquillaje profesional seleccionado para ti.
           </p>
         </div>
       </section>

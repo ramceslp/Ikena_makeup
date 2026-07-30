@@ -34,14 +34,14 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="max-w-container-max mx-auto px-gutter py-16">
+  <div class="max-w-container-max mx-auto px-gutter section-y">
     <!-- Loading -->
-    <div v-if="loading" data-loading class="flex items-center justify-center py-32">
+    <div v-if="loading" data-loading class="flex items-center justify-center state-y">
       <span class="material-symbols-outlined text-5xl text-primary animate-spin" aria-hidden="true">refresh</span>
     </div>
 
     <!-- Error / 404 -->
-    <div v-else-if="error" class="text-center py-32">
+    <div v-else-if="error" class="text-center state-y">
       <span class="material-symbols-outlined text-5xl text-error mb-4" aria-hidden="true">error</span>
       <p class="font-body-lg text-body-lg text-on-surface mb-4">{{ error }}</p>
       <RouterLink to="/products">
@@ -89,7 +89,7 @@ onMounted(async () => {
 
         <!-- Price row -->
         <div class="flex items-center gap-4">
-          <span class="font-display-lg text-display-lg text-primary">
+          <span class="font-display-lg text-display-lg text-primary tabular-nums">
             {{ formatPrice(product.price) }}
           </span>
           <span class="font-body-md text-body-md text-on-surface-variant flex items-center gap-1">

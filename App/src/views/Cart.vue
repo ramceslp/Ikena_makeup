@@ -17,7 +17,7 @@ const cart = useCartStore()
 </script>
 
 <template>
-  <div class="max-w-container-max mx-auto px-gutter py-12">
+  <div class="max-w-container-max mx-auto px-gutter section-y">
     <h1 class="font-headline-md text-headline-md text-deep-marsala mb-8">
       Mi Carrito
     </h1>
@@ -50,7 +50,7 @@ const cart = useCartStore()
     </div>
 
     <!-- Empty state -->
-    <div v-if="cart.isEmpty" data-empty-cart class="flex flex-col items-center justify-center py-24 gap-6 text-center">
+    <div v-if="cart.isEmpty" data-empty-cart class="flex flex-col items-center justify-center state-y gap-6 text-center">
       <span class="material-symbols-outlined text-7xl text-on-surface-variant/40" aria-hidden="true">
         shopping_bag
       </span>
