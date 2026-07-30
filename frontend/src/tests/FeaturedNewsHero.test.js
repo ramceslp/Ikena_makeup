@@ -168,4 +168,77 @@ describe('FeaturedNewsHero.vue — featured post hero', () => {
     // The hero still renders its content on the gradient backdrop.
     expect(wrapper.text()).toContain(fakePost.title)
   })
+
+  /**
+   * "Velo" scroll-driven parallax (Phase 4).
+   *
+   * These guard the wiring, not the visual result — jsdom has no layout and no
+   * scroll timelines, so the animation itself can only be checked in a browser.
+   * What they DO catch is the failure mode that silently kills it.
+   */
+  describe('velo — scroll-driven hero parallax', () => {
+    /**
+     * `overflow: hidden` makes an element a scroll container, and
+     * `animation-timeline: scroll()/view()` resolves against the NEAREST scroll
+     * container. A hidden ancestor therefore freezes the timeline at a constant
+     * progress: the animation is running, but never advances. `overflow: clip`
+     * clips identically without creating a scroll container.
+     *
+     * This is easy to reintroduce — `overflow-hidden` is the reflex utility.
+     */
+    it('clips the hero with overflow-clip so the scroll timeline stays alive', async () => {
+      api.get.mockResolvedValueOnce({ data: { data: fakePost } })
+
+      const wrapper = mountHero()
+      await flushPromises()
+
+      const section = wrapper.find('[data-featured-news-hero]')
+      expect(section.classes()).toContain('overflow-clip')
+      expect(section.classes()).not.toContain('overflow-hidden')
+    })
+
+    it('clips the cover wrapper with overflow-clip too', async () => {
+      api.get.mockResolvedValueOnce({ data: { data: fakePost } })
+
+      const wrapper = mountHero()
+      await flushPromises()
+
+      const media = wrapper.find('[data-hero-media]')
+      expect(media.exists()).toBe(true)
+      expect(media.classes()).toContain('overflow-clip')
+      expect(media.classes()).not.toContain('overflow-hidden')
+    })
+
+    it('marks the cover image as the parallax subject', async () => {
+      api.get.mockResolvedValueOnce({ data: { data: fakePost } })
+
+      const wrapper = mountHero()
+      await flushPromises()
+
+      expect(wrapper.find('[data-hero-cover]').classes()).toContain('velo-media')
+    })
+
+    it('marks the legibility veil so it can lift on scroll', async () => {
+      api.get.mockResolvedValueOnce({ data: { data: fakePost } })
+
+      const wrapper = mountHero()
+      await flushPromises()
+
+      expect(wrapper.find('[data-hero-veil]').classes()).toContain('velo-veil')
+    })
+
+    /**
+     * The gradient fallback already animates via `.makeup-mesh`'s own drift
+     * keyframes. Adding velo-media there would put two animations on the same
+     * `transform` property and the later one would win outright.
+     */
+    it('does not apply the parallax to the gradient fallback', async () => {
+      api.get.mockResolvedValueOnce({ data: { data: { ...fakePost, cover_image_url: null } } })
+
+      const wrapper = mountHero()
+      await flushPromises()
+
+      expect(wrapper.find('.velo-media').exists()).toBe(false)
+    })
+  })
 })
