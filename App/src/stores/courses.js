@@ -2,16 +2,21 @@ import { defineStore } from 'pinia'
 import api from '../services/api.js'
 import { buildParams } from './shared/buildParams.js'
 
-// Trimmed port of frontend/src/stores/courses.js: only fetchCourses(),
-// needed by FeaturedCourses.vue for Home's "3 most-recent courses" section.
-// Course detail/enroll/lesson/review/certificate actions belong to a full
-// course-catalog surface that is out of scope for this app -- the spec's
-// Requirements list a Product Catalog and a Service Catalog, but no Course
-// Catalog; courses only ever appear as a Home "featured" teaser here.
+// Trimmed port of frontend/src/stores/courses.js: fetchCourses() (Home's
+// "3 most-recent courses" section) plus fetchCourse()/fetchCategories() added
+// for the Courses.vue/CourseDetail.vue catalog surface -- same extension
+// pattern already used by stores/products.js and stores/services.js (see
+// their file-level comments for the identical fetchProduct/fetchService +
+// fetchCategories precedent). Enroll/lesson/review/certificate actions are
+// still NOT ported: this app has no /learn player, no checkout flow for
+// courses, and no review UI, so those actions would have no caller (see
+// views/CourseDetail.vue's file-level comment for the full boundary).
 export const useCoursesStore = defineStore('courses', {
   state: () => ({
     courses: [],
     meta: null,
+    categories: [],
+    currentCourse: null,
     loading: false,
     error: null,
   }),
@@ -32,6 +37,33 @@ export const useCoursesStore = defineStore('courses', {
         this.error = err.response?.data?.message || 'Error al cargar los cursos'
       } finally {
         this.loading = false
+      }
+    },
+
+    async fetchCourse(slug) {
+      this.loading = true
+      this.error = null
+      try {
+        const response = await api.get(`/courses/${slug}`)
+        this.currentCourse = response.data.data
+        return this.currentCourse
+      } catch (err) {
+        this.error = err.response?.data?.message || 'Error al cargar el curso'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async fetchCategories() {
+      // Same "fetch once" guard as products.js/services.js -- categories are
+      // shared/static reference data, not filtered per-request.
+      if (this.categories.length > 0) return
+      try {
+        const { data } = await api.get('/categories')
+        this.categories = data.data ?? data
+      } catch {
+        // Leave categories empty — non-critical
       }
     },
   },
