@@ -421,6 +421,74 @@
 }
 
 /*
+  "Velo" (Phase 4): the featured-news hero breathes as you scroll past it. The
+  cover drifts slower than the page (parallax) and the legibility veil lifts,
+  so the photo opens up once the headline has been read. Mirrors
+  frontend/src/style.css, with two deliberate differences for the WebView —
+  see `dvh` and the range below.
+
+  Timeline choice: `scroll(root)` rather than `view()`. The hero always sits at
+  the top of the document, so at scroll 0 a view timeline would already be part
+  way through its own range and the drift would start from an arbitrary offset.
+  Anchoring to the root scroller makes progress 0 mean "page not scrolled".
+
+  This binds to the root scroller, which only works because AppShell scrolls the
+  DOCUMENT (min-h-dvh + flex-1) instead of an inner overflow-y wrapper. Moving
+  the scroll into a container would leave the root scroller inert and silently
+  flatten this animation.
+
+  ⚠️ Any ancestor with `overflow: hidden` silently kills this. `hidden` creates
+  a scroll container, and the timeline resolves against the NEAREST one — a
+  container that never scrolls freezes progress at a constant. Use
+  `overflow: clip`, which clips identically without becoming a scroll container.
+  FeaturedNewsHero.vue uses `overflow-clip` for exactly this reason, and
+  homeSections.test.js guards it.
+
+  Animates transform/opacity only. Android System WebView is Chromium, so
+  scroll timelines are available from 115; older WebViews fall through the
+  @supports gate and render the hero at rest — never blank.
+*/
+.velo-media {
+  /* Overscale so the drift never exposes an edge: the overhang is 9% per side
+     and the animation travels 5% × 1.18 ≈ 5.9%. Applied unconditionally, so the
+     framing is identical with or without motion. */
+  transform: scale(1.18) translate3d(0, -3%, 0);
+}
+
+@supports (animation-timeline: scroll()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .velo-media {
+      will-change: transform;
+      animation: velo-drift linear both;
+      animation-timeline: scroll(root block);
+      /* dvh, not vh: the hero is 400px against a viewport whose height moves as
+         the WebView toolbars collapse, and `vh` would freeze the range at the
+         largest viewport (Skill: viewport-units — same reason AppShell uses
+         min-h-dvh). */
+      animation-range: 0 100dvh;
+    }
+
+    .velo-veil {
+      animation: velo-lift linear both;
+      animation-timeline: scroll(root block);
+      animation-range: 0 80dvh;
+    }
+  }
+}
+
+@keyframes velo-drift {
+  from { transform: scale(1.18) translate3d(0, -5%, 0); }
+  to   { transform: scale(1.18) translate3d(0, 5%, 0); }
+}
+
+/* Stops at 0.65, not 0 — the veil still has to carry the headline's contrast
+   through the first stretch of scrolling. */
+@keyframes velo-lift {
+  from { opacity: 1; }
+  to   { opacity: 0.65; }
+}
+
+/*
   Gloss sheen for primary CTAs (Phase 3): a top light highlight (like light
   catching a lip gloss) plus a single sheen sweep on hover. The sweep only
   runs when motion is allowed. Pseudo-elements paint above the button

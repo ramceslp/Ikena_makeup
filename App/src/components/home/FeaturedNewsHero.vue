@@ -34,24 +34,30 @@ const coverFailed = ref(false)
 </script>
 
 <template>
-  <section data-featured-news-hero class="relative overflow-hidden min-h-[400px] flex items-center bg-surface-muted">
+  <!--
+    overflow-clip, NOT overflow-hidden: `hidden` would make this a scroll
+    container and freeze the `.velo-media` scroll timeline inside it. See the
+    "Velo" block in style.css.
+  -->
+  <section data-featured-news-hero class="relative overflow-clip min-h-[400px] flex items-center bg-surface-muted">
     <!-- Background image when available -->
-    <div v-if="post?.cover_image_url && !coverFailed" class="absolute inset-0 z-0 overflow-hidden">
+    <div v-if="post?.cover_image_url && !coverFailed" data-hero-media class="absolute inset-0 z-0 overflow-clip">
       <img
         :src="post.cover_image_url"
         alt=""
         aria-hidden="true"
         data-hero-cover
-        class="w-full h-full object-cover object-center"
+        class="velo-media w-full h-full object-cover object-center"
         @error="coverFailed = true"
       />
-      <div class="absolute inset-0 bg-gradient-to-r from-background via-background/60 to-transparent z-10" />
+      <!-- Legibility veil (left → right) — lifts as the hero scrolls away -->
+      <div data-hero-veil class="velo-veil absolute inset-0 bg-gradient-to-r from-background via-background/60 to-transparent z-10" />
       <div class="makeup-mesh absolute inset-0 z-10 opacity-40 mix-blend-screen" aria-hidden="true" />
       <div class="absolute inset-0 bg-gradient-to-t from-deep-marsala/25 via-transparent to-transparent z-10" />
     </div>
     <!-- Fallback: signature gradient mesh. Also the destination when a cover
          URL exists but fails to load — see coverFailed. -->
-    <div v-else data-hero-gradient class="absolute inset-0 z-0 bg-surface-muted overflow-hidden">
+    <div v-else data-hero-gradient class="absolute inset-0 z-0 bg-surface-muted overflow-clip">
       <div class="makeup-mesh absolute -inset-[10%]" aria-hidden="true" />
     </div>
 
