@@ -41,18 +41,21 @@ function formatPrice(price) {
         </router-link>
       </div>
 
-      <!-- Courses grid -->
-      <div v-if="courses.length > 0" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <!-- Courses deck. Each card sticks a step below the previous one, so the
+           reader meets one course at a time instead of comparing three at once.
+           The trailing space is what gives the last card room to be read before
+           the section ends. -->
+      <div v-if="courses.length > 0" data-course-stack class="apiladas flex flex-col gap-5 pb-[22vh]">
         <router-link
           v-for="(course, i) in courses"
           :key="course.id"
-          v-reveal="i"
           :to="`/courses/${course.slug}`"
+          :style="{ '--stack-index': i }"
           data-course-card
-          class="group flex flex-col bg-surface rounded-2xl overflow-hidden border border-blush-canvas/30 shadow-md shadow-primary/5 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-1 transition-all duration-300 no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface-muted"
+          class="apilada group grid sm:grid-cols-[14rem_1fr] gap-5 p-5 bg-surface rounded-2xl overflow-clip border border-blush-canvas/30 shadow-lg shadow-primary/10 hover:shadow-xl hover:shadow-primary/20 hover:-translate-y-1 transition-all duration-300 no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface-muted"
         >
           <!-- Thumbnail -->
-          <div class="aspect-video bg-blush-canvas/10 overflow-hidden">
+          <div class="aspect-video sm:aspect-auto sm:h-40 bg-blush-canvas/10 rounded-xl overflow-clip">
             <img
               v-if="course.thumbnail"
               :src="course.thumbnail"
@@ -65,14 +68,14 @@ function formatPrice(price) {
           </div>
 
           <!-- Card body -->
-          <div class="flex flex-col flex-grow p-5 space-y-2">
-            <span v-if="course.category" class="font-label-sm text-label-sm text-on-surface-variant">
+          <div class="flex flex-col justify-center gap-2">
+            <span v-if="course.category" class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest">
               {{ course.category.name }}
             </span>
-            <h3 class="font-title-md text-title-md text-deep-marsala group-hover:text-primary transition-colors line-clamp-2">
+            <h3 class="font-headline-lg text-title-md md:text-headline-lg text-deep-marsala group-hover:text-primary transition-colors">
               {{ course.title }}
             </h3>
-            <p class="font-title-md text-title-md text-primary mt-auto pt-2">
+            <p class="font-title-md text-title-md text-primary">
               {{ formatPrice(course.price) }}
             </p>
           </div>
