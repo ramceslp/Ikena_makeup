@@ -42,6 +42,12 @@ const AdminProductEdit = () => import('../views/admin/AdminProductEdit.vue')
 // Cursos — public catalog page (relocated from Home)
 const Cursos = () => import('../views/Cursos.vue')
 
+// Cursos — admin catalog governance. Distinct from the /instructor routes,
+// which stay ownership-scoped: these span every instructor's courses.
+const AdminCourses = () => import('../views/admin/AdminCourses.vue')
+const AdminCourseCreate = () => import('../views/admin/AdminCourseCreate.vue')
+const AdminCourseEdit = () => import('../views/admin/AdminCourseEdit.vue')
+
 // News (noticias) — public
 const News = () => import('../views/News.vue')
 const NewsDetail = () => import('../views/NewsDetail.vue')
@@ -236,6 +242,26 @@ const routes = [
     path: '/cursos',
     name: 'Cursos',
     component: Cursos,
+  },
+
+  // ── Admin: Cursos (catalog governance) ───────────────────────────────────
+  {
+    path: '/admin/courses',
+    name: 'AdminCourses',
+    component: AdminCourses,
+    meta: { requiresAdmin: true },
+  },
+  {
+    path: '/admin/courses/new',
+    name: 'AdminCourseCreate',
+    component: AdminCourseCreate,
+    meta: { requiresAdmin: true },
+  },
+  {
+    path: '/admin/courses/:id/edit',
+    name: 'AdminCourseEdit',
+    component: AdminCourseEdit,
+    meta: { requiresAdmin: true },
   },
 
   // ── Public: News (noticias) ───────────────────────────────────────────────
