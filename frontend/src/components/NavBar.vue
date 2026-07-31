@@ -380,5 +380,10 @@ const activeClass = 'text-primary border-b-2 border-apricot-glow'
         </template>
       </div>
     </div>
+
+    <!-- Reading progress. Absolutely positioned against the sticky navbar, so
+         it rides the bottom border wherever the bar is. Decorative: it repeats
+         what the scrollbar already says. -->
+    <div data-scroll-progress class="barra" aria-hidden="true"></div>
   </nav>
 </template>

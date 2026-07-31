@@ -37,6 +37,13 @@ const cartLabel = computed(() => {
     data-app-topbar
     class="app-topbar sticky top-0 z-40 border-b border-blush-canvas/20 bg-surface/95 backdrop-blur-xl"
   >
+    <!-- Reading progress. Absolutely positioned against this sticky bar rather
+         than fixed at the viewport top: with viewport-fit=cover, a bar at top 0
+         would sit under the status bar / notch. Riding the bottom border puts
+         it below the safe-area padding without any inset maths. Decorative --
+         it repeats what the scroll position already says. -->
+    <div data-scroll-progress class="barra" aria-hidden="true"></div>
+
     <div class="mx-auto flex h-14 max-w-container-max items-center justify-between px-gutter">
       <RouterLink
         :to="{ name: 'home' }"

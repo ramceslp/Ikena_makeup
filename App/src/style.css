@@ -741,6 +741,69 @@
   }
 }
 
+/*
+  "Barra de labios" (Phase 4): a reading-progress bar filling left to right in
+  the brand gradient, so even the scroll indicator is a brand gesture.
+
+  It sits on the BOTTOM edge of the sticky TopAppBar, and here that is a
+  correctness requirement rather than a preference. index.html carries
+  `viewport-fit=cover`, so a bar fixed at viewport top 0 would render under the
+  status bar / notch. .app-topbar already pads past the inset, so hanging the
+  bar off its bottom border clears the notch with no inset maths at all.
+
+  ⚠️ The host must NOT be given `position: relative`. `sticky` already
+  establishes the containing block this needs, and swapping it would cancel the
+  stickiness — ScrollProgressBar.test.js guards that, along with the usual
+  `overflow: hidden` trap that would resolve `scroll(root)` against a box that
+  never scrolls. The root scroller really is the document here: nothing between
+  a section and the document element clips, which was measured while checking
+  the sticky deck.
+
+  NOT gated on reduced motion, deliberately. The bar does not animate on its own
+  clock: it tracks the scroll exactly as the content does, so it is a state
+  indicator rather than motion the user did not ask for.
+
+  The `@supports not` arm is dead weight in this app -- the WebView is Chromium
+  150 -- but it is kept identical to the web build so the two stylesheets stay
+  diffable.
+*/
+.barra {
+  position: absolute;
+  inset: auto 0 -1px 0;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    var(--color-primary),
+    var(--color-blush-canvas) 55%,
+    var(--color-apricot-glow)
+  );
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  pointer-events: none;
+}
+
+@supports not (animation-timeline: scroll()) {
+  .barra {
+    display: none;
+  }
+}
+
+@supports (animation-timeline: scroll()) {
+  .barra {
+    animation: barra-fill linear both;
+    animation-timeline: scroll(root block);
+  }
+}
+
+@keyframes barra-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
 
 /*
   Makeup-texture decoration (Phase 3): a soft "highlighter bloom" built from the
