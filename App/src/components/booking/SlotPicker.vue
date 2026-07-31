@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useBookingStore } from '../../stores/booking.js'
 import { formatDayHeading, getBusinessToday } from '../../utils/localDate.js'
 import BookingCalendar from './BookingCalendar.vue'
@@ -32,10 +32,11 @@ const daySlots = computed(() => bookingStore.daySlots)
 const daySlotsLoading = computed(() => bookingStore.isDaySlotsLoading)
 const daySlotsError = computed(() => bookingStore.daySlotsError)
 
-// True while a booking POST is in flight (BookingForm's submit). Locks the
-// whole calendar (day cells, month nav, time chips) — see BookingCalendar's
-// `locked` prop. Deliberately NOT `daysLoading`/`daySlotsLoading`: those are
-// ordinary background fetches and must stay interactive.
+// True while the checkout handoff POST is in flight (BookingForm's submit).
+// Locks the whole calendar (day cells, month nav, time chips) — see
+// BookingCalendar's `locked` prop. Deliberately NOT
+// `daysLoading`/`daySlotsLoading`: those are ordinary background fetches and
+// must stay interactive.
 const isSubmitting = computed(() => bookingStore.isLoading)
 
 // A recurring weekly agenda block can still yield slots sharing the same
@@ -63,31 +64,12 @@ async function onDaySelected(dateKey) {
   selectedDate.value = dateKey
   selectedSlotKey.value = null // changing day clears any previously selected time
   emit('selection-cleared') // ...and the parent's selectedSlot, so it can't submit a slot from a previously-viewed day
-  // A stale 409 banner ("this slot is no longer available") from a previous
-  // submission attempt must not keep showing once the user has moved on to
-  // a different day — it no longer describes what's on screen.
+  // A stale error banner from a previous payDeposit() attempt must not keep
+  // showing once the user has moved on to a different day — it no longer
+  // describes what's on screen.
   bookingStore.bookingError = null
   await bookingStore.fetchDaySlots(props.serviceId, dateKey)
 }
-
-// A 409 (cap_exceeded) means the slot the user had selected no longer
-// exists. The store re-fetches fresh data but has no way to reach into this
-// component's or the parent's local "selected slot" refs — so both react to
-// this counter directly instead.
-//
-// Clearing unconditionally (no "is this still the day/slot in question"
-// guard) is safe specifically BECAUSE the whole calendar is locked for the
-// entire span of a submission (see `isSubmitting`/BookingCalendar's
-// `locked`) — the user cannot have switched day or picked a different slot
-// while a 409 is being handled, so there is no other selection this could
-// wrongly wipe.
-watch(
-  () => bookingStore.slotConflictVersion,
-  () => {
-    selectedSlotKey.value = null
-    emit('selection-cleared')
-  },
-)
 
 function retryFetchDays() {
   bookingStore.fetchAvailableDays(props.serviceId)
@@ -125,11 +107,11 @@ onMounted(() => {
   <div class="w-full flex flex-col gap-6">
     <!-- Calendar loading (FIRST load only — nothing to show yet, so a
          spinner replacing this slot is correct). Gated on `days.length === 0`
-         rather than `daysLoading` alone: a BACKGROUND refresh (e.g. the
-         post-409 `fetchAvailableDays` re-fetch) also flips `daysLoading`
-         true/false, but `availableDays` in the store is only overwritten on
-         a SUCCESSFUL response — stale data stays put while it's in flight —
-         so this branch does not re-trigger once a calendar is showing. -->
+         rather than `daysLoading` alone: a BACKGROUND refresh (the
+         `retryFetchDays` re-fetch) also flips `daysLoading` true/false, but
+         `availableDays` in the store is only overwritten on a SUCCESSFUL
+         response — stale data stays put while it's in flight — so this
+         branch does not re-trigger once a calendar is showing. -->
     <div
       v-if="daysLoading && days.length === 0"
       class="flex items-center gap-2 py-8 text-on-surface-variant"
@@ -158,7 +140,7 @@ onMounted(() => {
     <!-- Month calendar. Deliberately kept mounted for the lifetime of any
          non-empty `days` — including across background refreshes — so the
          <BookingCalendar> instance (and the DOM focus inside it) survives a
-         409 conflict's re-fetch instead of being torn down and rebuilt by a
+         retry re-fetch instead of being torn down and rebuilt by a
          v-if/v-else-if branch switch (Vue never patches across different
          vnode types at the same position). A background refresh in flight
          is signaled non-destructively below, not by unmounting this. -->
@@ -172,11 +154,10 @@ onMounted(() => {
         <span class="font-label-sm text-label-sm">Actualizando calendario…</span>
       </div>
 
-      <!-- A background refresh failed (e.g. the post-409 re-fetch) while a
-           stale calendar is still on screen. Non-blocking — the stale data
-           below stays visible and interactive — but must not be silently
-           swallowed: the user could otherwise keep looking at a slot that
-           was the very one that just caused a conflict. -->
+      <!-- A background refresh failed while a stale calendar is still on
+           screen. Non-blocking — the stale data below stays visible and
+           interactive — but must not be silently swallowed: the user could
+           otherwise keep picking from a calendar that never refreshed. -->
       <div
         v-else-if="daysError"
         data-days-refresh-error

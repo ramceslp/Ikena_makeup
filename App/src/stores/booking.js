@@ -3,7 +3,7 @@ import api from '../services/api.js'
 import { startCheckoutHandoff } from '../services/checkoutHandoff.js'
 
 // Trimmed port of frontend/src/stores/booking.js: only the PUBLIC booking
-// flow (fetchAvailableDays, fetchDaySlots, createBooking), needed by
+// flow (fetchAvailableDays, fetchDaySlots, payDeposit), needed by
 // SlotPicker.vue/BookingForm.vue/ServiceDetail.vue (mobile-capacitor-setup
 // Phase 7). Admin actions (fetchAppointments, markAppointmentPaid,
 // cancelAppointment, agenda block CRUD) are intentionally NOT ported -- no
@@ -22,17 +22,11 @@ export const useBookingStore = defineStore('booking', {
     daySlotsError: null,
     isLoading: false,
     bookingError: null,
-    lastBookingResult: null,
     // payDeposit() state. Set once the system browser has been handed the
     // checkout URL, so ServiceDetail/BookingForm can swap the form for a
     // "finish in your browser" state instead of leaving a live form behind
     // that would create a SECOND handoff on a second tap.
     handoffOpened: false,
-    // Incremented every time createBooking fails with a 409 (slot cap
-    // exceeded between selection and submission). Components watch this to
-    // clear their own local "selected slot" state, which is otherwise left
-    // pointing at a slot that no longer exists.
-    slotConflictVersion: 0,
     // Request-sequencing tokens (not for template use): incremented on every
     // new fetchAvailableDays/fetchDaySlots call so a stale response that
     // resolves after a newer request has since started can be detected and
@@ -104,9 +98,10 @@ export const useBookingStore = defineStore('booking', {
      * Mobile App Boundaries, and the deposit-payment path was explicitly
      * deferred (see BookingForm.vue's header) and never built.
      *
-     * The 409/capacity handling that createBooking() owned moves server-side
-     * with it: capacity is re-checked at redeem, when it is authoritative,
-     * rather than at selection time, when it would go stale during checkout.
+     * Capacity conflicts move server-side with it: the cap is re-checked at
+     * redeem, when it is authoritative, rather than at selection time, when it
+     * would go stale during checkout. That is why this store no longer carries
+     * any 409 recovery of its own — a taken slot surfaces in the browser.
      *
      * @returns {Promise<boolean>} true when the browser was opened
      */
@@ -136,57 +131,6 @@ export const useBookingStore = defineStore('booking', {
             'No se pudo iniciar el pago del depósito. Inténtalo de nuevo.'
         }
         return false
-      } finally {
-        this.isLoading = false
-      }
-    },
-
-    // ── Create a booking ─────────────────────────────────────────────────────
-
-    /**
-     * Direct POST /bookings.
-     *
-     * UNUSED by the app's UI as of the deposit-handoff change: BookingForm.vue
-     * calls payDeposit() instead, so appointments are created at redeem time
-     * by the web checkout rather than here, unpaid. Its 409 recovery path
-     * (refetch the day, bump slotConflictVersion so pickers drop a stale
-     * selection) is unreachable with it — a slot conflict now surfaces in the
-     * browser at redeem, which is where capacity is actually re-checked.
-     *
-     * Deliberately left in place rather than deleted in the same change that
-     * stopped calling it: removing it also strands slotConflictVersion and
-     * SlotPicker.vue's watcher on it, and that cleanup deserves its own diff
-     * rather than riding along with a behavioural change. Delete all three
-     * together — this is dead code until then, not a second supported flow.
-     */
-    async createBooking(payload) {
-      this.isLoading = true
-      this.bookingError = null
-      try {
-        const response = await api.post('/bookings', payload)
-        this.lastBookingResult = response.data
-        return response.data
-      } catch (err) {
-        const status = err.response?.status
-        if (status === 409) {
-          // The calendar is locked to the submitted day for the entire
-          // duration of a submit (see BookingCalendar's `locked` prop /
-          // SlotPicker's `isSubmitting`) — the user cannot have switched
-          // days in the meantime, so the day on screen when a 409 lands is
-          // always `payload.scheduled_date`. No separate "currently viewed
-          // day" needs tracking.
-          await this.fetchDaySlots(payload.service_id, payload.scheduled_date)
-          await this.fetchAvailableDays(payload.service_id)
-          this.bookingError = 'Este horario ya no está disponible. Por favor elige otro.'
-          this.slotConflictVersion += 1
-        } else if (status === 401) {
-          this.bookingError = 'Debes iniciar sesión para realizar una reserva.'
-        } else {
-          this.bookingError =
-            err.response?.data?.message || 'Error al procesar la reserva. Inténtalo de nuevo.'
-        }
-        this.lastBookingResult = null
-        return null
       } finally {
         this.isLoading = false
       }
