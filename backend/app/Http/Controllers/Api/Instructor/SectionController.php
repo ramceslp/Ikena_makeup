@@ -101,9 +101,14 @@ class SectionController extends Controller
     // Helpers
     // -------------------------------------------------------------------------
 
+    /**
+     * Delegates to CoursePolicy::manage — the single definition of who may
+     * author a course. Admins pass it for any course, which is what lets the
+     * admin catalog reuse this editor instead of cloning it.
+     */
     private function authorizeCourseOwnership(Request $request, Course $course): void
     {
-        if ($request->user()->id !== $course->instructor_id) {
+        if ($request->user()->cannot('manage', $course)) {
             abort(response()->json([
                 'message' => 'You do not own this course.',
             ], 403));

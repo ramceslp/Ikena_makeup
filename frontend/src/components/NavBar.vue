@@ -16,6 +16,7 @@ const mobileOpen = ref(false)
 
 // Single source of truth for the unified admin menu (desktop dropdown + mobile group).
 const adminLinks = [
+  { to: '/admin/courses', label: 'Cursos' },
   { to: '/admin/services', label: 'Servicios' },
   { to: '/admin/products', label: 'Productos' },
   { to: '/admin/noticias', label: 'Noticias' },
