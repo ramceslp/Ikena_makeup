@@ -3,6 +3,8 @@
 use App\Http\Controllers\Api\Admin\AgendaBlockController as AdminAgendaBlockController;
 use App\Http\Controllers\Api\Admin\AppointmentController as AdminAppointmentController;
 use App\Http\Controllers\Api\Admin\CertificateSettingController as AdminCertificateSettingController;
+use App\Http\Controllers\Api\Admin\CourseController as AdminCourseController;
+use App\Http\Controllers\Api\Admin\InstructorController as AdminInstructorController;
 use App\Http\Controllers\Api\Admin\PostController as AdminPostController;
 use App\Http\Controllers\Api\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\Api\Admin\PushNotificationController as AdminPushNotificationController;
@@ -132,6 +134,21 @@ Route::middleware(['auth:sanctum', RejectScopedCheckoutToken::class])->group(fun
     // Admin routes
     Route::middleware('admin')->prefix('admin')->group(function () {
         Route::get('/ping', fn () => response()->json(['message' => 'pong']));
+
+        // Course catalog governance — spans every instructor, unlike the
+        // ownership-scoped /instructor/courses endpoints. Sections and lessons
+        // are intentionally absent: admins author content through the
+        // instructor editor, which CoursePolicy::manage opens to them.
+        Route::get('/courses', [AdminCourseController::class, 'index']);
+        Route::post('/courses', [AdminCourseController::class, 'store']);
+        Route::get('/courses/{course}', [AdminCourseController::class, 'show']);
+        Route::patch('/courses/{course}', [AdminCourseController::class, 'update']);
+        Route::delete('/courses/{course}', [AdminCourseController::class, 'destroy']);
+        Route::post('/courses/{course}/publish', [AdminCourseController::class, 'publish']);
+        Route::post('/courses/{course}/unpublish', [AdminCourseController::class, 'unpublish']);
+
+        // Instructor picker for the course form
+        Route::get('/instructors', [AdminInstructorController::class, 'index']);
 
         // Services CRUD
         Route::get('/services', [AdminServiceController::class, 'index']);
