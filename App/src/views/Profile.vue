@@ -2,21 +2,29 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProfileStore } from '../stores/profile.js'
+import { useMyCoursesStore } from '../stores/myCourses.js'
+import { useAppointmentsStore } from '../stores/appointments.js'
 import { usePushStore } from '../stores/push.js'
 import { useAuthStore } from '../stores/auth.js'
 import api from '../services/api.js'
 import PurchaseHistory from '../components/profile/PurchaseHistory.vue'
+import MyCoursesSection from '../components/profile/MyCoursesSection.vue'
+import AgendaSection from '../components/profile/AgendaSection.vue'
 
-// Ported from frontend/src/views/Profile.vue, trimmed to the "Historial de
-// compras" tab only (mobile-capacitor-setup Phase 8, tasks 8.9-8.10). The
-// web version's "Información personal"/"Seguridad" tabs are intentionally
-// NOT ported: App's auth store (stores/auth.js) only supports native Google
-// Sign-In (no email/password account, no updateProfile()/changePassword()
-// actions exist to wire a form to), and spec.md's "Profile and History"
-// requirement group is scoped entirely to purchase/appointment history — no
-// scenario in this phase covers profile editing or password changes.
+// Ported from frontend/src/views/Profile.vue. The web version's "Información
+// personal"/"Seguridad" tabs are intentionally NOT ported: App's auth store
+// only supports native Google Sign-In (no email/password account, so there is
+// no updateProfile()/changePassword() action to wire a form to).
+//
+// Three account sections now live here: "Mis cursos" (enrolled courses with
+// progress, opening the web lesson player), "Mi agenda" (the customer's own
+// appointments, upcoming and past) and the original "Historial de compras".
+// The agenda in particular had no server endpoint at all until now —
+// appointments were readable only through the admin list.
 const router = useRouter()
 const profileStore = useProfileStore()
+const myCoursesStore = useMyCoursesStore()
+const appointmentsStore = useAppointmentsStore()
 const pushStore = usePushStore()
 const authStore = useAuthStore()
 
@@ -48,7 +56,12 @@ async function checkConnectivity() {
 async function init() {
   await checkConnectivity()
   if (connectivityState.value === 'ok') {
+    // Fired together, not awaited in sequence: the three sections are
+    // independent and each renders its own loading/error state, so serializing
+    // them would only make the slowest one gate the other two.
     profileStore.fetchOrders()
+    myCoursesStore.fetchMyCourses()
+    appointmentsStore.fetchAll()
   }
 }
 
@@ -153,6 +166,19 @@ async function handleLogout() {
               <span class="material-symbols-outlined text-[18px]" aria-hidden="true">notifications</span>
               Notificaciones: {{ notificationStatus }}
             </div>
+          </div>
+
+          <!-- Mis cursos — first because it is the section a returning
+               student opens the app for; the other two are records. -->
+          <div data-my-courses-card class="bg-surface rounded-2xl border border-blush-canvas/30 shadow-md shadow-primary/5 p-6">
+            <h2 class="font-title-lg text-title-lg text-on-surface mb-6">Mis cursos</h2>
+            <MyCoursesSection />
+          </div>
+
+          <!-- Mi agenda -->
+          <div data-agenda-card class="bg-surface rounded-2xl border border-blush-canvas/30 shadow-md shadow-primary/5 p-6">
+            <h2 class="font-title-lg text-title-lg text-on-surface mb-6">Mi agenda</h2>
+            <AgendaSection />
           </div>
 
           <div class="bg-surface rounded-2xl border border-blush-canvas/30 shadow-md shadow-primary/5 p-6">

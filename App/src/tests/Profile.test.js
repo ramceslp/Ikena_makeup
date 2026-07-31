@@ -52,8 +52,42 @@ const fakeOrders = [
 // GET /products (per_page: 1) is the connectivity probe shared with
 // Home.vue/Products.vue/Services.vue (Phase 6-7 convention). GET
 // /profile/orders is the history fetch (stores/profile.js).
-function mockApi({ probe = 'ok', orders = fakeOrders, ordersFail = false } = {}) {
-  api.get.mockImplementation((url) => {
+const fakeMyCourses = [
+  {
+    id: 4,
+    title: 'Maquillaje Nupcial',
+    slug: 'maquillaje-nupcial',
+    thumbnail: null,
+    instructor: { id: 3, name: 'Ana Torres' },
+    total_lessons: 10,
+    completed_lessons: 4,
+    progress_percentage: 40,
+    web_url: 'https://ikena.test/learn/maquillaje-nupcial',
+  },
+]
+
+const fakeUpcoming = [
+  {
+    id: 11,
+    scheduled_date: '2026-08-01',
+    scheduled_time: '10:00',
+    scheduled_end_time: '12:00',
+    status: 'paid',
+    deposit_amount_cents: 4000,
+    service: { id: 5, title: 'Maquillaje de Novia', slug: 'maquillaje-novia', thumbnail: null, duration_hours: 2 },
+    order: { id: 3, status: 'paid', amount_cents: 4000, currency: 'USD' },
+  },
+]
+
+function mockApi({
+  probe = 'ok',
+  orders = fakeOrders,
+  ordersFail = false,
+  myCourses = fakeMyCourses,
+  upcoming = fakeUpcoming,
+  past = [],
+} = {}) {
+  api.get.mockImplementation((url, config) => {
     if (url === '/products') {
       if (probe === 'error') {
         return Promise.reject(new Error('Network Error'))
@@ -65,6 +99,19 @@ function mockApi({ probe = 'ok', orders = fakeOrders, ordersFail = false } = {})
         return Promise.reject(new Error('server down'))
       }
       return Promise.resolve({ data: { data: orders, meta: { current_page: 1, last_page: 1 } } })
+    }
+    // "Mis cursos" (stores/myCourses.js).
+    if (url === '/my-courses') {
+      return Promise.resolve({ data: { data: myCourses } })
+    }
+    // "Mi agenda" (stores/appointments.js) — two scopes, two requests.
+    if (url === '/profile/appointments') {
+      return Promise.resolve({
+        data: {
+          data: config?.params?.scope === 'past' ? past : upcoming,
+          meta: { current_page: 1, last_page: 1 },
+        },
+      })
     }
     return Promise.reject(new Error(`unexpected url ${url}`))
   })
@@ -120,7 +167,7 @@ describe('Profile.vue (App) — history [Spec: history loads / no history yet]',
 
   it('shows a loading indicator while the connectivity probe is pending (no blank screen)', async () => {
     let resolveProbe
-    api.get.mockImplementation((url) => {
+    api.get.mockImplementation((url, config) => {
       if (url === '/products') {
         return new Promise((resolve) => { resolveProbe = resolve })
       }
@@ -288,5 +335,86 @@ describe('Profile.vue (App) — logout', () => {
     resolveLogout()
     await flushPromises()
     expect(router.currentRoute.value.path).toBe('/login')
+  })
+})
+
+// ── The two account sections added alongside the purchase history ───────────
+// "Mis cursos" and "Mi agenda". The agenda in particular had NO customer-facing
+// endpoint at all before this — appointments were readable only through the
+// admin list, so a customer could not check when their next appointment was.
+
+describe('Profile.vue (App) — mis cursos y mi agenda', () => {
+  let router
+
+  beforeEach(async () => {
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+    pushState.registered = false
+    pushState.permissionState = null
+    pushState.error = null
+    useAuthStore.mockReturnValue({ logout: vi.fn().mockResolvedValue(undefined) })
+    router = makeRouter()
+    await router.push('/profile')
+  })
+
+  it('renders all three account sections', async () => {
+    mockApi()
+    const wrapper = mount(Profile, { global: { plugins: [router] } })
+    await flushPromises()
+
+    expect(wrapper.find('[data-my-courses-card]').exists()).toBe(true)
+    expect(wrapper.find('[data-agenda-card]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('Historial de compras')
+  })
+
+  it('loads enrolled courses and the agenda alongside the purchase history', async () => {
+    mockApi()
+    const wrapper = mount(Profile, { global: { plugins: [router] } })
+    await flushPromises()
+
+    expect(api.get).toHaveBeenCalledWith('/my-courses')
+    expect(api.get).toHaveBeenCalledWith('/profile/appointments', {
+      params: { scope: 'upcoming', page: 1 },
+    })
+    expect(api.get).toHaveBeenCalledWith('/profile/appointments', {
+      params: { scope: 'past', page: 1 },
+    })
+
+    expect(wrapper.findAll('[data-my-course-row]')).toHaveLength(1)
+    expect(wrapper.findAll('[data-agenda-row]')).toHaveLength(1)
+    expect(wrapper.text()).toContain('Maquillaje de Novia')
+  })
+
+  /**
+   * The three sections are fetched independently and each renders its own
+   * state, so one failing must not take the others down with it.
+   */
+  it('keeps the other sections usable when the history fetch fails', async () => {
+    mockApi({ ordersFail: true })
+    const wrapper = mount(Profile, { global: { plugins: [router] } })
+    await flushPromises()
+
+    expect(wrapper.find('[data-history-error]').exists()).toBe(true)
+    expect(wrapper.findAll('[data-my-course-row]')).toHaveLength(1)
+    expect(wrapper.findAll('[data-agenda-row]')).toHaveLength(1)
+  })
+
+  it('shows per-section empty states for an account with nothing in it', async () => {
+    mockApi({ orders: [], myCourses: [], upcoming: [], past: [] })
+    const wrapper = mount(Profile, { global: { plugins: [router] } })
+    await flushPromises()
+
+    expect(wrapper.find('[data-my-courses-empty]').exists()).toBe(true)
+    expect(wrapper.find('[data-agenda-empty]').exists()).toBe(true)
+    expect(wrapper.find('[data-history-empty]').exists()).toBe(true)
+  })
+
+  it('does not fetch any account data when the connectivity probe fails', async () => {
+    mockApi({ probe: 'error' })
+    mount(Profile, { global: { plugins: [router] } })
+    await flushPromises()
+
+    expect(api.get).not.toHaveBeenCalledWith('/my-courses')
+    expect(api.get).not.toHaveBeenCalledWith('/profile/appointments', expect.anything())
   })
 })
