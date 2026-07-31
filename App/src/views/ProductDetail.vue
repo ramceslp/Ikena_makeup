@@ -6,13 +6,16 @@ import { formatPrice } from '../utils/formatPrice.js'
 import ServiceGallery from '../components/service/ServiceGallery.vue'
 import BaseBadge from '../components/ui/BaseBadge.vue'
 import BaseButton from '../components/ui/BaseButton.vue'
+import AddToCartButton from '../components/cart/AddToCartButton.vue'
 
 // Ported from frontend/src/views/ProductDetail.vue (mobile-capacitor-setup
-// Phase 7), with one deliberate deviation: no "add to cart" CTA / cart
-// store. cart.js/Cart.vue land in Phase 8 (see tasks.md's PR dependency
-// table: PR8 depends on PR2/PR3/PR5, not PR7) — wiring "add to cart" here
-// would reference a store that doesn't exist yet on this branch. Uses the
-// shared services/formatPrice.js util instead of a local duplicate.
+// Phase 7). Uses the shared services/formatPrice.js util instead of a local
+// duplicate.
+//
+// The "add to cart" CTA was deferred when this view shipped, because cart.js
+// did not exist on that branch (PR8 depended on PR2/PR3/PR5, not PR7), and it
+// was never wired up afterwards. AddToCartButton.vue supplies it now, sharing
+// the exact stock/quantity handling used by the catalog grid.
 const route = useRoute()
 const productsStore = useProductsStore()
 
@@ -102,6 +105,20 @@ onMounted(async () => {
         <div class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
           {{ product.description }}
         </div>
+
+        <!-- Primary CTA. Full-width and lg here (unlike the catalog card's
+             compact sm) because on the detail screen this is the single
+             action the whole page builds up to. -->
+        <AddToCartButton :product="product" size="lg" full-width />
+
+        <!-- Checkout runs in the system browser, never in this WebView (see
+             stores/cart.js's pay()). Saying so here, at the moment the user
+             commits to buying, avoids the jarring app-to-browser jump reading
+             as a bug later on. -->
+        <p class="font-body-sm text-body-sm text-on-surface-variant flex items-start gap-1.5">
+          <span class="material-symbols-outlined text-[16px] mt-0.5" aria-hidden="true">open_in_new</span>
+          El pago se completa de forma segura en tu navegador.
+        </p>
       </div>
     </div>
   </div>

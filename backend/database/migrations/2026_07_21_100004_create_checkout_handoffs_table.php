@@ -25,7 +25,7 @@ return new class extends Migration
             $table->foreignId('user_id')
                 ->constrained('users')
                 ->cascadeOnDelete();
-            $table->string('type', 20); // 'product_cart' | 'appointment'
+            $table->string('type', 20); // 'product_cart' | 'appointment' | 'course'
             $table->string('token_hash')->unique();
             $table->json('payload');
             $table->timestamp('expires_at');

@@ -1,14 +1,18 @@
 <script setup>
 import { RouterLink } from 'vue-router'
 import BaseButton from '../ui/BaseButton.vue'
+import AddToCartButton from '../cart/AddToCartButton.vue'
 import { formatPrice } from '../../utils/formatPrice.js'
 
 // Ported from frontend/src/components/catalog/ProductCard.vue
-// (mobile-capacitor-setup Phase 7), with two deliberate deviations:
-// 1. No "add to cart" button/store — cart.js lands in Phase 8. Only
-//    "Ver Detalles" is offered here; wiring the cart CTA is that PR's job.
-// 2. Uses the shared services/formatPrice.js util (Phase 5/6 convention —
-//    see stores/shared/buildParams.js) instead of a local duplicate.
+// (mobile-capacitor-setup Phase 7). Uses the shared services/formatPrice.js
+// util (Phase 5/6 convention — see stores/shared/buildParams.js) instead of a
+// local duplicate.
+//
+// The "add to cart" CTA was deliberately absent when this file shipped
+// (cart.js did not exist on that branch yet) and stayed absent after the cart
+// landed, so the catalog had no way to fill it. AddToCartButton.vue now owns
+// that CTA and its stock/quantity states — see its header comment.
 defineProps({
   product: {
     type: Object,
@@ -79,14 +83,22 @@ defineProps({
         {{ product.description }}
       </p>
 
-      <!-- Footer: price + CTA -->
-      <div class="mt-auto border-t border-blush-canvas/20 pt-4 flex items-center justify-between gap-2">
-        <span class="font-title-md text-title-md text-primary tabular-nums">
-          {{ formatPrice(product.price) }}
-        </span>
-        <RouterLink :to="`/products/${product.slug}`">
-          <BaseButton variant="outline" size="sm">Ver Detalles</BaseButton>
-        </RouterLink>
+      <!-- Footer: price + CTAs. Two rows rather than one: a third control on
+           the price row squeezed every element below a comfortable tap size on
+           a phone-width grid (Skill: touch-target-size). "Añadir al carrito"
+           gets the full-width primary row because it is the action this card
+           exists to offer; "Ver Detalles" stays secondary next to the price. -->
+      <div class="mt-auto border-t border-blush-canvas/20 pt-4 flex flex-col gap-3">
+        <div class="flex items-center justify-between gap-2">
+          <span class="font-title-md text-title-md text-primary tabular-nums">
+            {{ formatPrice(product.price) }}
+          </span>
+          <RouterLink :to="`/products/${product.slug}`">
+            <BaseButton variant="outline" size="sm">Ver Detalles</BaseButton>
+          </RouterLink>
+        </div>
+
+        <AddToCartButton :product="product" size="sm" full-width />
       </div>
     </div>
   </div>

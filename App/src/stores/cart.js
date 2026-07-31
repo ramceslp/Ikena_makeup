@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia'
-import { Browser } from '@capacitor/browser'
-import api from '../services/api.js'
+import { startCheckoutHandoff } from '../services/checkoutHandoff.js'
 import { set, remove, getCached, CART_KEY } from '../services/storage.js'
 
 // Ported from frontend/src/stores/cart.js (mobile-capacitor-setup Phase 8,
@@ -144,30 +143,16 @@ export const useCartStore = defineStore('cart', {
 
       this.isPaying = true
       try {
-        const response = await api.post('/checkout/handoff', {
+        // URL validation + Browser.open() live in services/checkoutHandoff.js,
+        // shared with the booking-deposit and course-enrollment payers so the
+        // security-sensitive guard has exactly one implementation.
+        await startCheckoutHandoff({
           type: 'product_cart',
           items: this.items.map((item) => ({
             product_id: item.product_id,
             quantity: item.quantity,
           })),
         })
-        const { url } = response.data.data
-        // Validate the handoff URL before ever handing it to Browser.open().
-        // Without this guard, a malformed/missing `url` (e.g. { url:
-        // undefined }) is passed straight through with no exception --
-        // Browser.open()'s web fallback resolves that to
-        // window.open(undefined, '_blank'), silently opening a blank tab
-        // while payError stays null and the CTA just resets. This is a
-        // security/isolation-sensitive path (design's "payment container
-        // isolation"), so only an https:// URL is accepted.
-        if (typeof url !== 'string' || !url.startsWith('https://')) {
-          throw new Error('Invalid or missing checkout handoff URL')
-        }
-        // Browser.open() renders the checkout URL exclusively in the
-        // system/in-app Browser container -- this is the one call in the
-        // entire app that is allowed to load a payment-adjacent URL, and it
-        // deliberately never touches this app's own router/WebView.
-        await Browser.open({ url })
       } catch (err) {
         console.error('Failed to start checkout handoff:', err)
         this.payError =

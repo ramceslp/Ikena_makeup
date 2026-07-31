@@ -17,7 +17,15 @@ vi.mock('../services/api.js', () => ({
   },
 }))
 
+// The booking CTA now pays the deposit through the checkout handoff, which
+// ends in @capacitor/browser — the app never renders payment in its own
+// WebView (spec's Mobile App Boundaries).
+vi.mock('@capacitor/browser', () => ({
+  Browser: { open: vi.fn().mockResolvedValue(undefined) },
+}))
+
 import api from '../services/api.js'
+import { Browser } from '@capacitor/browser'
 import ServiceDetail from '../views/ServiceDetail.vue'
 
 const fakeService = {
@@ -107,45 +115,78 @@ describe('ServiceDetail.vue (App) — end-to-end booking flow (day -> slot -> co
     vi.useRealTimers()
   })
 
-  it('completes day -> slot -> confirm and shows a confirmation [Spec: booking succeeds]', async () => {
+  it('completes day -> slot -> pay and hands the deposit off to the browser [Spec: booking succeeds]', async () => {
     api.post.mockResolvedValueOnce({
-      data: { data: { order_id: 42, provider: 'payphone', config: {}, is_near_capacity: false, warning_message: null } },
+      data: { data: { url: 'https://app.ikena.com/checkout/resume#token=abc123', expires_at: '2026-07-21T10:10:00Z' } },
     })
 
     const wrapper = await mountBooked(router)
     await wrapper.find('[data-submit-btn]').trigger('click')
     await flushPromises()
 
-    expect(api.post).toHaveBeenCalledWith('/bookings', {
+    // A snapshot, NOT a booking: POST /bookings would create a pending
+    // appointment that holds the slot before anyone has paid for it.
+    expect(api.post).toHaveBeenCalledWith('/checkout/handoff', {
+      type: 'appointment',
       service_id: 5,
       scheduled_date: '2026-07-21',
       scheduled_time: '10:00',
       whatsapp: '+593999999999',
     })
-    expect(wrapper.find('[data-booking-confirmed]').exists()).toBe(true)
-    expect(wrapper.text()).toContain('#42')
-    // No payment URL navigation of any kind — confirmation only.
+    expect(api.post).not.toHaveBeenCalledWith('/bookings', expect.anything())
+
+    // Payment opens in the system browser, never in this app's WebView.
+    expect(Browser.open).toHaveBeenCalledWith({
+      url: 'https://app.ikena.com/checkout/resume#token=abc123',
+    })
+
+    expect(wrapper.find('[data-booking-handed-off]').exists()).toBe(true)
+    // The form is gone, so a second tap cannot mint a second handoff token.
     expect(wrapper.find('[data-submit-btn]').exists()).toBe(false)
   })
 
-  it('shows a refreshed-slot error (not a silent failure) when the slot is claimed before confirmation [Spec: slot goes stale before confirmation]', async () => {
-    const conflict = new Error('Conflict')
-    conflict.response = { status: 409, data: { code: 'cap_exceeded' } }
-    api.post.mockRejectedValueOnce(conflict)
+  it('does not claim the appointment is confirmed — it is not booked until the deposit is paid', async () => {
+    api.post.mockResolvedValueOnce({
+      data: { data: { url: 'https://app.ikena.com/checkout/resume#token=abc123' } },
+    })
 
     const wrapper = await mountBooked(router)
     await wrapper.find('[data-submit-btn]').trigger('click')
     await flushPromises()
 
-    expect(wrapper.find('[data-booking-error]').text()).toBe(
-      'Este horario ya no está disponible. Por favor elige otro.',
-    )
-    // Not a silent failure: no confirmation rendered, and the calendar/slot
-    // picker is still there with refreshed data (re-fetched via the store).
-    expect(wrapper.find('[data-booking-confirmed]').exists()).toBe(false)
-    expect(api.get).toHaveBeenCalledWith('/services/5/available-slots', { params: { date: '2026-07-21' } })
-    expect(api.get).toHaveBeenCalledWith('/services/5/available-days')
-    // The previously selected slot must be cleared, not silently resubmittable.
-    expect(wrapper.find('[data-slot-card][data-slot-selected]').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('Reserva confirmada')
+    expect(wrapper.text()).toContain('Continúa en tu navegador')
+  })
+
+  it('surfaces a handoff failure inline instead of failing silently', async () => {
+    const failure = new Error('Unprocessable')
+    failure.response = { status: 422, data: { message: 'Este servicio no acepta citas.' } }
+    api.post.mockRejectedValueOnce(failure)
+
+    const wrapper = await mountBooked(router)
+    await wrapper.find('[data-submit-btn]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[data-booking-error]').text()).toBe('Este servicio no acepta citas.')
+    expect(Browser.open).not.toHaveBeenCalled()
+    expect(wrapper.find('[data-booking-handed-off]').exists()).toBe(false)
+    // The form stays on screen so the customer can retry.
+    expect(wrapper.find('[data-submit-btn]').exists()).toBe(true)
+  })
+
+  it('lets the customer retry after the browser was opened (closed tab, expired token)', async () => {
+    api.post.mockResolvedValueOnce({
+      data: { data: { url: 'https://app.ikena.com/checkout/resume#token=abc123' } },
+    })
+
+    const wrapper = await mountBooked(router)
+    await wrapper.find('[data-submit-btn]').trigger('click')
+    await flushPromises()
+
+    await wrapper.find('[data-booking-retry]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[data-booking-handed-off]').exists()).toBe(false)
+    expect(wrapper.find('[data-submit-btn]').exists()).toBe(true)
   })
 })

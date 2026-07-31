@@ -183,6 +183,90 @@ describe('CheckoutResume.vue', () => {
     expect(wrapper.text().toLowerCase()).toMatch(/reinicia.*(app|aplicación)/)
   })
 
+  // ── Code-discriminated 409s ────────────────────────────────────────────────
+  // Three different failures share status 409. Rendering all of them as "el
+  // enlace ya fue utilizado" was harmless while the app could only hand off a
+  // product cart; once bookings and courses hand off too, it actively misleads
+  // the customer about why their payment stopped.
+
+  it('tells the customer the slot was taken (not that the link was used) on a 409 with code slot_unavailable', async () => {
+    window.location.hash = '#token=slottoken'
+    mockPost.mockRejectedValueOnce({
+      response: {
+        status: 409,
+        data: { message: 'No agenda block covers this slot.', code: 'slot_unavailable' },
+      },
+    })
+
+    const wrapper = await mountResume()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Ese horario ya no está disponible.')
+    expect(wrapper.text()).not.toContain('ya fue utilizado')
+  })
+
+  it('tells the customer the slot just filled up on a 409 with code cap_exceeded', async () => {
+    window.location.hash = '#token=captoken'
+    mockPost.mockRejectedValueOnce({
+      response: {
+        status: 409,
+        data: { message: 'Capacity exceeded.', code: 'cap_exceeded' },
+      },
+    })
+
+    const wrapper = await mountResume()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Ese horario acaba de llenarse.')
+  })
+
+  it('tells the customer they already own the course on a 409 with code already_enrolled', async () => {
+    window.location.hash = '#token=enrolledtoken'
+    mockPost.mockRejectedValueOnce({
+      response: {
+        status: 409,
+        data: { message: 'You are already enrolled in this course.', code: 'already_enrolled' },
+      },
+    })
+
+    const wrapper = await mountResume()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Ya estás inscrito en este curso.')
+    expect(wrapper.text()).not.toContain('ya fue utilizado')
+  })
+
+  it('still says "already used" when the 409 really is a consumed link', async () => {
+    window.location.hash = '#token=usedtoken'
+    mockPost.mockRejectedValueOnce({
+      response: {
+        status: 409,
+        data: { message: 'This checkout link has already been used.', code: 'link_consumed' },
+      },
+    })
+
+    const wrapper = await mountResume()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Este enlace de pago ya fue utilizado.')
+  })
+
+  it('never shows the backend English message when a code is present', async () => {
+    window.location.hash = '#token=coursetoken'
+    mockPost.mockRejectedValueOnce({
+      response: {
+        status: 422,
+        data: { message: 'This course is no longer available.', code: 'course_unavailable' },
+      },
+    })
+
+    const wrapper = await mountResume()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Este curso ya no está disponible para compra.')
+    expect(wrapper.text()).not.toContain('This course is no longer available')
+  })
+
   it('shows a restart-from-app message for an unknown token (404)', async () => {
     window.location.hash = '#token=unknowntoken'
     mockPost.mockRejectedValueOnce({

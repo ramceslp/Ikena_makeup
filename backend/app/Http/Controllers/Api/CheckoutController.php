@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\CourseCheckoutAction;
+use App\Exceptions\AlreadyEnrolledException;
+use App\Exceptions\CourseUnavailableException;
 use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\Enrollment;
@@ -13,63 +16,39 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
-use Illuminate\Support\Str;
 
 class CheckoutController extends Controller
 {
     public function __construct(
         private readonly PaymentGatewayInterface $gateway,
         private readonly StockReservation        $stockReservation,
+        private readonly CourseCheckoutAction    $courseCheckout,
     ) {}
 
     /**
      * POST /api/courses/{course:slug}/checkout
      * Creates a pending Order and returns the provider checkout config.
+     *
+     * The eligibility/pricing logic lives in CourseCheckoutAction so the
+     * checkout-handoff redeem endpoint can reuse it verbatim — same split
+     * CartCheckoutController and BookingController already use.
      */
     public function checkout(Request $request, Course $course): JsonResponse
     {
-        $user = $request->user();
-
-        // 422 — free courses must use /enroll instead
-        if ((float) $course->price === 0.0) {
-            return response()->json([
-                'message' => 'This course is free. Use POST /courses/{slug}/enroll instead.',
-            ], 422);
+        try {
+            $result = ($this->courseCheckout)($request->user(), $course);
+        } catch (CourseUnavailableException $e) {
+            // 422 — unpublished, or free (free courses must use /enroll).
+            return response()->json(['message' => $e->getMessage()], 422);
+        } catch (AlreadyEnrolledException $e) {
+            return response()->json(['message' => $e->getMessage()], 409);
         }
-
-        // 409 — already enrolled
-        $alreadyEnrolled = $user->enrolledCourses()
-            ->where('courses.id', $course->id)
-            ->exists();
-
-        if ($alreadyEnrolled) {
-            return response()->json([
-                'message' => 'You are already enrolled in this course.',
-            ], 409);
-        }
-
-        // Create a pending order with a unique client_transaction_id (max 50 chars).
-        // 'ORD-' (4) + 36 UUID chars = 40 chars — within the 50-char limit.
-        $order = Order::create([
-            'user_id'               => $user->id,
-            'course_id'             => $course->id,
-            'client_transaction_id' => 'ORD-' . Str::uuid(),
-            'gateway'               => $this->gateway->name(),
-            'amount_cents'          => (int) round((float) $course->price * 100),
-            'currency'              => 'USD',
-            'status'                => 'pending',
-        ]);
-
-        // Eager-load course so the gateway can access it without an extra query.
-        $order->setRelation('course', $course);
-
-        $session = $this->gateway->createCheckout($order);
 
         return response()->json([
             'data' => [
-                'order_id' => $order->id,
-                'provider' => $session->provider,
-                'config'   => $session->config,
+                'order_id' => $result['order']->id,
+                'provider' => $result['session']->provider,
+                'config'   => $result['session']->config,
             ],
         ], 201);
     }

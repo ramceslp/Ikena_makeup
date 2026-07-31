@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import api from '../services/api.js'
+import { startCheckoutHandoff } from '../services/checkoutHandoff.js'
 import { buildParams } from './shared/buildParams.js'
 
 // Trimmed port of frontend/src/stores/courses.js: fetchCourses() (Home's
@@ -7,10 +8,12 @@ import { buildParams } from './shared/buildParams.js'
 // for the Courses.vue/CourseDetail.vue catalog surface -- same extension
 // pattern already used by stores/products.js and stores/services.js (see
 // their file-level comments for the identical fetchProduct/fetchService +
-// fetchCategories precedent). Enroll/lesson/review/certificate actions are
-// still NOT ported: this app has no /learn player, no checkout flow for
-// courses, and no review UI, so those actions would have no caller (see
-// views/CourseDetail.vue's file-level comment for the full boundary).
+// fetchCategories precedent).
+//
+// enroll() is now ported as well (see its own docblock). Lesson/review/
+// certificate actions remain out of scope: this app still has no /learn
+// player -- the profile's "Mis cursos" section links out to the web one --
+// and no review UI, so they would have no caller.
 export const useCoursesStore = defineStore('courses', {
   state: () => ({
     courses: [],
@@ -19,6 +22,22 @@ export const useCoursesStore = defineStore('courses', {
     currentCourse: null,
     loading: false,
     error: null,
+    // enroll() state. Deliberately separate from `loading`/`error`, which
+    // belong to the catalog fetches -- an enrollment failure must not blank
+    // out the course the user is currently reading.
+    enrolling: false,
+    enrollError: null,
+    // Id of the course whose PAID checkout has been opened in the system
+    // browser, so its CTA can switch to a "finish in your browser" state
+    // rather than minting a second handoff token on a second tap.
+    //
+    // An id, NOT a boolean: as a boolean this leaked across courses. Hand off
+    // course A, then open course B, and B rendered A's "Abrimos el pago en tu
+    // navegador" panel with no enroll button at all — course B became
+    // impossible to buy without restarting the app. Found on the emulator;
+    // every unit test passed, because none of them viewed a second course
+    // after a handoff.
+    enrollHandoffCourseId: null,
   }),
 
   actions: {
@@ -43,6 +62,13 @@ export const useCoursesStore = defineStore('courses', {
     async fetchCourse(slug) {
       this.loading = true
       this.error = null
+      // An enrollment error belongs to the course that produced it. Opening a
+      // different course must not inherit it — same leak class as the
+      // enrollHandoffCourseId comment above. (The handoff id is NOT cleared
+      // here: it is already scoped by id, and clearing it would wipe the
+      // "finish in your browser" panel for the very course the user is
+      // returning to.)
+      this.enrollError = null
       try {
         const response = await api.get(`/courses/${slug}`)
         this.currentCourse = response.data.data
@@ -52,6 +78,74 @@ export const useCoursesStore = defineStore('courses', {
         throw err
       } finally {
         this.loading = false
+      }
+    },
+
+    /**
+     * Enroll the current user in `course`.
+     *
+     * Branches on price, matching how the backend partitions the two entry
+     * points (CourseController::enroll refuses paid courses;
+     * CourseCheckoutAction refuses free ones):
+     *
+     *   free (price <= 0) -> POST /courses/{slug}/enroll, in-app, done. There
+     *       is no money and no gateway involved, so bouncing the user out to a
+     *       browser for it would be pure friction.
+     *   paid              -> POST /checkout/handoff (type: course) and open
+     *       the web checkout in the system browser. The Enrollment is created
+     *       server-side only after the gateway approves
+     *       (CheckoutController::confirm), never optimistically here.
+     *
+     * @returns {Promise<'enrolled'|'handoff'|null>} null on failure
+     */
+    async enroll(course) {
+      this.enrollError = null
+
+      if (!course?.slug || course?.id == null) {
+        this.enrollError = 'No se pudo inscribirte en este curso.'
+        return null
+      }
+
+      if (course.is_enrolled) {
+        // Not an error worth surfacing — the CTA should already be showing the
+        // enrolled state; this is the belt-and-braces guard behind it.
+        return 'enrolled'
+      }
+
+      const price = parseFloat(course.price)
+      const isFree = !Number.isFinite(price) || price <= 0
+
+      this.enrolling = true
+      try {
+        if (isFree) {
+          await api.post(`/courses/${course.slug}/enroll`)
+          // Reflect the new state locally so the CTA updates without a
+          // refetch. Only touch currentCourse when it IS this course — the
+          // catalog grid can call enroll() for a card that is not the one
+          // currently open in the detail view.
+          if (this.currentCourse?.id === course.id) {
+            this.currentCourse = { ...this.currentCourse, is_enrolled: true }
+          }
+          return 'enrolled'
+        }
+
+        await startCheckoutHandoff({ type: 'course', course_id: course.id })
+        this.enrollHandoffCourseId = course.id
+        return 'handoff'
+      } catch (err) {
+        if (err.response?.status === 401) {
+          // The global api.js interceptor also redirects to /login on any 401;
+          // this is the fallback copy for when that redirect itself fails.
+          this.enrollError = 'Debes iniciar sesión para inscribirte.'
+        } else if (err.response?.status === 409) {
+          this.enrollError = 'Ya estás inscrito en este curso.'
+        } else {
+          this.enrollError =
+            err.response?.data?.message || 'No se pudo procesar la inscripción. Inténtalo de nuevo.'
+        }
+        return null
+      } finally {
+        this.enrolling = false
       }
     },
 
