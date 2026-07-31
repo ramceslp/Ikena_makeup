@@ -436,6 +436,100 @@
   }
 }
 
+/*
+  "Cambio de tono" (Phase 4): the closing section walks the brand palette as it
+  scrolls into view — blush, then apricot, then marsala — so the page ends on a
+  colour instead of on another cream block. Three stacked gradients cross-fade
+  by opacity; no JavaScript, nothing to trigger.
+
+  ⚠️ Ranges are `entry`, not `cover`, and that is the whole reason this works.
+  This is the LAST section on the page, so there is only the footer's worth of
+  scroll left below it: a `cover` range needs viewport + section height of
+  runway and would simply never reach its end, leaving the marsala layer
+  permanently half-arrived. `entry` measures the section entering the viewport,
+  which is always reachable — the section can always be scrolled until its
+  bottom edge meets the viewport bottom. Same runway trap documented under
+  Trazo, but here it would have been unfixable by tuning.
+
+  Each layer is a corner tint fading to the section's own surface, not a flat
+  fill, and that is a legibility decision as much as an aesthetic one. At full
+  progress only the marsala layer is visible — it is opaque, so it covers the
+  two below entirely — which makes the worst case its own gradient start:
+  color-mix(deep-marsala 42%) over the surface lands near #bba5a6, putting the
+  deep-marsala heading at about 3.9:1. That passes AA for LARGE text and not for
+  normal text, so this heading has to stay at the headline tier; shrink it and
+  the section fails contrast. The body copy sits lower, where the gradient has
+  faded toward the surface, at roughly 6:1.
+
+  Without scroll timelines, or under reduced motion, the blush layer stays and
+  the other two never arrive — a still, tinted section rather than a broken one.
+*/
+.tono-wash {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.tono-layer {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+.tono-layer--blush {
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--color-blush-canvas) 34%, var(--color-surface-container-low)),
+    var(--color-surface-container-low)
+  );
+}
+
+.tono-layer--apricot {
+  opacity: 0;
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--color-apricot-glow) 40%, var(--color-surface-container-low)),
+    var(--color-surface-container-low)
+  );
+}
+
+.tono-layer--marsala {
+  opacity: 0;
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--color-deep-marsala) 42%, var(--color-surface-container-low)),
+    var(--color-surface-container-low)
+  );
+}
+
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .tono-layer--apricot {
+      animation: tono-in linear both;
+      animation-timeline: view();
+      animation-range: entry 15% entry 65%;
+    }
+
+    /* Lands at `entry 100%` — the moment the section is fully in view, which for
+       the closing section is as close to the end of the page as it gets. */
+    .tono-layer--marsala {
+      animation: tono-in linear both;
+      animation-timeline: view();
+      animation-range: entry 55% entry 100%;
+    }
+  }
+}
+
+@keyframes tono-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 
 /*
   Makeup-texture decoration (Phase 3): a soft "highlighter bloom" built from the
