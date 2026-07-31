@@ -157,9 +157,13 @@
   .reveal {
     opacity: 0;
     transform: translateY(24px);
+    /* --reveal-delay is set by the directive when a stagger index is passed
+       (v-reveal="i"). A custom property rather than an inline transition-delay,
+       so the transition stays declared entirely here and the directive only
+       supplies a number — see reveal.js. */
     transition:
-      opacity 500ms cubic-bezier(0.16, 1, 0.3, 1),
-      transform 500ms cubic-bezier(0.16, 1, 0.3, 1);
+      opacity 500ms cubic-bezier(0.16, 1, 0.3, 1) var(--reveal-delay, 0ms),
+      transform 500ms cubic-bezier(0.16, 1, 0.3, 1) var(--reveal-delay, 0ms);
   }
 
   .reveal.is-revealed {
@@ -167,6 +171,427 @@
     transform: none;
   }
 }
+
+/*
+  "Trazo" (Phase 4): section headings paint in left-to-right, like a lipstick
+  swipe, with a soft blush glow riding just ahead of the exposed edge.
+
+  Scroll-scrubbed, not triggered: the stroke's progress IS the scroll position,
+  so the heading is drawn by the reader's own gesture rather than playing a
+  canned animation once tripped. No JavaScript is involved — the class is static
+  in the template and the timeline does the rest.
+
+  Range (`cover 15% cover 36%`): measured at a 914px viewport with an 80px
+  heading, the stroke starts ~149px after the heading first peeks over the
+  bottom edge and is finished ~358px in, with the heading still low on screen
+  (~y 556 of 914). Finishing early is the whole point — a scrubbed wipe invites
+  the one failure a triggered one cannot have: a reader who stops mid-scroll,
+  left with a half-written title.
+
+  ⚠️ The LAST heading on a page constrains the range end. It only completes if
+  the page has ~36% of a coverDistance (viewport + heading) of scroll left below
+  it. At 18%–42% the app's newsletter heading finished at scroll 5336 of a 5388
+  maximum — 52px of runway to spare, i.e. it landed as the reader hit the
+  bottom. 36% buys that back. Adding a shorter final section, or trimming the
+  footer, spends it again: re-measure rather than assume.
+
+  ⚠️ Any ancestor with `overflow: hidden` freezes this. `hidden` creates a
+  scroll container, `view()` resolves against the NEAREST one, and a container
+  that never scrolls pins progress at a constant — the heading would stay half
+  painted for the life of the page. Use `overflow: clip`, which clips
+  identically without becoming a scroll container. Same trap as the Velo block
+  above; trazoHeadings.test.js walks each heading's ancestors to guard it.
+
+  ⚠️ The hidden state is a mask, never `clip-path`. The soft mask stop reads as
+  a bristle edge where a clip gives a razor line, and it leaves the element's
+  geometry intact — which is what would keep the heading recoverable if this
+  ever went back to an IntersectionObserver trigger, since Chromium computes
+  intersection AFTER clipping and a clipped heading reports intersectionRatio 0
+  while sitting mid-viewport. Measured in the Android WebView: rect.top 417
+  inside a 914px viewport, isIntersecting false.
+
+  Gated on BOTH `prefers-reduced-motion: no-preference` and `@supports
+  (animation-timeline: view())`. A user who opts out of motion, or a browser
+  without scroll timelines (Firefox, as of 152), gets a plain heading — no mask,
+  no glow, and never a half-painted title.
+*/
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .trazo {
+      position: relative;
+      /* fit-content so the stroke travels the width of the TEXT, not of the
+         block: left as a block it would finish over the last glyph and then
+         keep sweeping empty space for the rest of the container. The box is
+         permanent now that nothing strips the class, so centred headings need
+         `mx-auto` at the call site. */
+      width: fit-content;
+      max-width: 100%;
+      /* The mask is 2.6x the heading, so the heading samples ~38% of it. Parked
+         right (100%) it sits past the gradient's transparent stop and is fully
+         hidden; slid to 0% it sits entirely inside the opaque stop. The soft
+         stop between them is the stroke's leading edge. */
+      -webkit-mask-image: linear-gradient(90deg, #000 0 45%, transparent 58%);
+      mask-image: linear-gradient(90deg, #000 0 45%, transparent 58%);
+      -webkit-mask-size: 260% 100%;
+      mask-size: 260% 100%;
+      -webkit-mask-repeat: no-repeat;
+      mask-repeat: no-repeat;
+      -webkit-mask-position: 100% 0;
+      mask-position: 100% 0;
+      animation: trazo-wipe linear both;
+      animation-timeline: view();
+      animation-range: cover 15% cover 36%;
+    }
+
+    /* Pigment trailing the edge. It lives inside the heading's box so the same
+       mask clips it, which is what makes it read as colour being laid down
+       rather than a light sweeping past. z-index keeps it behind the glyphs.
+
+       It takes its own `view()` instead of sharing a named timeline: its box
+       differs from the heading's by the negative inset alone, which works out
+       to ~2px of scroll across the whole range. */
+    .trazo::after {
+      content: "";
+      position: absolute;
+      inset: -0.12em -0.25em -0.18em -0.25em;
+      z-index: -1;
+      background: linear-gradient(
+        90deg,
+        transparent 0 30%,
+        color-mix(in srgb, var(--color-blush-canvas) 90%, transparent) 46%,
+        transparent 62%
+      );
+      background-size: 260% 100%;
+      background-position: 100% 0;
+      background-repeat: no-repeat;
+      filter: blur(9px);
+      pointer-events: none;
+      animation: trazo-pigment linear both;
+      animation-timeline: view();
+      animation-range: cover 15% cover 36%;
+    }
+  }
+}
+
+@keyframes trazo-wipe {
+  from {
+    -webkit-mask-position: 100% 0;
+    mask-position: 100% 0;
+  }
+  to {
+    -webkit-mask-position: 0 0;
+    mask-position: 0 0;
+  }
+}
+
+/* The glow fades over the last stretch instead of parking at full strength: at
+   the end position part of the gradient's ramp is still inside the heading's
+   box, which would leave a permanent blush tint on the right edge. */
+@keyframes trazo-pigment {
+  from {
+    background-position: 100% 0;
+    opacity: 1;
+  }
+  82% {
+    opacity: 1;
+  }
+  to {
+    background-position: 0 0;
+    opacity: 0;
+  }
+}
+
+/*
+  "Cinta" (Phase 4): the marquee band between the news grid and the courses
+  section. Layout and motion for SpecialtiesRibbon.vue.
+
+  Seamless loop: each track holds the SAME list twice and travels -50%, which
+  is exactly one copy, so at the end of a cycle copy #2 sits where copy #1
+  started and the restart is invisible. Render the copies differently and the
+  band visibly jumps once per cycle.
+
+  Transform-only, so it stays on the compositor: this is the one animation on
+  the page that never ends, and the reader may leave the screen open. Nothing
+  here animates colour, width or filter for that reason.
+
+  `width: max-content` is what lets the track be wider than the band; the band
+  itself clips with `overflow: clip` rather than `hidden`, so it never becomes a
+  scroll container (see the Velo block above for why that matters here).
+
+  Reduced motion stops it dead. The band still shows the first copy, so the
+  terms stay readable — it simply stops travelling.
+*/
+.cinta-track {
+  display: flex;
+  width: max-content;
+}
+
+.cinta-group {
+  display: flex;
+  align-items: center;
+  flex: none;
+}
+
+.cinta-group li {
+  display: flex;
+  align-items: center;
+  gap: 1.1rem;
+  padding: 0 1.1rem;
+  white-space: nowrap;
+}
+
+/* Bead separator between terms. A pseudo-element rather than a border so the
+   spacing stays symmetrical whichever term is at the edge of the loop. */
+.cinta-group li::after {
+  content: "";
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--color-blush-canvas) 70%, transparent);
+  flex: none;
+}
+
+.cinta-track--reverse .cinta-group li::after {
+  width: 0.25rem;
+  height: 0.25rem;
+  background: color-mix(in srgb, var(--color-blush-canvas) 55%, transparent);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .cinta-track {
+    will-change: transform;
+    animation: cinta-slide 34s linear infinite;
+  }
+
+  /* The second row runs the other way and slower, so the two never settle into
+     one block sliding as a unit — which is what makes the band read as texture
+     rather than as a single scrolling sentence. */
+  .cinta-track--reverse {
+    animation-direction: reverse;
+    animation-duration: 46s;
+  }
+
+  /* Lets a reader stop the band to actually read it. Pointer-only by nature,
+     which is fine: it is an affordance, not a requirement. */
+  .cinta:hover .cinta-track {
+    animation-play-state: paused;
+  }
+}
+
+@keyframes cinta-slide {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+/*
+  "Cartas apiladas" (Phase 4): the three featured courses stop being a grid and
+  become a deck. Each card sticks a step below the one before it, is read on its
+  own, and is then covered by the next while it recedes.
+
+  Why only the courses. Every card in a deck needs roughly its own height of
+  scroll before the next covers it, so this treatment makes a section two to
+  three times taller. Applying it to the services and products sections as well
+  would add several screens to the home page and, worse, would stop the deck
+  from meaning anything — it is emphasis, and emphasis repeated three times in a
+  row is just layout.
+
+  ⚠️ `position: sticky` is CANCELLED by any ancestor with a clipping overflow
+  (`hidden`, `auto`, `scroll`). Not degraded — cancelled: the card scrolls away
+  as if it were static, with no error and nothing to see in a screenshot.
+  StackedCourses.test.js walks each card's ancestors to guard it. This is the
+  same family of trap as the scroll-timeline one documented under Velo, and it
+  is why the card itself clips with `overflow: clip`.
+
+  No recede animation, and that is a measured decision rather than an omission.
+  The prototype scaled and desaturated each card as the next climbed over it,
+  driven by `animation-timeline: view()` over the card's exit. It does not work:
+  while a card is STUCK its box does not move within the scrollport, so its view
+  progress is frozen. All three cards therefore stay at progress 0 through the
+  whole deck and then recede simultaneously the moment the container releases
+  them — measured on the emulator, all three at scale 0.916 at the same scroll
+  offset, which reads as a glitch rather than as depth.
+
+  Fixing it needs either per-card scroll runway (which stops the deck
+  accumulating — the cards would leave one by one instead of piling up) or
+  per-card ranges carved out of a timeline on the container, whose numbers are
+  derived from card height and viewport and so differ between the two apps.
+  Depth here comes from the shadow and the visible step instead.
+
+  --stack-top clears the sticky navbar (h-16 = 64px) with room to spare.
+  --stack-step is how much of each buried card stays visible.
+*/
+.apiladas {
+  --stack-top: 5rem;
+  --stack-step: 1.6rem;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .apilada {
+    position: sticky;
+    top: calc(var(--stack-top) + var(--stack-index, 0) * var(--stack-step));
+  }
+}
+
+/*
+  "Cambio de tono" (Phase 4): the closing section walks the brand palette as it
+  scrolls into view — blush, then apricot, then marsala — so the page ends on a
+  colour instead of on another cream block. Three stacked gradients cross-fade
+  by opacity; no JavaScript, nothing to trigger.
+
+  ⚠️ Ranges are `entry`, not `cover`, and that is the whole reason this works.
+  This is the LAST section on the page, so there is only the footer's worth of
+  scroll left below it: a `cover` range needs viewport + section height of
+  runway and would simply never reach its end, leaving the marsala layer
+  permanently half-arrived. `entry` measures the section entering the viewport,
+  which is always reachable — the section can always be scrolled until its
+  bottom edge meets the viewport bottom. Same runway trap documented under
+  Trazo, but here it would have been unfixable by tuning.
+
+  Each layer is a corner tint fading to the section's own surface, not a flat
+  fill, and that is a legibility decision as much as an aesthetic one. At full
+  progress only the marsala layer is visible — it is opaque, so it covers the
+  two below entirely — which makes the worst case its own gradient start:
+  color-mix(deep-marsala 42%) over the surface lands near #bba5a6, putting the
+  deep-marsala heading at about 3.9:1. That passes AA for LARGE text and not for
+  normal text, so this heading has to stay at the headline tier; shrink it and
+  the section fails contrast. The body copy sits lower, where the gradient has
+  faded toward the surface, at roughly 6:1.
+
+  Without scroll timelines, or under reduced motion, the blush layer stays and
+  the other two never arrive — a still, tinted section rather than a broken one.
+*/
+.tono-wash {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.tono-layer {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+.tono-layer--blush {
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--color-blush-canvas) 34%, var(--color-surface-container-low)),
+    var(--color-surface-container-low)
+  );
+}
+
+.tono-layer--apricot {
+  opacity: 0;
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--color-apricot-glow) 40%, var(--color-surface-container-low)),
+    var(--color-surface-container-low)
+  );
+}
+
+.tono-layer--marsala {
+  opacity: 0;
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--color-deep-marsala) 42%, var(--color-surface-container-low)),
+    var(--color-surface-container-low)
+  );
+}
+
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .tono-layer--apricot {
+      animation: tono-in linear both;
+      animation-timeline: view();
+      animation-range: entry 15% entry 65%;
+    }
+
+    /* Lands at `entry 100%` — the moment the section is fully in view, which for
+       the closing section is as close to the end of the page as it gets. */
+    .tono-layer--marsala {
+      animation: tono-in linear both;
+      animation-timeline: view();
+      animation-range: entry 55% entry 100%;
+    }
+  }
+}
+
+@keyframes tono-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/*
+  "Barra de labios" (Phase 4): a reading-progress bar filling left to right in
+  the brand gradient, so even the scroll indicator is a brand gesture.
+
+  It sits on the BOTTOM edge of the sticky navbar rather than fixed at the top
+  of the viewport. Fixed at top 0 it would cut across the navbar's own top edge;
+  riding the bottom border makes it read as the navbar underlining itself as you
+  read. The navbar is sticky, so it is on screen whenever the bar matters.
+
+  ⚠️ The host must NOT be given `position: relative`. `sticky` already
+  establishes the containing block this needs, and swapping it would cancel the
+  stickiness — ScrollProgressBar.test.js guards that, along with the usual
+  `overflow: hidden` trap that would resolve `scroll(root)` against a box that
+  never scrolls.
+
+  NOT gated on reduced motion, deliberately. The bar does not animate on its own
+  clock: it tracks the scroll exactly as the content does, so it is a state
+  indicator like the scrollbar rather than motion the user did not ask for.
+  Hiding it would remove information, not motion.
+
+  Where scroll timelines are unsupported the bar is removed rather than left at
+  zero width, so there is no dead 3px strip pretending to be a control. No
+  JavaScript fallback: a scroll listener on every page is a poor trade for a
+  decorative indicator, and the CSS version costs nothing when it does run.
+*/
+.barra {
+  position: absolute;
+  inset: auto 0 -1px 0;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    var(--color-primary),
+    var(--color-blush-canvas) 55%,
+    var(--color-apricot-glow)
+  );
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  pointer-events: none;
+}
+
+@supports not (animation-timeline: scroll()) {
+  .barra {
+    display: none;
+  }
+}
+
+@supports (animation-timeline: scroll()) {
+  .barra {
+    animation: barra-fill linear both;
+    animation-timeline: scroll(root block);
+  }
+}
+
+@keyframes barra-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
 
 /*
   Makeup-texture decoration (Phase 3): a soft "highlighter bloom" built from the
@@ -190,6 +615,65 @@
 @keyframes makeup-mesh-drift {
   from { transform: translate3d(0, 0, 0) scale(1); }
   to   { transform: translate3d(0, -2.5%, 0) scale(1.06); }
+}
+
+/*
+  "Velo" (Phase 4): the featured-news hero breathes as you scroll past it. The
+  cover drifts slower than the page (parallax) and the legibility veil lifts,
+  so the photo opens up once the headline has been read.
+
+  Timeline choice: `scroll(root)` rather than `view()`. The hero always sits at
+  the top of the document, so at scroll 0 a view timeline would already be part
+  way through its own range — the drift would start from an arbitrary offset.
+  Anchoring to the root scroller makes progress 0 mean "page not scrolled".
+
+  ⚠️ Any ancestor with `overflow: hidden` silently kills this. `hidden` creates
+  a scroll container, and the timeline resolves against the NEAREST one — a
+  container that never scrolls freezes progress at a constant. Use
+  `overflow: clip`, which clips identically without becoming a scroll container.
+  FeaturedNewsHero.vue uses `overflow-clip` for exactly this reason, and
+  FeaturedNewsHero.test.js guards it.
+
+  Animates transform/opacity only. Where scroll timelines are unsupported
+  (Firefox, as of 152) the hero simply renders at rest — never blank.
+*/
+.velo-media {
+  /* Overscale so the drift never exposes an edge: the overhang is 13% per side
+     and the animation travels 8% × 1.26 ≈ 10.1%, leaving ~3% of margin. The
+     scale has to grow with the travel — at the original 1.18 an 8% drift would
+     have run past the overhang and shown the container behind the photo.
+     Applied unconditionally, so the framing is identical with or without
+     motion. */
+  transform: scale(1.26) translate3d(0, -4%, 0);
+}
+
+@supports (animation-timeline: scroll()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .velo-media {
+      will-change: transform;
+      animation: velo-drift linear both;
+      animation-timeline: scroll(root block);
+      animation-range: 0 100vh;
+    }
+
+    .velo-veil {
+      animation: velo-lift linear both;
+      animation-timeline: scroll(root block);
+      animation-range: 0 80vh;
+    }
+  }
+}
+
+@keyframes velo-drift {
+  from { transform: scale(1.26) translate3d(0, -8%, 0); }
+  to   { transform: scale(1.26) translate3d(0, 8%, 0); }
+}
+
+/* Stops at 0.65, not 0 — the veil still has to carry the headline's contrast
+   through the first stretch of scrolling. */
+@keyframes velo-lift {
+  from { opacity: 1; }
+  to   { opacity: 0.65; }
 }
 
 /*

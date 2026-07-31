@@ -4,10 +4,9 @@ import BaseButton from '../ui/BaseButton.vue'
 
 // Ported from frontend/src/components/catalog/ProductCatalog.vue
 // (mobile-capacitor-setup Phase 7). Dropped the `v-reveal` scroll-reveal
-// directive: it is a decorative animation, not registered globally in
-// App/src/main.js (unlike frontend/src/main.js), and not required by any
-// spec scenario — porting the directive too would be unnecessary scope for
-// a mobile WebView catalog grid.
+// directive from this grid: staggering a long WebView catalog grid is a much
+// heavier effect than the home headings' CSS stroke, and no spec scenario
+// depends on it. App/ has no such directive at all as a result.
 defineProps({
   products: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },

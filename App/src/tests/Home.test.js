@@ -180,3 +180,33 @@ describe('Home.vue (App) — live sections + offline retry/error state', () => {
     expect(wrapper.find('[data-home-retry]').exists()).toBe(false)
   })
 })
+
+/**
+ * The marquee band is a rhythm break, so where it sits is the whole point: it
+ * separates the news grid from the first of the three "3 featured items" blocks
+ * that would otherwise run into each other.
+ */
+describe('Home.vue (App) — specialties ribbon placement', () => {
+  let router
+
+  beforeEach(async () => {
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+    router = makeRouter()
+    await router.push('/')
+  })
+
+  it('renders the ribbon between the news grid and the featured courses', async () => {
+    api.get.mockResolvedValue({ data: { data: [], meta: {} } })
+
+    const wrapper = mount(Home, { global: { plugins: [router] } })
+    await flushPromises()
+
+    const newsGrid = wrapper.find('[data-latest-news-grid]').element
+    const ribbon = wrapper.find('[data-specialties-ribbon]').element
+    const courses = wrapper.find('[data-featured-courses]').element
+
+    expect(newsGrid.compareDocumentPosition(ribbon) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(ribbon.compareDocumentPosition(courses) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+})

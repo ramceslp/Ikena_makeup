@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import api from '../services/api.js'
 import FeaturedNewsHero from '../components/home/FeaturedNewsHero.vue'
 import LatestNewsGrid from '../components/home/LatestNewsGrid.vue'
+import SpecialtiesRibbon from '../components/home/SpecialtiesRibbon.vue'
 import FeaturedCourses from '../components/home/FeaturedCourses.vue'
 import FeaturedServices from '../components/home/FeaturedServices.vue'
 import FeaturedProducts from '../components/home/FeaturedProducts.vue'
@@ -95,6 +96,11 @@ onMounted(checkConnectivity)
 
       <!-- 2. Latest news grid -->
       <LatestNewsGrid />
+
+      <!-- Rhythm break: the three "3 featured items" blocks below would
+           otherwise run straight into the news grid. Static copy, so it adds
+           no fetch to the six already gated behind the connectivity probe. -->
+      <SpecialtiesRibbon />
 
       <!-- 3. Featured courses (3 most-recent, link → /cursos) -->
       <FeaturedCourses />

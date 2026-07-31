@@ -3,11 +3,13 @@ import { ref, onMounted } from 'vue'
 import { useCoursesStore } from '../../stores/courses.js'
 import { formatPrice } from '../../utils/formatPrice.js'
 
-// Ported from frontend/src/components/home/FeaturedCourses.vue. The
-// scroll-triggered `v-reveal` entrance animation directive is intentionally
-// NOT ported here -- it is a cosmetic-only effect (no spec scenario depends
-// on it) and porting it would require also registering a new global
-// directive + its CSS classes, which is out of scope for this phase.
+// Ported from frontend/src/components/home/FeaturedCourses.vue.
+//
+// The heading's `.trazo` stroke is pure CSS (style.css, scrubbed by
+// `animation-timeline: view()`), so App/ needs no `v-reveal` directive: it was
+// briefly registered for this, and removed once the stroke stopped needing
+// JavaScript. The web version's per-card translate/opacity entrance stays
+// unported, so the card grid still renders at rest.
 const coursesStore = useCoursesStore()
 
 const courses = ref([])
@@ -28,7 +30,7 @@ onMounted(async () => {
           <p class="font-label-sm text-label-sm text-primary uppercase tracking-widest mb-2">
             Formación Artística
           </p>
-          <h2 class="font-headline-lg text-headline-lg text-deep-marsala">
+          <h2 class="trazo font-headline-lg text-headline-lg text-deep-marsala">
             Cursos Destacados
           </h2>
         </div>
@@ -41,17 +43,28 @@ onMounted(async () => {
         </router-link>
       </div>
 
-      <!-- Courses grid -->
-      <div v-if="courses.length > 0" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <!-- Courses deck. Each card sticks a step below the previous one, so the
+           reader meets one course at a time instead of comparing three at once.
+           The trailing space is what gives the last card room to be read before
+           the section ends.
+
+           Unlike the web build the card stays vertical: at 411px a thumbnail
+           beside the text leaves the title about 150px, which is narrower than
+           the titles the API actually returns. -->
+      <div v-if="courses.length > 0" data-course-stack class="apiladas flex flex-col gap-4 pb-[22vh]">
         <router-link
-          v-for="course in courses"
+          v-for="(course, i) in courses"
           :key="course.id"
           :to="`/cursos/${course.slug}`"
+          :style="{ '--stack-index': i }"
           data-course-card
-          class="group flex flex-col bg-surface rounded-2xl overflow-hidden border border-blush-canvas/30 shadow-md shadow-primary/5 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-1 transition-all duration-300 no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface-muted"
+          class="apilada group flex flex-col p-3 bg-surface rounded-2xl overflow-clip border border-blush-canvas/30 shadow-lg shadow-primary/10 hover:shadow-xl hover:shadow-primary/20 hover:-translate-y-1 transition-all duration-300 no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface-muted"
         >
-          <!-- Thumbnail -->
-          <div class="aspect-video bg-blush-canvas/10 overflow-hidden">
+          <!-- Thumbnail. Inset rather than full-bleed: the strip of each buried
+               card that stays visible is this padding, so it reads as the edge
+               of a card in a deck. Bled to the corner it showed an arbitrary
+               slice of the photo instead, which read as broken overlap. -->
+          <div class="aspect-video bg-blush-canvas/10 rounded-xl overflow-clip">
             <img
               v-if="course.thumbnail"
               :src="course.thumbnail"
@@ -64,11 +77,11 @@ onMounted(async () => {
           </div>
 
           <!-- Card body -->
-          <div class="flex flex-col flex-grow p-5 space-y-2">
-            <span v-if="course.category" class="font-label-sm text-label-sm text-on-surface-variant">
+          <div class="flex flex-col flex-grow px-2 pt-4 pb-2 space-y-2">
+            <span v-if="course.category" class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest">
               {{ course.category.name }}
             </span>
-            <h3 class="font-title-md text-title-md text-deep-marsala group-hover:text-primary transition-colors line-clamp-2">
+            <h3 class="font-headline-lg text-title-md text-deep-marsala group-hover:text-primary transition-colors">
               {{ course.title }}
             </h3>
             <p class="font-title-md text-title-md text-primary mt-auto pt-2">

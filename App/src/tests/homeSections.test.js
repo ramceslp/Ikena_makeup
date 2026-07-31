@@ -65,6 +65,88 @@ describe('FeaturedNewsHero.vue (App)', () => {
 
     expect(wrapper.find('[data-featured-news-hero]').exists()).toBe(true)
   })
+
+  /**
+   * "Velo" scroll-driven parallax (Phase 4) — mirrors the web frontend.
+   *
+   * Viable in the WebView because AppShell scrolls the document itself
+   * (min-h-dvh + flex-1, no inner overflow-y container), so `scroll(root)`
+   * has a real scroller to bind to. If a future layout moves scrolling into
+   * a wrapper, the timeline goes inert and these stay green — the guard here
+   * is against the overflow trap, not against that refactor.
+   */
+  describe('velo — scroll-driven hero parallax', () => {
+    const covered = {
+      id: 4,
+      title: 'Contorno suave',
+      slug: 'contorno-suave',
+      type: 'news',
+      excerpt: null,
+      cover_image_url: 'https://example.com/cover.jpg',
+    }
+
+    /**
+     * `overflow: hidden` makes an element a scroll container, and a scroll
+     * timeline resolves against the nearest one — a container that never
+     * scrolls freezes progress at a constant, so the animation runs but never
+     * advances. `overflow: clip` clips identically without that side effect.
+     */
+    it('clips the hero with overflow-clip so the scroll timeline stays alive', async () => {
+      api.get.mockResolvedValueOnce({ data: { data: covered } })
+
+      const wrapper = mountWithRouter(FeaturedNewsHero)
+      await flushPromises()
+
+      const section = wrapper.find('[data-featured-news-hero]')
+      expect(section.classes()).toContain('overflow-clip')
+      expect(section.classes()).not.toContain('overflow-hidden')
+    })
+
+    it('clips the cover wrapper with overflow-clip too', async () => {
+      api.get.mockResolvedValueOnce({ data: { data: covered } })
+
+      const wrapper = mountWithRouter(FeaturedNewsHero)
+      await flushPromises()
+
+      const media = wrapper.find('[data-hero-media]')
+      expect(media.exists()).toBe(true)
+      expect(media.classes()).toContain('overflow-clip')
+      expect(media.classes()).not.toContain('overflow-hidden')
+    })
+
+    it('marks the cover image as the parallax subject', async () => {
+      api.get.mockResolvedValueOnce({ data: { data: covered } })
+
+      const wrapper = mountWithRouter(FeaturedNewsHero)
+      await flushPromises()
+
+      expect(wrapper.find('[data-hero-cover]').classes()).toContain('velo-media')
+    })
+
+    it('marks the legibility veil so it can lift on scroll', async () => {
+      api.get.mockResolvedValueOnce({ data: { data: covered } })
+
+      const wrapper = mountWithRouter(FeaturedNewsHero)
+      await flushPromises()
+
+      expect(wrapper.find('[data-hero-veil]').classes()).toContain('velo-veil')
+    })
+
+    /**
+     * The gradient fallback animates through `.makeup-mesh`'s own drift
+     * keyframes. Adding velo-media there would put a second animation on the
+     * same `transform` and the later one would win outright.
+     */
+    it('does not apply the parallax to the gradient fallback', async () => {
+      api.get.mockResolvedValueOnce({ data: { data: { ...covered, cover_image_url: null } } })
+
+      const wrapper = mountWithRouter(FeaturedNewsHero)
+      await flushPromises()
+
+      expect(wrapper.find('[data-hero-gradient]').exists()).toBe(true)
+      expect(wrapper.find('.velo-media').exists()).toBe(false)
+    })
+  })
 })
 
 describe('LatestNewsGrid.vue (App)', () => {

@@ -16,9 +16,21 @@ function onSubmit() {
 </script>
 
 <template>
-  <section class="py-24 bg-surface-container-low">
+  <section data-newsletter-cta class="tono relative isolate py-24 bg-surface-container-low">
+    <!-- Tone wash: three gradient layers cross-fading by opacity as the
+         section scrolls in. Purely decorative, so it is out of the a11y tree.
+         Motion and colour live in style.css under "Cambio de tono". -->
+    <div data-tone-wash class="tono-wash" aria-hidden="true">
+      <span data-tone-layer class="tono-layer tono-layer--blush"></span>
+      <span data-tone-layer class="tono-layer tono-layer--apricot"></span>
+      <span data-tone-layer class="tono-layer tono-layer--marsala"></span>
+    </div>
+
     <div class="max-w-4xl mx-auto px-gutter text-center space-y-8">
-      <h2 class="font-headline-lg text-headline-lg text-deep-marsala">
+      <!-- mx-auto: .trazo sets width:fit-content so the stroke travels the
+           width of the text, which would otherwise pull this heading off-centre
+           for good — nothing strips the class once the wipe lands. -->
+      <h2 class="trazo font-headline-lg text-headline-lg text-deep-marsala mx-auto">
         Únete a nuestra comunidad artística
       </h2>
       <p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl mx-auto">
