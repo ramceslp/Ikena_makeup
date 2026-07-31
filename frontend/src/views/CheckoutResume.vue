@@ -170,31 +170,54 @@ async function redeemToken(token) {
   }
 }
 
+// Spanish copy per backend `code` (see CheckoutHandoffController's docblock).
+//
+// `phase` decides which panel renders: 'expired' is the terminal "this link is
+// finished, start over" panel; 'error' offers a Reintentar button. Anything the
+// customer could plausibly succeed at by retrying the same link stays on
+// 'error', because the backend releases the single-use claim for exactly those
+// failures (see releaseClaim()).
+const REDEEM_ERRORS = {
+  link_invalid: { phase: 'expired', message: 'Este enlace de pago no es válido.' },
+  link_consumed: { phase: 'expired', message: 'Este enlace de pago ya fue utilizado.' },
+  link_expired: { phase: 'expired', message: 'Este enlace de pago ha expirado.' },
+  product_unavailable: { phase: 'expired', message: 'Uno o más productos ya no están disponibles.' },
+  out_of_stock: { phase: 'expired', message: 'Ya no queda stock suficiente para uno de los productos.' },
+  service_unavailable: { phase: 'expired', message: 'Este servicio ya no acepta reservas para ese horario.' },
+  slot_unavailable: { phase: 'expired', message: 'Ese horario ya no está disponible.' },
+  cap_exceeded: { phase: 'expired', message: 'Ese horario acaba de llenarse.' },
+  course_unavailable: { phase: 'expired', message: 'Este curso ya no está disponible para compra.' },
+  already_enrolled: { phase: 'expired', message: 'Ya estás inscrito en este curso.' },
+  checkout_failed: { phase: 'error', message: 'No se pudo completar el pago.' },
+}
+
 function handleRedeemError(err) {
   const status = err.response?.status
-  const backendMessage = err.response?.data?.message
+  const data = err.response?.data
+  const known = REDEEM_ERRORS[data?.code]
 
-  if (status === 410) {
-    phase.value = 'expired'
-    errorMessage.value = 'Este enlace de pago ha expirado. ' + RESTART_SUFFIX
+  // Switch on `code`, not status. A 409 alone cannot distinguish "link already
+  // used" from "someone took the last slot" from "you already own this
+  // course" — before the app could hand off bookings and courses, all three
+  // rendered as "el enlace ya fue utilizado".
+  if (known) {
+    phase.value = known.phase
+    errorMessage.value = known.message + ' ' + RESTART_SUFFIX
     return
   }
 
-  if (status === 409) {
+  // Fallback for a response with no code — an older backend, or a failure that
+  // never reached the controller (proxy error, network). Status-based, same as
+  // before codes existed.
+  if (status === 410 || status === 409 || status === 404) {
     phase.value = 'expired'
-    errorMessage.value = 'Este enlace de pago ya fue utilizado. ' + RESTART_SUFFIX
-    return
-  }
-
-  if (status === 404) {
-    phase.value = 'expired'
-    errorMessage.value = 'Este enlace de pago no es válido. ' + RESTART_SUFFIX
+    errorMessage.value = 'Este enlace de pago ya no es válido. ' + RESTART_SUFFIX
     return
   }
 
   phase.value = 'error'
-  errorMessage.value = backendMessage
-    ? backendMessage + ' ' + RESTART_SUFFIX
+  errorMessage.value = data?.message
+    ? data.message + ' ' + RESTART_SUFFIX
     : 'No se pudo cargar el proceso de pago. ' + RESTART_SUFFIX
 }
 
