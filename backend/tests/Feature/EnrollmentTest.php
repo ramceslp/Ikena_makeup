@@ -191,6 +191,48 @@ class EnrollmentTest extends TestCase
         $this->assertEquals(40, $courseData['progress_percentage']); // round(2/5 * 100) = 40
     }
 
+    /**
+     * The mobile app has no lesson player and opens this link in the system
+     * browser, so the API — not the app's build config — owns the web origin.
+     */
+    public function test_my_courses_exposes_an_absolute_web_player_url(): void
+    {
+        config(['app.frontend_url' => 'https://ikena.test']);
+
+        $student = User::factory()->create();
+        Sanctum::actingAs($student);
+
+        $course = $this->createCourseWithLessons(1);
+        Enrollment::create([
+            'user_id'    => $student->id,
+            'course_id'  => $course->id,
+            'price_paid' => $course->price,
+        ]);
+
+        $this->getJson('/api/my-courses')
+             ->assertStatus(200)
+             ->assertJsonPath('data.0.web_url', "https://ikena.test/learn/{$course->slug}");
+    }
+
+    public function test_my_courses_web_player_url_tolerates_a_trailing_slash_in_config(): void
+    {
+        config(['app.frontend_url' => 'https://ikena.test/']);
+
+        $student = User::factory()->create();
+        Sanctum::actingAs($student);
+
+        $course = $this->createCourseWithLessons(1);
+        Enrollment::create([
+            'user_id'    => $student->id,
+            'course_id'  => $course->id,
+            'price_paid' => $course->price,
+        ]);
+
+        $this->getJson('/api/my-courses')
+             ->assertStatus(200)
+             ->assertJsonPath('data.0.web_url', "https://ikena.test/learn/{$course->slug}");
+    }
+
     public function test_my_courses_progress_percentage_is_zero_when_no_lessons_completed(): void
     {
         $student = User::factory()->create();

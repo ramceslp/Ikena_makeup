@@ -75,6 +75,15 @@ class User extends Authenticatable
     }
 
     /**
+     * Appointments this user booked as a customer (not the ones an admin
+     * manages). Backs GET /api/profile/appointments — the agenda screen.
+     */
+    public function appointments(): HasMany
+    {
+        return $this->hasMany(Appointment::class);
+    }
+
+    /**
      * Routes FCM notifications to every registered device token for this
      * user (mobile-capacitor-setup PR3). NotificationChannels\Fcm\FcmChannel
      * calls this via `$notifiable->routeNotificationFor('fcm', ...)` and

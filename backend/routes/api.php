@@ -96,6 +96,9 @@ Route::middleware(['auth:sanctum', RejectScopedCheckoutToken::class])->group(fun
     Route::post('/profile', [ProfileController::class, 'update']);
     Route::put('/profile/password', [ProfileController::class, 'updatePassword']);
     Route::get('/profile/orders', [ProfileController::class, 'orders']);
+    // The customer's own agenda (?scope=upcoming|past). Distinct from the
+    // admin list at /admin/appointments, which spans every user.
+    Route::get('/profile/appointments', [ProfileController::class, 'appointments']);
 
     Route::get('/my-courses', [MyCourseController::class, 'index']);
 
