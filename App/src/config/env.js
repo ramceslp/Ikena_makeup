@@ -77,8 +77,16 @@ export function resolveGoogleWebClientId(isProd, value) {
   return value
 }
 
+// ⚠️ MODE, not PROD. `vite build` sets NODE_ENV=production regardless of the
+// --mode flag, and `import.meta.env.PROD` is derived from NODE_ENV — so PROD
+// is `true` even for the `vite build --mode development` build installed on
+// the emulator. Passing it here made this call throw on the committed
+// placeholder, killing module import for an ordinary dev build instead of
+// just disabling Google Sign-In. Same trap that broke every emulator checkout
+// through services/checkoutHandoff.js; MODE reflects the --mode flag and is
+// the signal this codebase standardised on (see resolveApiBaseUrl above).
 export const GOOGLE_WEB_CLIENT_ID = resolveGoogleWebClientId(
-  import.meta.env.PROD,
+  import.meta.env.MODE === 'production',
   RAW_GOOGLE_WEB_CLIENT_ID
 )
 

@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
+import { readFile } from 'node:fs/promises'
+import { resolve } from 'node:path'
 import {
   resolveApiBaseUrl,
   resolveGoogleWebClientId,
@@ -78,6 +80,41 @@ describe('resolveGoogleWebClientId', () => {
     expect(resolveGoogleWebClientId(true, 'real-client-id.apps.googleusercontent.com')).toBe(
       'real-client-id.apps.googleusercontent.com'
     )
+  })
+})
+
+/**
+ * Regression guard for the SECOND instance of the trap that broke checkout on
+ * the emulator (see the twin guard in checkoutHandoff.test.js).
+ *
+ * `vite build` sets NODE_ENV=production regardless of `--mode`, and
+ * `import.meta.env.PROD` is derived from NODE_ENV — so PROD is true even for
+ * the `vite build --mode development` build installed on the emulator. Wiring
+ * it into GOOGLE_WEB_CLIENT_ID compiled the call to
+ * resolveGoogleWebClientId(true, …), which THROWS on the committed
+ * placeholder: a dev build without a real client ID in
+ * .env.development.local dies at module import, taking the whole app with it
+ * rather than degrading to "Google Sign-In is unavailable".
+ *
+ * Every resolveGoogleWebClientId test above passed the whole time — they call
+ * the pure function directly and never exercise the env wiring. Reading the
+ * source is the only way to pin the flag, so that is what this does.
+ */
+describe('the production signal wired into GOOGLE_WEB_CLIENT_ID', () => {
+  it('reads import.meta.env.MODE, never PROD', async () => {
+    // Resolved from cwd, NOT via fileURLToPath(new URL(..., import.meta.url)):
+    // under Vitest's jsdom environment that pattern throws "The URL must be of
+    // scheme file" (the global URL shadows node:url's). Vitest runs from the
+    // App/ package root.
+    const source = await readFile(resolve(process.cwd(), 'src/config/env.js'), 'utf8')
+
+    // Comments are stripped first: the doc comment on the call site names
+    // `import.meta.env.PROD` on purpose, to explain why it must not be used.
+    // Only executable code is asserted on.
+    const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+
+    expect(code).toContain("import.meta.env.MODE === 'production'")
+    expect(code).not.toMatch(/import\.meta\.env\.PROD/)
   })
 })
 
