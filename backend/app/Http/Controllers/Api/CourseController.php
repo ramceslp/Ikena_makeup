@@ -141,6 +141,21 @@ class CourseController extends Controller
 
         $user = $request->user();
 
+        // Free courses ONLY. This endpoint grants an Enrollment outright, with
+        // no Order and no gateway, so without this guard any authenticated
+        // user could take a paid course for nothing by calling it directly —
+        // the web client has always routed paid courses to /checkout instead,
+        // but client-side routing is not an authorization control.
+        //
+        // Exactly mirrors CourseCheckoutAction's opposite guard ("this course
+        // is free, use /enroll"), so the two entry points partition the
+        // catalog with no gap and no overlap.
+        if ((float) $course->price > 0.0) {
+            return response()->json([
+                'message' => 'This course is not free. Use POST /courses/{slug}/checkout instead.',
+            ], 422);
+        }
+
         Enrollment::firstOrCreate(
             ['user_id' => $user->id, 'course_id' => $course->id],
             ['price_paid' => $course->price]

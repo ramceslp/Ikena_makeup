@@ -19,12 +19,19 @@ class EnrollmentTest extends TestCase
     // Helpers
     // -------------------------------------------------------------------------
 
-    private function createCourseWithLessons(int $lessonCount = 3): Course
+    /**
+     * Price is pinned to 0 because CourseFactory picks one at random from
+     * [0, 9.99, 29.99, 49.99, 79.99], and POST /courses/{slug}/enroll only
+     * serves FREE courses — a random paid price would make every enroll test
+     * here flake on four runs out of five.
+     */
+    private function createCourseWithLessons(int $lessonCount = 3, float $price = 0): Course
     {
         $instructor = User::factory()->instructor()->create();
         $course = Course::factory()->create([
             'instructor_id' => $instructor->id,
             'is_published'  => true,
+            'price'         => $price,
         ]);
         $section = Section::factory()->create(['course_id' => $course->id]);
 
@@ -68,6 +75,29 @@ class EnrollmentTest extends TestCase
                  ]);
 
         $this->assertDatabaseHas('enrollments', [
+            'user_id'   => $student->id,
+            'course_id' => $course->id,
+        ]);
+    }
+
+    /**
+     * This endpoint hands out an Enrollment with no Order and no gateway. It
+     * was reachable for PAID courses too, so any authenticated user could take
+     * a paid course for free by calling it directly — the web client routed
+     * paid courses to /checkout, but client-side routing is not an
+     * authorization control.
+     */
+    public function test_enroll_refuses_a_paid_course(): void
+    {
+        $student = User::factory()->create();
+        Sanctum::actingAs($student);
+
+        $course = $this->createCourseWithLessons(3, 49.99);
+
+        $this->postJson("/api/courses/{$course->slug}/enroll")
+             ->assertStatus(422);
+
+        $this->assertDatabaseMissing('enrollments', [
             'user_id'   => $student->id,
             'course_id' => $course->id,
         ]);
