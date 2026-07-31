@@ -1,26 +1,66 @@
 <script setup>
 import { computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useCoursesStore } from '../stores/courses.js'
 import { formatPrice } from '../utils/formatPrice.js'
 import CourseCurriculum from '../components/course/CourseCurriculum.vue'
 import BaseBadge from '../components/ui/BaseBadge.vue'
 import BaseButton from '../components/ui/BaseButton.vue'
 
-// Read-only course detail keyed by :slug. This app has no /learn lesson
-// player, no checkout/enroll flow for courses, and no review UI (see
-// stores/courses.js's file-level comment for the full boundary), so this
-// view is informational only -- title, curriculum outline, instructor,
-// rating -- with no purchase CTA. Mirrors views/ProductDetail.vue's own
-// precedent of shipping without a CTA when the underlying action isn't wired
-// yet (see that file's header comment), and views/ServiceDetail.vue's
-// loading/error/detail composition otherwise.
+// Course detail keyed by :slug, with an enrollment CTA.
+//
+// This view shipped read-only because no enroll path existed in the app at
+// all: free enrollment was never ported, and paid enrollment had no server
+// support (the checkout handoff only understood product_cart and appointment,
+// because CheckoutController::checkout kept its logic inline instead of in a
+// reusable Action). Both gaps are closed now — CourseCheckoutAction backs a
+// `course` handoff type — so the CTA below is finally wired to something real.
+//
+// The app still has no /learn lesson player. An enrolled user is pointed at
+// the profile's "Mis cursos" section, which opens the web player in the
+// system browser.
 const route = useRoute()
+const router = useRouter()
 const coursesStore = useCoursesStore()
 
 const course = computed(() => coursesStore.currentCourse)
 const loading = computed(() => coursesStore.loading)
 const error = computed(() => coursesStore.error)
+
+const isEnrolled = computed(() => !!course.value?.is_enrolled)
+const isFree = computed(() => {
+  const price = parseFloat(course.value?.price)
+  return !Number.isFinite(price) || price <= 0
+})
+
+// Scoped to THIS course, not a global "a handoff happened" flag — otherwise
+// handing off course A leaves course B showing A's browser panel with no way
+// to enroll (see stores/courses.js's enrollHandoffCourseId comment).
+const handedOff = computed(
+  () => course.value != null && coursesStore.enrollHandoffCourseId === course.value.id
+)
+
+const ctaLabel = computed(() => {
+  if (coursesStore.enrolling) return isFree.value ? 'Inscribiendo…' : 'Abriendo el pago…'
+  return isFree.value ? 'Inscribirme gratis' : 'Inscribirme'
+})
+
+async function handleEnroll() {
+  const outcome = await coursesStore.enroll(course.value)
+
+  // A free enrollment is instantly usable, so take the user straight to where
+  // they can actually start it. A paid one is not enrolled yet — payment is
+  // still open in the browser — so the view stays put and shows the
+  // handed-off panel instead.
+  if (outcome === 'enrolled') {
+    await router.push('/profile')
+  }
+}
+
+function retryEnroll() {
+  coursesStore.enrollHandoffCourseId = null
+  coursesStore.enrollError = null
+}
 
 // Fetches only on initial mount (same inherited limitation as ServiceDetail.vue/
 // ProductDetail.vue) -- a detail->detail navigation reusing this route
@@ -130,6 +170,73 @@ onMounted(async () => {
           <!-- Description -->
           <div class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
             {{ course.description }}
+          </div>
+
+          <!-- ── Enrollment CTA ──────────────────────────────────────────── -->
+
+          <!-- Already enrolled: no purchase action, just the way in. The app
+               has no lesson player, so the route is the profile's "Mis cursos"
+               section, which opens the web player in the system browser. -->
+          <div v-if="isEnrolled" data-course-enrolled class="flex flex-col gap-3">
+            <RouterLink to="/profile" data-go-to-my-courses>
+              <BaseButton variant="primary" size="lg" class="w-full">
+                <span class="material-symbols-outlined text-[20px]" aria-hidden="true">play_circle</span>
+                Ir a mis cursos
+              </BaseButton>
+            </RouterLink>
+          </div>
+
+          <!-- Paid checkout opened in the browser. Worded as "not yet
+               enrolled", because the Enrollment is created only after the
+               gateway approves. -->
+          <div
+            v-else-if="handedOff"
+            data-course-handed-off
+            class="flex flex-col items-center gap-3 text-center bg-surface-container-low rounded-2xl p-6"
+          >
+            <span class="material-symbols-outlined text-4xl text-primary" aria-hidden="true">open_in_new</span>
+            <p class="font-body-md text-body-md text-on-surface-variant">
+              Abrimos el pago en tu navegador. Quedarás inscrito en cuanto completes el pago;
+              el enlace vence en 10 minutos.
+            </p>
+            <button
+              type="button"
+              data-enroll-retry
+              class="font-label-md text-label-md text-primary underline min-h-11 px-4"
+              @click="retryEnroll"
+            >
+              Volver a intentar
+            </button>
+          </div>
+
+          <div v-else class="flex flex-col gap-3">
+            <BaseButton
+              data-enroll-btn
+              variant="primary"
+              size="lg"
+              class="w-full"
+              :loading="coursesStore.enrolling"
+              @click="handleEnroll"
+            >
+              <span class="material-symbols-outlined text-[20px]" aria-hidden="true">
+                {{ isFree ? 'school' : 'open_in_new' }}
+              </span>
+              {{ ctaLabel }}
+            </BaseButton>
+
+            <p
+              v-if="coursesStore.enrollError"
+              data-enroll-error
+              class="bg-error-container rounded-xl px-4 py-3 font-body-md text-body-md text-on-error-container"
+              role="alert"
+            >
+              {{ coursesStore.enrollError }}
+            </p>
+
+            <p v-if="!isFree" class="font-body-sm text-body-sm text-on-surface-variant flex items-start gap-1.5">
+              <span class="material-symbols-outlined text-[16px] mt-0.5" aria-hidden="true">open_in_new</span>
+              El pago se completa de forma segura en tu navegador.
+            </p>
           </div>
         </div>
       </div>
