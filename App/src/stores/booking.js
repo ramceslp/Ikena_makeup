@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import api from '../services/api.js'
+import { startCheckoutHandoff } from '../services/checkoutHandoff.js'
 
 // Trimmed port of frontend/src/stores/booking.js: only the PUBLIC booking
 // flow (fetchAvailableDays, fetchDaySlots, createBooking), needed by
@@ -22,6 +23,11 @@ export const useBookingStore = defineStore('booking', {
     isLoading: false,
     bookingError: null,
     lastBookingResult: null,
+    // payDeposit() state. Set once the system browser has been handed the
+    // checkout URL, so ServiceDetail/BookingForm can swap the form for a
+    // "finish in your browser" state instead of leaving a live form behind
+    // that would create a SECOND handoff on a second tap.
+    handoffOpened: false,
     // Incremented every time createBooking fails with a 409 (slot cap
     // exceeded between selection and submission). Components watch this to
     // clear their own local "selected slot" state, which is otherwise left
@@ -79,8 +85,80 @@ export const useBookingStore = defineStore('booking', {
       }
     },
 
+    // ── Pay the deposit (checkout handoff) ──────────────────────────────────
+
+    /**
+     * The app's real booking action.
+     *
+     * It does NOT create the appointment. POST /checkout/handoff only
+     * snapshots the selection behind a single-use, 10-minute token; the
+     * appointment is created server-side at redeem time, in the browser, by
+     * the same CreateBookingAction the web uses — so a slot is never held by
+     * someone who walked away from the payment screen, and no unpaid
+     * appointment can occupy the agenda.
+     *
+     * This replaces a direct POST /bookings call that created a `pending`
+     * appointment and then showed a local "we'll contact you on WhatsApp to
+     * collect the deposit" message. The deposit was never actually collectable
+     * from the app: rendering the gateway would have violated the spec's
+     * Mobile App Boundaries, and the deposit-payment path was explicitly
+     * deferred (see BookingForm.vue's header) and never built.
+     *
+     * The 409/capacity handling that createBooking() owned moves server-side
+     * with it: capacity is re-checked at redeem, when it is authoritative,
+     * rather than at selection time, when it would go stale during checkout.
+     *
+     * @returns {Promise<boolean>} true when the browser was opened
+     */
+    async payDeposit(payload) {
+      this.bookingError = null
+      this.isLoading = true
+      try {
+        await startCheckoutHandoff({
+          type: 'appointment',
+          service_id: payload.service_id,
+          scheduled_date: payload.scheduled_date,
+          scheduled_time: payload.scheduled_time,
+          whatsapp: payload.whatsapp,
+        })
+        this.handoffOpened = true
+        return true
+      } catch (err) {
+        const status = err.response?.status
+        if (status === 401) {
+          // The global api.js interceptor also redirects to /login on any 401;
+          // this message is the fallback for when that redirect itself fails,
+          // matching BookingForm.vue's existing reasoning.
+          this.bookingError = 'Debes iniciar sesión para reservar.'
+        } else {
+          this.bookingError =
+            err.response?.data?.message ||
+            'No se pudo iniciar el pago del depósito. Inténtalo de nuevo.'
+        }
+        return false
+      } finally {
+        this.isLoading = false
+      }
+    },
+
     // ── Create a booking ─────────────────────────────────────────────────────
 
+    /**
+     * Direct POST /bookings.
+     *
+     * UNUSED by the app's UI as of the deposit-handoff change: BookingForm.vue
+     * calls payDeposit() instead, so appointments are created at redeem time
+     * by the web checkout rather than here, unpaid. Its 409 recovery path
+     * (refetch the day, bump slotConflictVersion so pickers drop a stale
+     * selection) is unreachable with it — a slot conflict now surfaces in the
+     * browser at redeem, which is where capacity is actually re-checked.
+     *
+     * Deliberately left in place rather than deleted in the same change that
+     * stopped calling it: removing it also strands slotConflictVersion and
+     * SlotPicker.vue's watcher on it, and that cleanup deserves its own diff
+     * rather than riding along with a behavioural change. Delete all three
+     * together — this is dead code until then, not a second supported flow.
+     */
     async createBooking(payload) {
       this.isLoading = true
       this.bookingError = null
