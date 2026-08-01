@@ -1,23 +1,62 @@
-# Ikena LMS — Plataforma de Cursos en Video (MVP)
+# Ikena Makeup — Plataforma Integral de Belleza y Educación
 
-Plataforma de e-learning estilo Udemy, **desacoplada**: una API REST en Laravel y una SPA
-en Vue 3 que la consume. La autenticación es por **token Bearer (Sanctum)**, de modo que
-la misma API puede servir en el futuro a apps móviles sin cambios.
+**Una plataforma todo-en-uno para escuelas de belleza, estéticas y maquilladores profesionales.**
 
-- **Backend:** PHP 8.4 · Laravel 13 · Sanctum · Socialite (Google OAuth)
-- **Base de datos:** MySQL 8.0 (compatible MariaDB, driver `mysql`)
-- **Frontend:** Vue 3 (Composition API) · Vite · Pinia · Vue Router · Axios · Tailwind v4
+Ikena permite crear y vender **cursos en video**, ofrecer **servicios con agendamiento de citas**, gestionar una **tienda de productos**, compartir **contenido en blog**, y administrar todo desde un **panel de control unificado**. Disponible en navegador web y **app Android nativa**.
 
-> El contrato técnico completo (esquema, relaciones, endpoints y formas JSON) vive en
-> [`ARCHITECTURE.md`](./ARCHITECTURE.md). El sistema de diseño visual, en `design_system.pdf`.
+### Stack Tecnológico
+
+- **Backend:** PHP 8.4 · Laravel 13 · Sanctum (Bearer tokens) · Socialite (Google OAuth)
+- **Base de datos:** MySQL 8.0 (compatible MariaDB)
+- **Frontend Web:** Vue 3 (Composition API) · Vite · Pinia · Vue Router · Tailwind v4
+- **App Móvil:** Capacitor + WebView (Android, app ID: `com.ikenamakeup.app`)
+
+### Estructura del Proyecto
 
 ```
 Ikena_makeup/
-├── backend/          # API Laravel
-├── frontend/         # SPA Vue 3
-├── ARCHITECTURE.md   # Contrato único de verdad (API + BD)
+├── backend/          # API REST Laravel
+├── frontend/         # SPA Vue 3 (web + Capacitor WebView)
+├── App/              # App Android (Capacitor)
+├── ARCHITECTURE.md   # Contrato técnico (BD, endpoints, recursos JSON)
 └── README.md
 ```
+
+> 📖 El contrato técnico completo está en [`ARCHITECTURE.md`](./ARCHITECTURE.md)
+
+---
+
+## ✨ Funcionalidades Principales
+
+### 🎓 Estudiantes / Clientes
+- Explorar y comprar cursos en video
+- Ver lecciones, marcar progreso y obtener certificados
+- Agendar servicios (asesorías, sesiones de maquillaje, etc.) con horarios disponibles
+- Comprar productos de la tienda
+- Recibir notificaciones push de recordatorios y promociones
+- Perfil personal: mis cursos, mis citas, historial de compras
+
+### 👨‍🏫 Instructores
+- Crear y publicar cursos con secciones y lecciones
+- Subir videos (YouTube, Vimeo, o directo)
+- Ver inscripciones y progreso de estudiantes
+- Leer reseñas de sus cursos
+- Dashboard con analytics de sus cursos
+
+### 🔧 Administradores
+- **Gestión de cursos:** crear, editar, publicar, ver todos los cursos de la plataforma
+- **Servicios:** crear servicios (consultas, sesiones de maquillaje, etc.) con precio, duración y depósito
+- **Disponibilidad:** definir días/horarios abiertos, bloquear fechas no disponibles
+- **Productos:** crear catálogo, subir imágenes, controlar inventario
+- **Citas:** ver todas las reservas de servicios, confirmar pagos, cancelar
+- **Órdenes:** ver todas las compras (cursos, servicios, productos)
+- **Blog:** publicar artículos y noticias
+- **Certificados:** personalizar diseño, logo, firma digital
+- **Notificaciones push:** enviar mensajes personalizados a usuarios en la app
+
+### 📱 Acceso a la Plataforma
+- **Web:** Sitio completo en navegador (desktop/mobile)
+- **App Android:** Aplicación nativa con todas las funcionalidades, push notifications y acceso sin internet a ciertos contenidos
 
 ---
 
@@ -66,18 +105,16 @@ DB_PASSWORD=tu_password_de_mysql      # <-- COMPLETAR
 php artisan migrate:fresh --seed
 ```
 
-Esto crea el esquema y datos de prueba:
+Esto crea el esquema completo (cursos, servicios, productos, órdenes, citas, etc.) y datos de prueba:
 
-| Rol        | Email                   | Password   |
-|------------|-------------------------|------------|
-| Estudiante | `student@ikena.test`    | `password` |
-| Instructor | `instructor@ikena.test` | `password` |
+| Rol        | Email                   | Password   | Rol                                                  |
+|------------|-------------------------|-----------|------------------------------------------------------|
+| Estudiante | `student@ikena.test`    | `password` | Acceso a cursos, servicios, productos               |
+| Instructor | `instructor@ikena.test` | `password` | Panel para crear/editar/publicar cursos             |
+| Administrador | `admin@ikena.test`  | `password` | Panel para gestionar TODO (cursos, servicios, etc.) |
 
-> Inicia sesión como **instructor** para acceder al panel de autoría en `/instructor`
-> (crear/editar/publicar cursos, secciones y lecciones).
-
-El estudiante queda inscrito en un curso con 2 lecciones completadas, así el progreso y
-"Mis Cursos" muestran datos reales desde el primer arranque.
+El estudiante queda pre-inscrito en un curso con 2 lecciones completadas, así puedes ver
+datos reales de progreso, citas, etc. desde el primer arranque.
 
 ### 1.3 Levantar el servidor backend
 
@@ -170,79 +207,107 @@ el frontend renderiza PayPhone → al pagar, PayPhone redirige a `/payment/callb
 
 ## 4. Endpoints de la API
 
+> 📖 **Referencia completa:** Ver [`ARCHITECTURE.md`](./ARCHITECTURE.md) para el esquema de BD, modelos, y todos los recursos JSON.
+
 ### Públicos
-| Método | Ruta                       | Descripción                          |
-|--------|----------------------------|--------------------------------------|
-| POST   | `/api/register`            | Registro (email/password)            |
-| POST   | `/api/login`               | Login (email/password)               |
-| POST   | `/api/auth/google`         | Login/registro con `id_token` Google |
-| GET    | `/api/courses`             | Catálogo (filtros: search, precio, sort) |
-| GET    | `/api/courses/{slug}`      | Detalle público del curso            |
+| Categoría | Descripción |
+|-----------|-------------|
+| **Autenticación** | `POST /api/register`, `POST /api/login`, `POST /api/auth/google` |
+| **Cursos** | `GET /api/courses` (catálogo con filtros), `GET /api/courses/{slug}` (detalle) |
+| **Servicios** | `GET /api/services` (catálogo), `GET /api/services/{slug}` (detalle) |
+| **Agendamiento** | `GET /api/services/{id}/available-days`, `GET /api/services/{id}/available-slots` |
+| **Productos** | `GET /api/products` (catálogo), `GET /api/products/{slug}` (detalle) |
+| **Blog** | `GET /api/posts`, `GET /api/posts/latest`, `GET /api/posts/{slug}` |
 
 ### Protegidos (`Authorization: Bearer <token>`)
-| Método | Ruta                            | Descripción                              |
-|--------|---------------------------------|------------------------------------------|
-| GET    | `/api/me`                       | Usuario autenticado                      |
-| POST   | `/api/logout`                   | Revoca el token actual                   |
-| GET    | `/api/my-courses`               | Cursos comprados + % de progreso         |
-| POST   | `/api/courses/{slug}/enroll`    | Inscripción directa (solo cursos gratis) |
-| POST   | `/api/courses/{slug}/checkout`  | Inicia compra de curso pago (crea orden + config de la Cajita) |
-| POST   | `/api/payments/confirm`         | Confirma el pago (`{id, clientTransactionId}`) y matricula |
-| GET    | `/api/lessons/{id}`             | Video (solo si es gratis o está comprado) |
-| POST   | `/api/lessons/{id}/complete`    | Marca/desmarca lección (toggle)          |
+| Categoría | Descripción |
+|-----------|-------------|
+| **Perfil** | `GET /api/me`, `POST /api/logout`, `POST /api/profile` (actualizar), `GET /api/profile/orders`, `GET /api/profile/appointments` |
+| **Cursos** | `GET /api/my-courses`, `POST /api/courses/{slug}/enroll`, `POST /api/courses/{slug}/checkout` |
+| **Servicios** | `POST /api/bookings` (agendar cita), ver citas en `/api/profile/appointments` |
+| **Productos** | `POST /api/cart/checkout` (compra de productos) |
+| **Pagos** | `POST /api/payments/confirm` (confirmar pago de curso/servicio/producto) |
+| **Notificaciones** | `POST /api/device-tokens` (registrar token para push notifications), `DELETE /api/device-tokens` |
+| **Certificados** | `GET /api/courses/{slug}/certificate` (descargar), `GET /api/certificates/verify/{code}` (verificar) |
 
-### Instructor (`Authorization: Bearer <token>` + rol `instructor`)
-Panel de autoría: el instructor gestiona **solo sus propios cursos**. El video no se
-almacena en el servidor — solo se guarda una **URL alojada** (YouTube, Vimeo o `.mp4`
-directo); el frontend la normaliza a iframe o `<video>` con `src/utils/video.js`.
+### 👨‍🏫 Instructor (`Authorization: Bearer <token>` + rol `instructor`)
+El instructor gestiona **solo sus propios cursos** en `/api/instructor/*`
 
-| Método | Ruta                                                   | Descripción                          |
-|--------|--------------------------------------------------------|--------------------------------------|
-| GET    | `/api/instructor/courses`                              | Mis cursos (publicados + borradores) |
-| POST   | `/api/instructor/courses`                              | Crear curso (nace como borrador)     |
-| GET    | `/api/instructor/courses/{slug}`                       | Detalle editable (incluye `video_url`) |
-| PATCH  | `/api/instructor/courses/{slug}`                       | Actualizar datos del curso           |
-| DELETE | `/api/instructor/courses/{slug}`                       | Eliminar curso (cascada)             |
-| POST   | `/api/instructor/courses/{slug}/publish`               | Publicar (422 si tiene 0 lecciones)  |
-| POST   | `/api/instructor/courses/{slug}/unpublish`             | Despublicar                          |
-| POST   | `/api/instructor/courses/{slug}/sections`              | Crear sección                        |
-| PATCH  | `/api/instructor/courses/{slug}/sections/reorder`      | Reordenar secciones (`{ordered_ids}`) |
-| PATCH  | `/api/instructor/sections/{id}`                        | Renombrar sección                    |
-| DELETE | `/api/instructor/sections/{id}`                        | Eliminar sección (cascada)           |
-| POST   | `/api/instructor/sections/{id}/lessons`                | Crear lección                        |
-| PATCH  | `/api/instructor/sections/{id}/lessons/reorder`        | Reordenar lecciones (`{ordered_ids}`) |
-| PATCH  | `/api/instructor/lessons/{id}`                         | Actualizar lección (incl. `video_url`) |
-| DELETE | `/api/instructor/lessons/{id}`                         | Eliminar lección                     |
+| Endpoint Ejemplo | Descripción |
+|-----------------|-------------|
+| `GET /api/instructor/dashboard` | Analytics de mis cursos |
+| `GET /api/instructor/courses` | Mis cursos (publicados + borradores) |
+| `POST /api/instructor/courses` | Crear curso |
+| `PATCH /api/instructor/courses/{slug}` | Editar curso |
+| `POST /api/instructor/courses/{slug}/sections` | Agregar sección |
+| `POST /api/instructor/sections/{id}/lessons` | Agregar lección con video |
+
+> 💡 Videos: no se almacenan en servidor, solo URLs alojadas (YouTube, Vimeo, directo `.mp4`)
+
+### 🔧 Admin (`Authorization: Bearer <token>` + rol `admin`)
+El admin gestiona **toda la plataforma** en `/api/admin/*`
+
+| Módulo | Funciones |
+|--------|-----------|
+| **Cursos** | Ver/crear/editar/eliminar todos los cursos (incluso de otros instructores) |
+| **Servicios** | CRUD completo de servicios, subir imágenes, reordenar |
+| **Productos** | CRUD completo, gestionar inventario, subir imágenes |
+| **Blog** | CRUD de posts, imágenes de portada e inline |
+| **Citas** | Ver todas las reservas de servicios, marcar como pagadas, cancelar |
+| **Órdenes** | Ver todas las compras (cursos, servicios, productos) |
+| **Certificados** | Personalizar diseño, logo, firma digital |
+| **Notificaciones Push** | Enviar mensajes a usuarios, historial de envíos |
+| **Disponibilidad** | Definir bloqueos de agenda para servicios |
 
 ---
 
 ## 5. Verificación rápida (sin frontend)
 
-Con el backend corriendo:
+Con el backend corriendo en `http://localhost:8000`:
 
 ```bash
-# Catálogo público
+# Catálogo público (cursos, servicios, productos)
 curl http://localhost:8000/api/courses
+curl http://localhost:8000/api/services
+curl http://localhost:8000/api/products
 
-# Login y captura de token
-curl -X POST http://localhost:8000/api/login \
+# Login y obtener token (reemplaza con credenciales de arriba)
+TOKEN=$(curl -s -X POST http://localhost:8000/api/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"student@ikena.test","password":"password"}'
+  -d '{"email":"student@ikena.test","password":"password"}' | jq -r '.token')
 
-# Mis cursos (reemplaza TOKEN)
-curl http://localhost:8000/api/my-courses -H "Authorization: Bearer TOKEN"
+# Mis cursos, servicios, órdenes
+curl http://localhost:8000/api/my-courses -H "Authorization: Bearer $TOKEN"
+curl http://localhost:8000/api/profile/appointments -H "Authorization: Bearer $TOKEN"
+curl http://localhost:8000/api/profile/orders -H "Authorization: Bearer $TOKEN"
+
+# Admin: ver todas las citas (solo si eres admin)
+curl http://localhost:8000/api/admin/appointments -H "Authorization: Bearer $TOKEN"
 ```
 
 ---
 
 ## 6. Notas de arquitectura
 
-- **Autenticación por token (no cookie):** elegido a propósito para que apps móviles
-  futuras usen la misma API sin sesiones de navegador.
-- **Control de acceso al video:** `GET /api/lessons/{id}` devuelve el `video_url` solo si
-  la lección es gratuita **o** el usuario está inscrito en el curso; de lo contrario `403`.
-  El catálogo público nunca expone URLs de video de lecciones pagas.
-- **Progreso:** `progress_percentage = round(lecciones_completadas / lecciones_totales * 100)`,
-  calculado en el backend y reflejado en tiempo real en el reproductor (actualización
-  optimista con rollback ante error de red).
-- **Sin mocks:** el frontend siempre consume la API real de Laravel.
+### Autenticación & Seguridad
+- **Token Bearer (Sanctum):** no cookies, así la API sirve a web + apps móviles sin cambios
+- **Roles:** `student` (por defecto), `instructor` (crea cursos), `admin` (gestiona todo)
+- **Ownership checks:** instructores solo ven/editan sus cursos; admins ven/editan todo
+- **Control de acceso a videos:** GET `/api/lessons/{id}` devuelve `video_url` solo si la lección es gratis O el usuario está inscrito (403 de lo contrario)
+
+### Módulos Principales
+- **Cursos:** LMS con secciones, lecciones, progreso, certificados
+- **Servicios:** agendamiento de citas con horarios disponibles, depósitos, notificaciones
+- **Productos:** tienda con inventario, imágenes, órdenes
+- **Blog:** posts con portada e imágenes inline, búsqueda
+- **Pagos:** integración PayPhone (Ecuador), manejo de órdenes y depósitos
+
+### Frontend & Apps
+- **Web (SPA Vue 3):** acceso completo en navegador
+- **App Android (Capacitor):** misma SPA en WebView + notificaciones push + acceso sin conexión parcial
+- **Sin mocks:** frontend siempre consume la API real de Laravel
+
+### Performance & UX
+- **Progreso en tiempo real:** `progress_percentage` se actualiza optimistamente con rollback ante error
+- **Agendamiento inteligente:** slots disponibles calculados en backend, bloques de unavailability configurables
+- **Notificaciones push:** device tokens registrados, histórico de envíos, broadcast o segmentado
