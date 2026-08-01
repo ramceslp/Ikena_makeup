@@ -193,6 +193,65 @@ class Appointment extends Model
     }
 
     // -------------------------------------------------------------------------
+    // Scopes
+    // -------------------------------------------------------------------------
+
+    /**
+     * Portable "ended before $moment" predicate (design D6), used by the
+     * receivable-bucket queries (PR4a) to find appointments whose scheduled
+     * end has passed a given cutoff (typically `now()->subDay()` for the
+     * 24h grace period).
+     *
+     * Combining a DATE column and a TIME column into one instant is
+     * driver-specific in SQL (`TIMESTAMP()` on MySQL vs `datetime(date||time)`
+     * on SQLite). This predicate avoids that entirely with a portable
+     * two-branch OR, built from $moment split into its date and time parts
+     * in PHP (Carbon) before the query is built:
+     *
+     *   scheduled_date < M.date
+     *   OR (scheduled_date = M.date AND scheduled_end_time <= M.time)
+     *
+     * `scheduled_end_time` is a NULLABLE `time` column
+     * (2026_06_27_100001_add_scheduled_end_time_to_appointments.php:13).
+     * SQL's `NULL <= X` evaluates to NULL (falsy in WHERE), so the second
+     * branch never matches a same-day row with a NULL end time — it is only
+     * caught the FOLLOWING day once the first branch fires on the date
+     * comparison alone (adjustment #4,
+     * architecture/admin-reports-design-adjustments). This is intentional,
+     * not a gap: a same-day appointment cannot be "24h overdue" yet anyway.
+     *
+     * `status != 'cancelled'` is folded into this scope rather than repeated
+     * by every caller, because every current and planned caller (receivable
+     * buckets B/C) always pairs the two conditions — see design D6's bucket
+     * table.
+     *
+     * Uses `whereDate()` rather than a raw string-equality `where()` on
+     * `scheduled_date`: the column is cast to `'date'` on the model, and
+     * Eloquent serializes `date`-cast attributes with the connection's full
+     * date FORMAT (`Y-m-d H:i:s`) on write, not a bare `Y-m-d` string — a raw
+     * `where('scheduled_date', '=', $date)` against a plain `Y-m-d` value
+     * would silently never match. `whereDate()` is Laravel's own portable
+     * abstraction for exactly this comparison (already used the same way in
+     * `AppointmentController::index()`), so this stays free of hand-written
+     * driver-specific SQL per design D3.
+     */
+    public function scopeEndedBefore(Builder $query, Carbon $moment): Builder
+    {
+        $date = $moment->format('Y-m-d');
+        $time = $moment->format('H:i:s');
+
+        return $query
+            ->where('status', '!=', 'cancelled')
+            ->where(function (Builder $q) use ($date, $time) {
+                $q->whereDate('scheduled_date', '<', $date)
+                    ->orWhere(function (Builder $q2) use ($date, $time) {
+                        $q2->whereDate('scheduled_date', '=', $date)
+                            ->where('scheduled_end_time', '<=', $time);
+                    });
+            });
+    }
+
+    // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
 
