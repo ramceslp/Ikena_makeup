@@ -39,6 +39,10 @@ class CourseCardResource extends JsonResource
             'reviews_count'  => $this->reviews_count ?? 0,
             'is_bestseller'  => (bool) ($this->resource->is_bestseller ?? false),
             'offers_certificate' => (bool) $this->offers_certificate,
+            'delivery_mode'      => $this->delivery_mode,
+            'starts_on'          => $this->starts_on?->toDateString(),
+            'ends_on'            => $this->ends_on?->toDateString(),
+            'total_hours'        => $this->total_hours,
         ];
 
         // Only expose is_enrolled when request is authenticated

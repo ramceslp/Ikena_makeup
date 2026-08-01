@@ -52,6 +52,10 @@ class CourseDetailResource extends JsonResource
             'reviews_count'      => $this->reviews_count ?? 0,
             'is_bestseller'      => (bool) ($this->resource->is_bestseller ?? false),
             'offers_certificate' => (bool) $this->offers_certificate,
+            'delivery_mode'      => $this->delivery_mode,
+            'starts_on'          => $this->starts_on?->toDateString(),
+            'ends_on'            => $this->ends_on?->toDateString(),
+            'total_hours'        => $this->total_hours,
             'my_review'          => $myReviewData,
             'sections'           => $this->sections->map(function ($section) use ($user, $isEnrolled) {
                 return [
@@ -65,6 +69,10 @@ class CourseDetailResource extends JsonResource
                             'position' => $lesson->position,
                             'is_free'  => $lesson->is_free,
                             'duration' => $lesson->duration,
+                            // The schedule is public — it is what a buyer is
+                            // deciding on. The join link is NOT: that is
+                            // window-gated in LessonResource.
+                            'starts_at' => $lesson->starts_at?->toISOString(),
                         ];
 
                         // Only include completed status when authenticated and enrolled

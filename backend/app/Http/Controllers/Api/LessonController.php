@@ -55,6 +55,17 @@ class LessonController extends Controller
             ], 403);
         }
 
+        // On a live course, progress means ATTENDANCE, and attendance is the
+        // instructor's call — see Instructor\AttendanceController. Leaving
+        // self-marking open here would let a student who never joined a single
+        // session tick every box and pull a certificate out of
+        // CertificateController, which gates purely on lesson completion.
+        if ($lesson->section->course->isLive()) {
+            return response()->json([
+                'message' => 'Attendance for a live course is recorded by the instructor.',
+            ], 403);
+        }
+
         $existing = $user->completedLessons()->where('lessons.id', $lesson->id)->first();
 
         if ($existing) {

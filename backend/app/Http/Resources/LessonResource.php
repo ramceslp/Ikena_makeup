@@ -16,6 +16,19 @@ class LessonResource extends JsonResource
             'title'       => $this->title,
             'description' => $this->description,
             'video_url'   => $this->video_url,
+
+            // The join link is served ONLY inside the scheduled window. This
+            // is the whole point of keeping it out of video_url: a recording
+            // URL is harmless once enrolled, a live room is not — it stays
+            // joinable by anyone who ever saw it, including after a refund.
+            // Outside the window the client gets the schedule and nothing else.
+            'meeting_url'          => $this->resource->meetingWindowIsOpen()
+                ? $this->meeting_url
+                : null,
+            'starts_at'            => $this->starts_at?->toISOString(),
+            'meeting_available_at' => $this->resource->meetingAvailableAt()?->toISOString(),
+            'is_live_session'      => $this->starts_at !== null,
+
             'duration'    => $this->duration,
             'position'    => $this->position,
             'is_free'      => $this->is_free,
