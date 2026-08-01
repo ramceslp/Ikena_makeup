@@ -36,8 +36,15 @@ return [
         // silently inherit http://localhost:5173 as a trusted origin. Locked by
         // CorsConfigTest::test_production_does_not_allow_a_localhost_frontend_url_fallback.
         (function (): array {
-            $appEnv      = config('app.env') ?? env('APP_ENV', 'production');
-            $frontendUrl = trim((string) (config('app.frontend_url') ?? env('FRONTEND_URL', '')));
+            $appEnv = config('app.env') ?? env('APP_ENV', 'production');
+
+            // Normalised to a bare origin. A browser's Origin header never
+            // carries a trailing slash, so FRONTEND_URL=https://host/ would
+            // register an origin that can never match — CORS then fails with
+            // no Laravel-side error at all, just every frontend call blocked
+            // in the browser. The env value must not have to be
+            // character-perfect. Locked by CorsConfigTest.
+            $frontendUrl = rtrim(trim((string) (config('app.frontend_url') ?? env('FRONTEND_URL', ''))), '/');
 
             if ($frontendUrl === '') {
                 return [];
@@ -45,7 +52,7 @@ return [
 
             $isLoopback = (bool) preg_match(
                 '#^https?://(localhost|127\.0\.0\.1)(:\d+)?$#i',
-                rtrim($frontendUrl, '/'),
+                $frontendUrl,
             );
 
             $isDevEnv = in_array($appEnv, ['local', 'testing'], true);

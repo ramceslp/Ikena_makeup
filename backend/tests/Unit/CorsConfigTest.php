@@ -105,6 +105,67 @@ class CorsConfigTest extends TestCase
         $this->assertContains('https://ikena.ramceslp.click', $origins);
     }
 
+    // =========================================================================
+    // FRONTEND_URL normalisation
+    //
+    // A browser's Origin header never carries a trailing slash, so an origin
+    // stored with one can never match and CORS fails silently in production —
+    // no Laravel-side error, every frontend call blocked in the browser. The
+    // env value must not have to be character-perfect.
+    // =========================================================================
+
+    public function test_a_trailing_slash_in_frontend_url_is_stripped(): void
+    {
+        config(['app.frontend_url' => 'https://ikena.ramceslp.click/']);
+
+        $origins = $this->corsConfigFor('production')['allowed_origins'];
+
+        $this->assertContains('https://ikena.ramceslp.click', $origins);
+        $this->assertNotContains('https://ikena.ramceslp.click/', $origins);
+    }
+
+    public function test_repeated_trailing_slashes_are_stripped(): void
+    {
+        config(['app.frontend_url' => 'https://ikena.ramceslp.click//']);
+
+        $this->assertContains(
+            'https://ikena.ramceslp.click',
+            $this->corsConfigFor('production')['allowed_origins'],
+        );
+    }
+
+    public function test_surrounding_whitespace_in_frontend_url_is_ignored(): void
+    {
+        config(['app.frontend_url' => '  https://ikena.ramceslp.click  ']);
+
+        $this->assertContains(
+            'https://ikena.ramceslp.click',
+            $this->corsConfigFor('production')['allowed_origins'],
+        );
+    }
+
+    public function test_a_trailing_slash_does_not_defeat_the_loopback_guard(): void
+    {
+        // The dev-origin guard must not be bypassable by a stray slash.
+        config(['app.frontend_url' => 'http://localhost:5173/']);
+
+        $origins = $this->corsConfigFor('production')['allowed_origins'];
+
+        $this->assertNotContains('http://localhost:5173', $origins);
+        $this->assertNotContains('http://localhost:5173/', $origins);
+    }
+
+    public function test_a_frontend_url_of_only_a_slash_yields_no_origin(): void
+    {
+        config(['app.frontend_url' => '/']);
+
+        // Normalises to empty — fail closed rather than allowing ''.
+        $origins = $this->corsConfigFor('production')['allowed_origins'];
+
+        $this->assertNotContains('', $origins);
+        $this->assertNotContains('/', $origins);
+    }
+
     public function test_production_does_not_hardcode_the_deploy_hostname(): void
     {
         // The production origin belongs in FRONTEND_URL, not in the config file.
