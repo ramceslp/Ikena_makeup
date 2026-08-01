@@ -9,6 +9,22 @@ export default defineConfig({
   base: './',
   plugins: [vue(), tailwindcss()],
 
+  server: {
+    // Named hosts only. `allowedHosts: true` disables Host-header validation
+    // entirely, which is Vite's DNS-rebinding defence: while `npm run dev`
+    // runs, an attacker-controlled domain resolving to 127.0.0.1 could then
+    // read this dev server's source, source maps and VITE_* env values.
+    // 10.0.2.2 is the Android emulator's loopback alias to the host machine
+    // (see .env.development). Add physical-device / tunnel hostnames via
+    // VITE_DEV_ALLOWED_HOSTS (comma-separated).
+    allowedHosts: [
+      'localhost',
+      '127.0.0.1',
+      '10.0.2.2',
+      ...(process.env.VITE_DEV_ALLOWED_HOSTS?.split(',').map((h) => h.trim()).filter(Boolean) ?? []),
+    ],
+  },
+
   test: {
     environment: 'jsdom',
     globals: true,
