@@ -4,6 +4,7 @@ use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\EnsureUserIsInstructor;
 use App\Http\Middleware\OptionalSanctum;
 use App\Http\Middleware\RejectScopedCheckoutToken;
+use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -18,8 +19,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Prepended so the headers land on error responses too (401/404/500),
+        // not only on responses that reach a controller.
         $middleware->api(prepend: [
             HandleCors::class,
+            SecurityHeaders::class,
         ]);
 
         $middleware->alias([
