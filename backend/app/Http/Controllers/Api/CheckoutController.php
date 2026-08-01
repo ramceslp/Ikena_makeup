@@ -99,7 +99,7 @@ class CheckoutController extends Controller
         // -------------------------------------------------------------------------
 
         if ($orderType === 'product_cart') {
-            return $this->confirmProductCart($order, $gatewayId, $clientTransactionId);
+            return $this->confirmProductCart($order, $gatewayId);
         }
 
         // -------------------------------------------------------------------------
@@ -135,8 +135,11 @@ class CheckoutController extends Controller
             ]);
         }
 
-        // Confirm with the payment gateway.
-        $result = $this->gateway->confirm($gatewayId, $clientTransactionId);
+        // Confirm with the payment gateway. The Order is passed so the gateway
+        // can verify the captured amount and currency against it — the widget
+        // is client-side, so "approved" alone does not mean the right money
+        // moved (see PayPhoneGateway::confirm).
+        $result = $this->gateway->confirm($order, $gatewayId);
 
         if ($result->approved) {
             // Mark order as paid.
@@ -216,7 +219,7 @@ class CheckoutController extends Controller
     // product_cart confirmation logic (extracted for clarity)
     // -------------------------------------------------------------------------
 
-    private function confirmProductCart(Order $order, string $gatewayId, string $clientTransactionId): JsonResponse
+    private function confirmProductCart(Order $order, string $gatewayId): JsonResponse
     {
         // If already canceled (release command won the race) → 409
         if ($order->status === 'canceled') {
@@ -239,8 +242,9 @@ class CheckoutController extends Controller
             ]);
         }
 
-        // Confirm with the payment gateway.
-        $result = $this->gateway->confirm($gatewayId, $clientTransactionId);
+        // Confirm with the payment gateway — see the note on the course branch:
+        // the Order is what lets the gateway verify the captured amount.
+        $result = $this->gateway->confirm($order, $gatewayId);
 
         if ($result->approved) {
             // Guard the paid transition atomically (confirm-vs-release arbitration).

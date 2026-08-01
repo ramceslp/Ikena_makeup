@@ -32,18 +32,22 @@ class FakeGateway implements PaymentGatewayInterface
         );
     }
 
-    public function confirm(string $gatewayId, string $clientTransactionId): PaymentResult
+    public function confirm(Order $order, string $gatewayId): PaymentResult
     {
-        $approved = ! str_contains($clientTransactionId, 'decline');
-        $status   = $approved ? 'paid' : 'failed';
+        $approved = ! str_contains($order->client_transaction_id, 'decline');
 
         return new PaymentResult(
             approved: $approved,
             gatewayId: $gatewayId,
-            status: $status,
+            status: $approved ? 'paid' : 'failed',
             raw: [
                 'statusCode' => $approved ? 3 : 2,
-                'fake'       => true,
+                // Mirror the real gateway's verifiable fields so the fake
+                // cannot pass a scenario the real one would reject.
+                'amount'              => $order->amount_cents,
+                'currency'            => $order->currency,
+                'clientTransactionId' => $order->client_transaction_id,
+                'fake'                => true,
             ],
         );
     }

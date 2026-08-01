@@ -303,7 +303,7 @@ class ConfirmProductCartTest extends TestCase
                 return new CheckoutSession(provider: 'stub', config: []);
             }
 
-            public function confirm(string $gatewayId, string $clientTransactionId): PaymentResult
+            public function confirm(\App\Models\Order $order, string $gatewayId): PaymentResult
             {
                 $this->wasCalled = true;
 

@@ -47,11 +47,19 @@ Order model: belongsTo user, belongsTo course. Scope `pending()`.
 interface PaymentGatewayInterface {
     // Returns the data the frontend needs to render the checkout (provider-specific payload).
     public function createCheckout(Order $order): CheckoutSession;
-    // Verifies a transaction with the provider. Returns normalized result.
-    public function confirm(string $gatewayId, string $clientTransactionId): PaymentResult;
+    // Verifies a transaction with the provider AND that the capture matches this order.
+    public function confirm(Order $order, string $gatewayId): PaymentResult;
     public function name(): string; // 'payphone' | 'fake'
 }
 ```
+
+`confirm()` takes the **Order**, not a bare `client_transaction_id`, because a
+gateway must answer "was THIS order paid?" and not the weaker "did some
+transaction succeed?". The payment widget is client-side, so the amount it
+charges passed through the browser; the Order row is the only authoritative
+record of what should have been captured. Implementations are **required** to
+compare the captured amount and currency against it, and to **fail closed**
+when the provider response lacks the fields needed to do so.
 
 DTOs:
 - `CheckoutSession`: `{ provider, config: array }` — `config` is the exact object the
@@ -108,14 +116,47 @@ Authorization: Bearer <token>
 Content-Type: application/json
 Body: { "id": <int id from redirect>, "clientTxId": "<clientTransactionId>" }
 ```
-Response field `statusCode`: **3 = Approved** (treat anything else as not-approved).
 MUST confirm within **5 minutes** of payment or PayPhone auto-reverses.
+
+**Confirm response** (per <https://docs.payphone.app/cajita-de-pagos>):
+```json
+{ "statusCode": 3, "transactionStatus": "Approved", "amount": 315,
+  "currency": "USD", "clientTransactionId": "ID_UNICO_X_TRANSACCION-001",
+  "transactionId": 23178284, "authorizationCode": "W23178284", "...": "..." }
+```
+`statusCode`: **3 = Approved**, **2 = Canceled**.
+`amount` is an **INTEGER IN CENTS** — the same unit as `orders.amount_cents`,
+so it compares directly with no conversion.
+
+**`statusCode === 3` is NOT sufficient to mark an order paid.** It means only
+that *some* transaction was approved. PPaymentButtonBox is a client-side
+widget, so the amount from `createCheckout()` travels through the browser
+before reaching PayPhone — a tampered amount produces a genuinely approved
+capture for the wrong sum. Approving on `statusCode` alone made every priced
+item purchasable for one cent.
+
+`PayPhoneGateway::confirm()` therefore verifies, in order, failing closed at
+each step:
+
+| Check | Rejected status | Guards against |
+|-------|-----------------|----------------|
+| `statusCode === 3` | `failed` | declined/cancelled payment |
+| `clientTransactionId` matches the order | `transaction_mismatch` | replaying another order's approved transaction |
+| `amount` present and numeric | `amount_unverifiable` | provider contract drift (never assume) |
+| `amount === order.amount_cents` | `amount_mismatch` | **price tampering** — logged at `critical` |
+| `currency === order.currency` | `currency_mismatch` | 50000 COP presented as 50000 USD |
+
+Covered by `tests/Unit/PayPhoneGatewayTest.php` and
+`tests/Feature/Checkout/PaymentAmountVerificationTest.php`.
 
 ## 6. Config (config/services.php)
 
 ```php
 'payments' => [
-    'driver' => env('PAYMENT_DRIVER', 'fake'), // 'payphone' | 'fake'
+    // No default on purpose: an unset PAYMENT_DRIVER throws in
+    // PaymentServiceProvider rather than silently selecting FakeGateway, which
+    // approves everything. 'fake' is additionally refused outside local/testing.
+    'driver' => env('PAYMENT_DRIVER'), // 'payphone' | 'fake' (required)
     'payphone' => [
         'token'        => env('PAYPHONE_TOKEN'),
         'store_id'     => env('PAYPHONE_STORE_ID'),
