@@ -37,9 +37,17 @@ use App\Http\Middleware\RejectScopedCheckoutToken;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
-Route::post('/auth/google', [AuthController::class, 'google']);
+//
+// 'throttle:auth' is tighter than the baseline 'throttle:api' the whole group
+// already carries (see bootstrap/app.php): these three mint full-access
+// Sanctum tokens, so they are the brute-force and password-spraying surface.
+// The limiter keys on IP AND email independently — see
+// AppServiceProvider::configureRateLimiting().
+Route::middleware('throttle:auth')->group(function () {
+    Route::post('/register', [AuthController::class, 'register']);
+    Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/auth/google', [AuthController::class, 'google']);
+});
 
 Route::get('/categories', [CategoryController::class, 'index']);
 
@@ -68,7 +76,10 @@ Route::get('/services/{serviceId}/available-days', [BookingController::class, 'a
 Route::get('/services/{serviceId}/available-slots', [BookingController::class, 'availableSlots']);
 Route::get('/courses/{course:slug}/reviews', [CourseReviewController::class, 'index'])
     ->middleware('auth.optional');
-Route::get('/certificates/verify/{code}', [CertificateController::class, 'verify']);
+// 'throttle:verify' because enumerating 'IKENA-' + 10 chars leaks a student
+// name and a course title per hit — this is a PII-scraping limit.
+Route::get('/certificates/verify/{code}', [CertificateController::class, 'verify'])
+    ->middleware('throttle:verify');
 
 // Public certificate branding (logo, business name, copy, signer, design variant)
 // for the certificate canvas. No auth — returns defaults when unseeded.
@@ -77,7 +88,12 @@ Route::get('/certificate-settings', [CertificateSettingController::class, 'show'
 // Checkout-handoff redeem — public because the browser opened from the app
 // is a separate, logged-out session (see CheckoutHandoffController::redeem
 // and design Decision 1, sdd/mobile-capacitor-setup/design.md).
-Route::post('/checkout/handoff/redeem', [CheckoutHandoffController::class, 'redeem']);
+//
+// 'throttle:opaque-token' because the 40-char single-use token is the ONLY
+// thing authorising this call: it is public, and redeeming someone else's
+// token spends their money. Unthrottled, it is a guessing target.
+Route::post('/checkout/handoff/redeem', [CheckoutHandoffController::class, 'redeem'])
+    ->middleware('throttle:opaque-token');
 
 // Protected routes — require Sanctum Bearer token
 //
@@ -111,7 +127,8 @@ Route::middleware(['auth:sanctum', RejectScopedCheckoutToken::class])->group(fun
     // scoped 'checkout-confirm' token minted by CheckoutHandoffController::redeem()
     // is allowed to call.
     Route::post('/payments/confirm', [CheckoutController::class, 'confirm'])
-        ->withoutMiddleware(RejectScopedCheckoutToken::class);
+        ->withoutMiddleware(RejectScopedCheckoutToken::class)
+        ->middleware('throttle:opaque-token');
 
     Route::post('/bookings', [BookingController::class, 'store']);
 
@@ -128,7 +145,10 @@ Route::middleware(['auth:sanctum', RejectScopedCheckoutToken::class])->group(fun
 
     Route::get('/lessons/{lesson}', [LessonController::class, 'show']);
     Route::post('/lessons/{lesson}/complete', [LessonController::class, 'complete']);
-    Route::post('/lessons/{lesson}/submissions', [PracticeSubmissionController::class, 'store']);
+    // 'throttle:uploads' — two 5 MB images per request, so this is the
+    // cheapest disk-exhaustion surface in the API.
+    Route::post('/lessons/{lesson}/submissions', [PracticeSubmissionController::class, 'store'])
+        ->middleware('throttle:uploads');
 
     Route::post('/courses/{course:slug}/reviews', [CourseReviewController::class, 'store']);
     Route::delete('/courses/{course:slug}/reviews', [CourseReviewController::class, 'destroy']);

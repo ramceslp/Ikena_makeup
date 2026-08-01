@@ -26,6 +26,11 @@ return Application::configure(basePath: dirname(__DIR__))
             SecurityHeaders::class,
         ]);
 
+        // Laravel 11 does NOT throttle the api group by default (Laravel 10
+        // did). Without this the whole API is unthrottled — see the 'api'
+        // limiter in AppServiceProvider::configureRateLimiting().
+        $middleware->throttleApi('api');
+
         $middleware->alias([
             'instructor'    => EnsureUserIsInstructor::class,
             'admin'         => EnsureUserIsAdmin::class,
