@@ -70,6 +70,29 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Trusted Proxies
+    |--------------------------------------------------------------------------
+    |
+    | Comma-separated addresses/CIDRs whose X-Forwarded-* headers are believed
+    | (applied in bootstrap/app.php). The app runs behind a TLS-terminating
+    | proxy — a Cloudflare tunnel in development — which forwards plain HTTP,
+    | so without this Laravel builds http:// URLs for an https:// site and the
+    | browser blocks them as mixed content.
+    |
+    | Deliberately NOT '*'. The rate limiters in AppServiceProvider key on
+    | $request->ip(); trusting X-Forwarded-For from anywhere would let a
+    | client rotate that header for a fresh login-throttle budget per fake
+    | address. The default trusts only a proxy on the loopback, which is where
+    | cloudflared runs. Behind a proxy on another host (a load balancer, or
+    | Cloudflare's edge reaching the origin directly), set TRUSTED_PROXIES to
+    | those addresses or ranges — never to '*'.
+    |
+    */
+
+    'trusted_proxies' => env('TRUSTED_PROXIES', '127.0.0.1,::1'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |

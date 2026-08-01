@@ -19,6 +19,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // NOTE: trusted proxies are configured in AppServiceProvider::boot(),
+        // not here. This closure runs before the config repository exists, so
+        // config('app.trusted_proxies') would fatal, and env() is unavailable
+        // once the config is cached. TrustProxies is already in the default
+        // global middleware stack; the provider only supplies its values.
+
         // Prepended so the headers land on error responses too (401/404/500),
         // not only on responses that reach a controller.
         $middleware->api(prepend: [

@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
@@ -22,7 +23,46 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $this->configureTrustedProxies();
         $this->configureRateLimiting();
+    }
+
+    /**
+     * Believe X-Forwarded-* only from the proxies we actually run behind.
+     *
+     * The app sits behind a TLS-terminating proxy — a Cloudflare tunnel in
+     * development (api.ramceslp.click -> localhost:8000). The edge forwards
+     * plain HTTP, so without this Laravel reports every request as insecure
+     * and builds http:// absolute URLs for an https:// site. The signed
+     * practice-photo URLs then get blocked by the browser as mixed content,
+     * and SecurityHeaders omits HSTS.
+     *
+     * Configured here rather than in bootstrap/app.php because that closure
+     * runs before the config repository exists.
+     *
+     * NEVER '*'. The rate limiters below key on $request->ip(); trusting
+     * X-Forwarded-For from any caller would hand out a fresh login-throttle
+     * budget per spoofed address. Locked by
+     * TrustedProxyTest::test_an_untrusted_client_cannot_spoof_its_ip_for_rate_limiting.
+     */
+    private function configureTrustedProxies(): void
+    {
+        $proxies = array_values(array_filter(array_map(
+            'trim',
+            explode(',', (string) config('app.trusted_proxies')),
+        )));
+
+        if ($proxies === []) {
+            return;
+        }
+
+        TrustProxies::at($proxies);
+        TrustProxies::withHeaders(
+            Request::HEADER_X_FORWARDED_FOR
+            | Request::HEADER_X_FORWARDED_HOST
+            | Request::HEADER_X_FORWARDED_PORT
+            | Request::HEADER_X_FORWARDED_PROTO
+        );
     }
 
     /**

@@ -199,7 +199,14 @@ class PracticeSubmissionPrivacyTest extends TestCase
         $lesson     = $this->practiceLesson();
         $submission = $this->submitPhotos($lesson, $this->enrolledStudent($lesson));
 
-        $tampered = preg_replace('/signature=\w/', 'signature=0', $submission->before_url);
+        // Append to the signature rather than overwriting a character: a
+        // substitution like s/signature=./signature=0/ is a silent no-op
+        // whenever the signature already starts with that character (1 in 16
+        // for hex), which made this test pass ~94% of the time and fail the
+        // rest for no reason a reader could see.
+        $tampered = preg_replace('/(signature=[a-f0-9]+)/', '$1ff', $submission->before_url);
+
+        $this->assertNotSame($submission->before_url, $tampered, 'The tampering must actually change the URL.');
 
         $this->get($tampered)->assertStatus(403);
     }
