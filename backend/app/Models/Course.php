@@ -24,6 +24,21 @@ class Course extends Model
         'thumbnail',
         'is_published',
         'offers_certificate',
+        'delivery_mode',
+        'starts_on',
+        'ends_on',
+        'total_hours',
+    ];
+
+    /** Courses whose lessons are pre-recorded videos. */
+    public const DELIVERY_ON_DEMAND = 'on_demand';
+
+    /** Courses delivered as scheduled Meet/Zoom sessions. */
+    public const DELIVERY_LIVE = 'live';
+
+    public const DELIVERY_MODES = [
+        self::DELIVERY_ON_DEMAND,
+        self::DELIVERY_LIVE,
     ];
 
     protected function casts(): array
@@ -32,11 +47,26 @@ class Course extends Model
             'price'              => 'decimal:2',
             'is_published'       => 'boolean',
             'offers_certificate' => 'boolean',
+            'starts_on'          => 'date',
+            'ends_on'            => 'date',
+            'total_hours'        => 'decimal:1',
             // Intentionally NOT in $fillable — the push idempotency guard must
             // not be clearable from a request payload. Stamped via forceFill
             // in App\Services\Push\PushDispatcher.
             'push_notified_at'   => 'datetime',
         ];
+    }
+
+    /**
+     * Whether this course is delivered as scheduled live sessions.
+     *
+     * The single definition of "live" — every mode-dependent branch (lesson
+     * validation, meeting-link exposure, who may mark attendance) reads this
+     * instead of comparing the raw column, so the semantics stay in one place.
+     */
+    public function isLive(): bool
+    {
+        return $this->delivery_mode === self::DELIVERY_LIVE;
     }
 
     // Relationships

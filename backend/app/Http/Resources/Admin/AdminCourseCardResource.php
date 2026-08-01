@@ -29,6 +29,10 @@ class AdminCourseCardResource extends JsonResource
                 'name' => $this->category->name,
             ] : null),
             'offers_certificate' => (bool) $this->offers_certificate,
+            'delivery_mode'      => $this->delivery_mode,
+            'starts_on'          => $this->starts_on?->toDateString(),
+            'ends_on'            => $this->ends_on?->toDateString(),
+            'total_hours'        => $this->total_hours,
             'instructor'         => $this->whenLoaded('instructor', fn () => $this->instructor ? [
                 'id'   => $this->instructor->id,
                 'name' => $this->instructor->name,

@@ -29,7 +29,24 @@ class CourseFactory extends Factory
             'thumbnail'          => 'https://picsum.photos/seed/' . Str::random(6) . '/640/360',
             'is_published'       => true,
             'offers_certificate' => false,
+            'delivery_mode'      => Course::DELIVERY_ON_DEMAND,
+            'starts_on'          => null,
+            'ends_on'            => null,
+            'total_hours'        => null,
         ];
+    }
+
+    /**
+     * State: course is delivered as scheduled live sessions.
+     */
+    public function live(): static
+    {
+        return $this->state(fn () => [
+            'delivery_mode' => Course::DELIVERY_LIVE,
+            'starts_on'     => now()->addWeek()->toDateString(),
+            'ends_on'       => now()->addWeeks(5)->toDateString(),
+            'total_hours'   => 20.0,
+        ]);
     }
 
     /**

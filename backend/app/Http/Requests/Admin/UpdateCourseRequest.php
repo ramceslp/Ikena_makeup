@@ -2,11 +2,15 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Http\Requests\Concerns\CourseDeliveryRules;
+use App\Models\Course;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class UpdateCourseRequest extends FormRequest
 {
+    use CourseDeliveryRules;
+
     public function authorize(): bool
     {
         // Role gate lives in the 'admin' middleware on the route group.
@@ -15,7 +19,7 @@ class UpdateCourseRequest extends FormRequest
 
     public function rules(): array
     {
-        return [
+        return array_merge([
             'title'              => ['sometimes', 'string', 'max:255'],
             'description'        => ['sometimes', 'string'],
             'price'              => ['sometimes', 'numeric', 'min:0'],
@@ -33,13 +37,13 @@ class UpdateCourseRequest extends FormRequest
                     fn ($query) => $query->whereIn('role', ['instructor', 'admin'])
                 ),
             ],
-        ];
+        ], $this->deliveryRules($this->route('course')));
     }
 
     public function messages(): array
     {
-        return [
+        return array_merge([
             'instructor_id.exists' => 'The selected user is not an instructor.',
-        ];
+        ], $this->deliveryMessages());
     }
 }

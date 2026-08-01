@@ -15,6 +15,10 @@ class InstructorLessonResource extends JsonResource
             'title'       => $this->title,
             'description' => $this->description,
             'video_url'   => $this->video_url,
+            // The author always sees the raw link — the scheduled-window rule
+            // in LessonResource guards the STUDENT view, not this one.
+            'meeting_url' => $this->meeting_url,
+            'starts_at'   => $this->starts_at?->toISOString(),
             'duration'    => $this->duration,
             'position'    => $this->position,
             'is_free'     => $this->is_free,

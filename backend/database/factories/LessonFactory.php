@@ -29,6 +29,8 @@ class LessonFactory extends Factory
             'title'       => fake()->sentence(5, false),
             'description' => fake()->paragraph(),
             'video_url'   => fake()->randomElement($this->sampleVideos),
+            'meeting_url' => null,
+            'starts_at'   => null,
             'duration'    => fake()->numberBetween(120, 1800),
             'position'    => 0,
             'is_free'     => false,
@@ -40,6 +42,25 @@ class LessonFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'is_free' => true,
+        ]);
+    }
+
+    /**
+     * State: a scheduled live session. video_url stays null — the recording
+     * only exists after the session has happened.
+     *
+     * @param  string|null  $startsAt  Any strtotime-parsable moment; defaults
+     *                                 to a session a week out, which keeps the
+     *                                 meeting window CLOSED unless a test
+     *                                 travels to it on purpose.
+     */
+    public function live(?string $startsAt = null): static
+    {
+        return $this->state(fn () => [
+            'video_url'   => null,
+            'meeting_url' => 'https://meet.google.com/abc-defg-hij',
+            'starts_at'   => $startsAt ? new \DateTimeImmutable($startsAt) : now()->addWeek(),
+            'duration'    => 5400,
         ]);
     }
 }
