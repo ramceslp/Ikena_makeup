@@ -2,18 +2,32 @@
 // Presentational: renders the video embed and lesson info below.
 // Reuses resolveVideo from utils/video.js — receives the already-resolved descriptor
 // to avoid calling it twice (container resolves it once).
+import { computed } from 'vue'
 import ProgressBar from '../ui/ProgressBar.vue'
+import LiveSessionStage from './LiveSessionStage.vue'
 
-defineProps({
+const props = defineProps({
   // Resolved descriptor from resolveVideo(lesson.video_url)
   // Shape: { type: 'youtube'|'vimeo'|'mp4'|'unknown', embedUrl?: string, src?: string }
   resolvedVideo: { type: Object, default: () => ({ type: 'unknown' }) },
-  // Full lesson object: { id, title, description, video_url, duration, is_free, completed }
+  // Full lesson object: { id, title, description, video_url, duration, is_free,
+  // completed, is_live_session, meeting_url, starts_at, meeting_available_at }
   lesson: { type: Object, default: null },
   // True while the lesson is being fetched
   loading: { type: Boolean, default: false },
   // Course completion percentage (0-100), shown in the header area
   progressValue: { type: Number, default: 0 },
+})
+
+/**
+ * A live session takes over the stage when there is nothing to play: the room
+ * is open, or no recording has been published yet. Once a recording exists and
+ * the room is closed, the video wins — that is the session's afterlife.
+ */
+const showLiveStage = computed(() => {
+  const lesson = props.lesson
+  if (!lesson?.is_live_session) return false
+  return Boolean(lesson.meeting_url) || props.resolvedVideo.type === 'unknown'
 })
 </script>
 
@@ -41,9 +55,12 @@ defineProps({
       </div>
 
       <template v-else-if="lesson">
+        <!-- Live session: join the room, or wait for it -->
+        <LiveSessionStage v-if="showLiveStage" :lesson="lesson" />
+
         <!-- YouTube or Vimeo embed -->
         <iframe
-          v-if="resolvedVideo.type === 'youtube' || resolvedVideo.type === 'vimeo'"
+          v-else-if="resolvedVideo.type === 'youtube' || resolvedVideo.type === 'vimeo'"
           :src="resolvedVideo.embedUrl"
           class="w-full h-full absolute inset-0"
           frameborder="0"
