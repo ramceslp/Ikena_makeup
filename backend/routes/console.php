@@ -16,6 +16,12 @@ Schedule::command('stock:release-expired')->everyMinute();
 // Low frequency is fine -- these rows are inert once expired or consumed.
 Schedule::command('checkout-handoffs:prune')->hourly();
 
+// Delete personal_access_tokens rows that expired over 24h ago.
+// sanctum.expiration stops an expired token from authenticating, but the row
+// itself would otherwise accumulate forever — every token any user ever held,
+// hash included, sitting in the database.
+Schedule::command('sanctum:prune-expired --hours=24')->daily();
+
 // Send the "Appointment reminder" v1 push trigger for appointments ~24h out
 // (mobile-capacitor-setup PR3). Hourly cadence matches the command's
 // one-hour-wide window so consecutive runs tile with no gap or overlap.

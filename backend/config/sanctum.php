@@ -50,7 +50,20 @@ return [
     |
     */
 
-    'expiration' => null,
+    // The SPA and the Capacitor app both persist the plaintext token in
+    // localStorage (frontend/src/stores/auth.js, App/src/stores/auth.js), where
+    // it has no HttpOnly protection — and login/register/google mint tokens
+    // with the '*' ability. An unbounded lifetime therefore turns any single
+    // leak (shared device, proxy log, backup, a future XSS) into permanent full
+    // account access. 14 days balances that against re-login friction on
+    // mobile. Expired rows are pruned by the scheduled sanctum:prune-expired
+    // in routes/console.php. Locked by tests/Unit/SanctumConfigTest.php.
+    //
+    // NOTE — this overrides any per-token expires_at that is LONGER than it,
+    // but the short-lived 'checkout-confirm' token minted by
+    // CheckoutHandoffController::redeem() (15 minutes) is shorter, so it keeps
+    // its own tighter expiry.
+    'expiration' => (int) env('SANCTUM_TOKEN_EXPIRATION', 60 * 24 * 14),
 
     /*
     |--------------------------------------------------------------------------
