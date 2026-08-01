@@ -2,6 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { useInstructorStore } from '../stores/instructor.js'
 import VideoUrlInput from './VideoUrlInput.vue'
+import AttendanceRoster from './AttendanceRoster.vue'
 
 const props = defineProps({
   lesson: { type: Object, required: true },
@@ -305,5 +306,9 @@ async function moveDown() {
         </button>
       </div>
     </div>
+
+    <!-- Attendance sits outside the expanded form: it records what happened
+         in the session, it does not edit the session. -->
+    <AttendanceRoster v-if="isLive" :lesson-id="lesson.id" />
   </div>
 </template>
