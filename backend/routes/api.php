@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\CourseReviewController;
 use App\Http\Controllers\Api\DeviceTokenController;
 use App\Http\Controllers\Api\Instructor\CourseController as InstructorCourseController;
 use App\Http\Controllers\Api\Instructor\DashboardController as InstructorDashboardController;
+use App\Http\Controllers\Api\Instructor\AttendanceController;
 use App\Http\Controllers\Api\Instructor\LessonController as InstructorLessonController;
 use App\Http\Controllers\Api\Instructor\SectionController as InstructorSectionController;
 use App\Http\Controllers\Api\Instructor\SubmissionController as InstructorSubmissionController;
@@ -249,5 +250,11 @@ Route::middleware(['auth:sanctum', RejectScopedCheckoutToken::class])->group(fun
         // Lessons (id-scoped)
         Route::patch('/lessons/{lesson}', [InstructorLessonController::class, 'update']);
         Route::delete('/lessons/{lesson}', [InstructorLessonController::class, 'destroy']);
+
+        // Attendance for live sessions. Lives on the instructor side because
+        // students may not mark their own progress on a live course — see the
+        // guard in Api\LessonController::complete.
+        Route::get('/lessons/{lesson}/attendance', [AttendanceController::class, 'index']);
+        Route::put('/lessons/{lesson}/attendance', [AttendanceController::class, 'update']);
     });
 });
