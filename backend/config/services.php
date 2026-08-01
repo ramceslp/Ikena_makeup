@@ -42,7 +42,10 @@ return [
     ],
 
     'payments' => [
-        'driver'   => env('PAYMENT_DRIVER', 'fake'), // 'payphone' | 'fake'
+        // Deliberately NO default: an unset PAYMENT_DRIVER must fail loudly in
+        // PaymentServiceProvider, never fall back to the approve-everything
+        // FakeGateway. 'payphone' | 'fake' ('fake' is local/testing only).
+        'driver'   => env('PAYMENT_DRIVER'),
         'payphone' => [
             'token'       => env('PAYPHONE_TOKEN'),
             'store_id'    => env('PAYPHONE_STORE_ID'),
