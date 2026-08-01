@@ -53,12 +53,17 @@ class PracticeSubmissionController extends Controller
 
         // Delete old files if resubmitting
         if ($existing) {
-            Storage::disk('public')->delete([$existing->before_path, $existing->after_path]);
+            Storage::disk('local')->delete([$existing->before_path, $existing->after_path]);
         }
 
-        // Store new files
-        $beforePath = $request->file('before')->store("submissions/{$user->id}", 'public');
-        $afterPath  = $request->file('after')->store("submissions/{$user->id}", 'public');
+        // The PRIVATE disk, not 'public'. These are photographs of the
+        // student's face: on the public disk (visibility: public, symlinked
+        // from public/storage) every one of them was readable by anyone with
+        // the URL — no token, no enrollment, no account. They are served
+        // instead through the temporary signed route in
+        // PracticeSubmission::getBeforeUrlAttribute().
+        $beforePath = $request->file('before')->store("submissions/{$user->id}", 'local');
+        $afterPath  = $request->file('after')->store("submissions/{$user->id}", 'local');
 
         $submission = PracticeSubmission::updateOrCreate(
             ['lesson_id' => $lesson->id, 'user_id' => $user->id],

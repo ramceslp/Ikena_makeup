@@ -130,6 +130,7 @@ class PracticeSubmissionTest extends TestCase
     public function test_enrolled_student_can_submit_practice(): void
     {
         Storage::fake('public');
+        Storage::fake('local');
         [, $course, , $practiceLesson] = $this->createPracticeCourse();
 
         $student = User::factory()->create();
@@ -150,10 +151,14 @@ class PracticeSubmissionTest extends TestCase
             'status'    => 'pending',
         ]);
 
-        // Files exist on disk
+        // Files exist on the PRIVATE disk — these are photos of the student's
+        // face and must never land in the public, symlinked tree. See
+        // tests/Feature/PracticeSubmissionPrivacyTest.php.
         $submission = PracticeSubmission::first();
-        Storage::disk('public')->assertExists($submission->before_path);
-        Storage::disk('public')->assertExists($submission->after_path);
+        Storage::disk('local')->assertExists($submission->before_path);
+        Storage::disk('local')->assertExists($submission->after_path);
+        Storage::disk('public')->assertMissing($submission->before_path);
+        Storage::disk('public')->assertMissing($submission->after_path);
     }
 
     // -------------------------------------------------------------------------
@@ -211,6 +216,7 @@ class PracticeSubmissionTest extends TestCase
     public function test_resubmit_upserts_and_replaces_files(): void
     {
         Storage::fake('public');
+        Storage::fake('local');
         [$instructor, $course, , $practiceLesson] = $this->createPracticeCourse();
 
         $student = User::factory()->create();
@@ -250,14 +256,16 @@ class PracticeSubmissionTest extends TestCase
             'graded_at'  => null,
         ]);
 
-        // Old files deleted
-        Storage::disk('public')->assertMissing($oldBefore);
-        Storage::disk('public')->assertMissing($oldAfter);
+        // Old files deleted from the private disk
+        Storage::disk('local')->assertMissing($oldBefore);
+        Storage::disk('local')->assertMissing($oldAfter);
 
-        // New files exist
+        // New files exist, and still never on the public disk
         $submission->refresh();
-        Storage::disk('public')->assertExists($submission->before_path);
-        Storage::disk('public')->assertExists($submission->after_path);
+        Storage::disk('local')->assertExists($submission->before_path);
+        Storage::disk('local')->assertExists($submission->after_path);
+        Storage::disk('public')->assertMissing($submission->before_path);
+        Storage::disk('public')->assertMissing($submission->after_path);
     }
 
     // -------------------------------------------------------------------------

@@ -33,7 +33,9 @@ use App\Http\Controllers\Api\PracticeSubmissionController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\ServiceController;
+use App\Http\Controllers\Api\SubmissionFileController;
 use App\Http\Middleware\RejectScopedCheckoutToken;
+use App\Models\PracticeSubmission;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -80,6 +82,26 @@ Route::get('/courses/{course:slug}/reviews', [CourseReviewController::class, 'in
 // name and a course title per hit — this is a PII-scraping limit.
 Route::get('/certificates/verify/{code}', [CertificateController::class, 'verify'])
     ->middleware('throttle:verify');
+
+// Practice-submission photos. Public in the routing sense but NOT public
+// access: the 'signed' middleware is the access control, and the URL is only
+// ever minted for a caller that already passed the ownership/role gate on the
+// endpoint that serialised the submission (see SubmissionFileController).
+//
+// It cannot sit behind auth:sanctum — both clients render these in
+// <img :src="submission.before_url">, and an <img> tag sends no Authorization
+// header.
+//
+// Throttling: the instructor review list renders 15 submissions x 2 photos, so
+// the 60/min 'api' baseline would lock the screen on the second page load. A
+// route-level throttle does NOT replace the group one — both would apply and
+// the tighter baseline would still bind — so the baseline is explicitly
+// dropped here and 'throttle:media' (300/min) put in its place.
+Route::get('/submissions/{submission}/{variant}', [SubmissionFileController::class, 'show'])
+    ->withoutMiddleware('throttle:api')
+    ->middleware(['signed', 'throttle:media'])
+    ->whereIn('variant', PracticeSubmission::VARIANTS)
+    ->name('submissions.file');
 
 // Public certificate branding (logo, business name, copy, signer, design variant)
 // for the certificate canvas. No auth — returns defaults when unseeded.

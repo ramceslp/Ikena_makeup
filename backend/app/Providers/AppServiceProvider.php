@@ -68,5 +68,13 @@ class AppServiceProvider extends ServiceProvider
         // Multi-megabyte image uploads — a disk-exhaustion guard.
         RateLimiter::for('uploads', fn (Request $request) => Limit::perMinute(10)
             ->by($request->user()?->id ?: $request->ip()));
+
+        // Signed media reads. One screen legitimately issues dozens of these
+        // (the instructor review list renders 15 submissions x 2 photos), so
+        // the 60/min baseline would lock it on the second page load. Keyed on
+        // IP because these requests carry no bearer token — an <img> tag
+        // cannot send one.
+        RateLimiter::for('media', fn (Request $request) => Limit::perMinute(300)
+            ->by($request->ip()));
     }
 }
