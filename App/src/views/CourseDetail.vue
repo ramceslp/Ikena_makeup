@@ -28,6 +28,36 @@ const loading = computed(() => coursesStore.loading)
 const error = computed(() => coursesStore.error)
 
 const isEnrolled = computed(() => !!course.value?.is_enrolled)
+const isLive = computed(() => course.value?.delivery_mode === 'live')
+
+/**
+ * Calendar days arrive as plain "YYYY-MM-DD" with no offset. Handing that to
+ * the Date constructor reads it as UTC midnight, which renders the previous
+ * day for every timezone west of Greenwich — including every student here.
+ */
+function formatCalendarDay(value) {
+  if (!value) return ''
+  const [year, month, day] = value.split('-').map(Number)
+  return new Date(year, month - 1, day).toLocaleDateString('es-EC', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
+const dateRange = computed(() => {
+  const start = course.value?.starts_on
+  const end = course.value?.ends_on
+  if (!start || !end) return ''
+  return `${formatCalendarDay(start)} — ${formatCalendarDay(end)}`
+})
+
+const totalHoursLabel = computed(() => {
+  const hours = Number(course.value?.total_hours)
+  if (!hours) return ''
+  // Laravel sends "20.0" for a whole number; the decimal reads as noise.
+  return `${hours % 1 === 0 ? hours : hours.toFixed(1)} horas`
+})
 const isFree = computed(() => {
   const price = parseFloat(course.value?.price)
   return !Number.isFinite(price) || price <= 0
@@ -129,6 +159,9 @@ onMounted(async () => {
             <BaseBadge v-if="course.is_bestseller" variant="accent">
               Más vendido
             </BaseBadge>
+            <BaseBadge v-if="isLive" variant="primary" data-live-badge>
+              En vivo
+            </BaseBadge>
             <BaseBadge v-if="course.offers_certificate" variant="blush">
               Con certificado
             </BaseBadge>
@@ -150,7 +183,15 @@ onMounted(async () => {
             </span>
             <span class="flex items-center gap-1.5">
               <span class="material-symbols-outlined text-[18px]" aria-hidden="true">menu_book</span>
-              {{ course.total_lessons }} lecciones
+              {{ course.total_lessons }} {{ isLive ? 'sesiones' : 'lecciones' }}
+            </span>
+            <span v-if="dateRange" class="flex items-center gap-1.5" data-date-range>
+              <span class="material-symbols-outlined text-[18px]" aria-hidden="true">event</span>
+              {{ dateRange }}
+            </span>
+            <span v-if="totalHoursLabel" class="flex items-center gap-1.5" data-total-hours>
+              <span class="material-symbols-outlined text-[18px]" aria-hidden="true">schedule</span>
+              {{ totalHoursLabel }}
             </span>
             <span v-if="course.average_rating" class="flex items-center gap-1.5">
               <span
@@ -246,7 +287,22 @@ onMounted(async () => {
         <h2 class="font-headline-lg text-headline-lg text-deep-marsala section-header">
           Contenido del curso
         </h2>
-        <CourseCurriculum :sections="course.sections ?? []" />
+        <!-- A closed meeting window is a normal answer, not a failure, so it
+             is explained next to the sessions rather than as a page error. -->
+        <p
+          v-if="coursesStore.sessionError"
+          class="mb-3 rounded-xl bg-error-container/40 px-4 py-3 font-body-sm text-body-sm text-on-surface"
+          role="alert"
+        >
+          {{ coursesStore.sessionError }}
+        </p>
+
+        <CourseCurriculum
+          :sections="course.sections ?? []"
+          :can-join="isEnrolled"
+          :joining-lesson-id="coursesStore.joiningLessonId"
+          @join="coursesStore.joinSession($event)"
+        />
       </div>
     </div>
   </div>

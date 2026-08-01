@@ -95,6 +95,56 @@ describe('AdminCourseForm', () => {
     expect(wrapper.emitted('submit')[0][0].thumbnail).toBeNull()
   })
 
+  it('defaults a new course to on-demand with no calendar', async () => {
+    const wrapper = mountForm()
+
+    await wrapper.find('#title').setValue('X')
+    await wrapper.find('#description').setValue('Y')
+    await wrapper.find('#instructor_id').setValue('3')
+    await wrapper.find('form').trigger('submit')
+
+    expect(wrapper.emitted('submit')[0][0]).toMatchObject({
+      delivery_mode: 'on_demand',
+      starts_on: null,
+      ends_on: null,
+    })
+  })
+
+  it('carries the live calendar into the payload', async () => {
+    const wrapper = mountForm()
+
+    await wrapper.find('#title').setValue('X')
+    await wrapper.find('#description').setValue('Y')
+    await wrapper.find('#instructor_id').setValue('3')
+    await wrapper.find('input[value="live"]').setValue()
+    await wrapper.find('#course-starts-on').setValue('2026-09-01')
+    await wrapper.find('#course-ends-on').setValue('2026-09-30')
+    await wrapper.find('#course-total-hours').setValue('20')
+    await wrapper.find('form').trigger('submit')
+
+    expect(wrapper.emitted('submit')[0][0]).toMatchObject({
+      delivery_mode: 'live',
+      starts_on: '2026-09-01',
+      ends_on: '2026-09-30',
+      total_hours: 20,
+    })
+  })
+
+  it('prefills the calendar of an existing live course', () => {
+    const wrapper = mountForm({
+      course: {
+        ...existingCourse,
+        delivery_mode: 'live',
+        starts_on: '2026-09-01',
+        ends_on: '2026-09-30',
+        total_hours: '20.0',
+      },
+    })
+
+    expect(wrapper.find('#course-starts-on').element.value).toBe('2026-09-01')
+    expect(wrapper.find('#course-total-hours').element.value).toBe('20')
+  })
+
   it('sends an unselected category as null', async () => {
     const wrapper = mountForm()
 

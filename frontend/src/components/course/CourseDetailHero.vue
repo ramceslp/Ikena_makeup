@@ -1,6 +1,7 @@
 <script setup>
 // Purely presentational: receives course data + event callbacks.
 // The container (CourseDetail.vue) owns store actions and auth state.
+import { computed } from 'vue'
 import BaseButton from '../ui/BaseButton.vue'
 import BaseBadge from '../ui/BaseBadge.vue'
 import StarRating from '../ui/StarRating.vue'
@@ -23,6 +24,37 @@ function formatPrice(price) {
 function isPaid(price) {
   return parseFloat(price) > 0
 }
+
+const isLive = computed(() => props.course.delivery_mode === 'live')
+
+/**
+ * Dates arrive as plain "YYYY-MM-DD" calendar days, with no time and no
+ * offset. Parsing them with the Date constructor would read them as UTC
+ * midnight and render the previous day for anyone west of Greenwich — which
+ * is every student this academy has.
+ */
+function formatCalendarDay(value) {
+  if (!value) return ''
+  const [year, month, day] = value.split('-').map(Number)
+  return new Date(year, month - 1, day).toLocaleDateString('es-EC', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+}
+
+const dateRange = computed(() => {
+  const { starts_on: start, ends_on: end } = props.course
+  if (!start || !end) return ''
+  return `${formatCalendarDay(start)} — ${formatCalendarDay(end)}`
+})
+
+const totalHoursLabel = computed(() => {
+  const hours = Number(props.course.total_hours)
+  if (!hours) return ''
+  // Trim the decimal Laravel sends for whole numbers: "20.0" reads as noise.
+  return `${hours % 1 === 0 ? hours : hours.toFixed(1)} horas`
+})
 </script>
 
 <template>
@@ -35,6 +67,30 @@ function isPaid(price) {
 
         <!-- Left column: info (2/3 width on lg) -->
         <div class="lg:col-span-2 space-y-6">
+
+          <!-- Modality + certificate. What a buyer decides on before
+               anything else: whether they have to show up at a fixed time,
+               and whether they walk away with a certificate. -->
+          <div class="flex flex-wrap items-center gap-2">
+            <BaseBadge v-if="isLive" variant="primary" pill data-live-badge>
+              <span class="material-symbols-outlined text-[16px] mr-1" aria-hidden="true">
+                sensors
+              </span>
+              En vivo
+            </BaseBadge>
+            <BaseBadge v-else variant="secondary" pill data-on-demand-badge>
+              <span class="material-symbols-outlined text-[16px] mr-1" aria-hidden="true">
+                play_circle
+              </span>
+              A tu ritmo
+            </BaseBadge>
+            <BaseBadge v-if="course.offers_certificate" variant="secondary" pill data-certificate-badge>
+              <span class="material-symbols-outlined text-[16px] mr-1" aria-hidden="true">
+                workspace_premium
+              </span>
+              Con certificado
+            </BaseBadge>
+          </div>
 
           <!-- Title -->
           <h1 class="font-display-lg text-headline-lg md:text-display-lg text-on-primary leading-tight">
@@ -54,7 +110,15 @@ function isPaid(price) {
             </span>
             <span class="flex items-center gap-1.5">
               <span class="material-symbols-outlined text-[18px]" aria-hidden="true">menu_book</span>
-              {{ course.total_lessons }} lecciones
+              {{ course.total_lessons }} {{ isLive ? 'sesiones' : 'lecciones' }}
+            </span>
+            <span v-if="dateRange" class="flex items-center gap-1.5" data-date-range>
+              <span class="material-symbols-outlined text-[18px]" aria-hidden="true">event</span>
+              {{ dateRange }}
+            </span>
+            <span v-if="totalHoursLabel" class="flex items-center gap-1.5" data-total-hours>
+              <span class="material-symbols-outlined text-[18px]" aria-hidden="true">schedule</span>
+              {{ totalHoursLabel }}
             </span>
             <!-- Stars: only when there are reviews -->
             <span v-if="course.reviews_count > 0" class="flex items-center gap-1.5">

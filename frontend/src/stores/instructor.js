@@ -14,6 +14,8 @@ export const useInstructorStore = defineStore('instructor', {
     submissionsMeta: null,
     submissionsLoading: false,
     grading: false,
+    // Attendance rosters by lesson id: { [lessonId]: [{ id, name, email, attended }] }
+    attendance: {},
   }),
 
   actions: {
@@ -276,6 +278,39 @@ export const useInstructorStore = defineStore('instructor', {
           }))
         }
         return updated
+      } catch (err) {
+        this._handleError(err)
+        throw err
+      }
+    },
+
+    /**
+     * Attendance rosters, keyed by lesson id.
+     *
+     * Kept out of currentCourse.sections because a roster is per-session and
+     * only fetched for the one the instructor opened — folding it into the
+     * course tree would imply every lesson carries one.
+     */
+    async fetchAttendance(lessonId) {
+      this._clearErrors()
+      try {
+        const { data } = await api.get(`/instructor/lessons/${lessonId}/attendance`)
+        this.attendance = { ...this.attendance, [lessonId]: data.data ?? data }
+        return this.attendance[lessonId]
+      } catch (err) {
+        this._handleError(err)
+        throw err
+      }
+    },
+
+    async saveAttendance(lessonId, userIds) {
+      this._clearErrors()
+      try {
+        const { data } = await api.put(`/instructor/lessons/${lessonId}/attendance`, {
+          user_ids: userIds,
+        })
+        this.attendance = { ...this.attendance, [lessonId]: data.data ?? data }
+        return this.attendance[lessonId]
       } catch (err) {
         this._handleError(err)
         throw err

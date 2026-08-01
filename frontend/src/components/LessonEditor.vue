@@ -2,6 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { useInstructorStore } from '../stores/instructor.js'
 import VideoUrlInput from './VideoUrlInput.vue'
+import AttendanceRoster from './AttendanceRoster.vue'
 
 const props = defineProps({
   lesson: { type: Object, required: true },
@@ -20,6 +21,10 @@ const expanded = ref(false)
 const formTitle = ref(props.lesson.title ?? '')
 const formDescription = ref(props.lesson.description ?? '')
 const formVideoUrl = ref(props.lesson.video_url ?? '')
+const formMeetingUrl = ref(props.lesson.meeting_url ?? '')
+// Already academy wall-clock in "YYYY-MM-DDTHH:mm" — the exact shape a
+// datetime-local input reads and writes, so no conversion happens here.
+const formStartsAt = ref(props.lesson.starts_at ?? '')
 const formDuration = ref(props.lesson.duration ?? 0)
 const formIsFree = ref(props.lesson.is_free ?? false)
 const formIsPractice = ref(props.lesson.is_practice ?? false)
@@ -29,10 +34,18 @@ watch(() => props.lesson, (val) => {
   formTitle.value = val.title ?? ''
   formDescription.value = val.description ?? ''
   formVideoUrl.value = val.video_url ?? ''
+  formMeetingUrl.value = val.meeting_url ?? ''
+  formStartsAt.value = val.starts_at ?? ''
   formDuration.value = val.duration ?? 0
   formIsFree.value = val.is_free ?? false
   formIsPractice.value = val.is_practice ?? false
 })
+
+// The API rejects meeting fields outright on an on-demand course, so the mode
+// decides which inputs exist at all rather than merely how they are styled.
+const isLive = computed(
+  () => instructorStore.currentCourse?.delivery_mode === 'live',
+)
 
 const lessonValidationErrors = computed(() => {
   // validationErrors in store are keyed by field; there's no per-lesson namespacing
@@ -43,14 +56,21 @@ const lessonValidationErrors = computed(() => {
 async function handleSave() {
   saving.value = true
   try {
-    await instructorStore.updateLesson(props.lesson.id, {
+    const payload = {
       title: formTitle.value.trim(),
       description: formDescription.value.trim(),
       video_url: formVideoUrl.value.trim() || null,
       duration: Number(formDuration.value) || null,
       is_free: formIsFree.value,
       is_practice: formIsPractice.value,
-    })
+    }
+
+    if (isLive.value) {
+      payload.meeting_url = formMeetingUrl.value.trim() || null
+      payload.starts_at = formStartsAt.value || null
+    }
+
+    await instructorStore.updateLesson(props.lesson.id, payload)
   } finally {
     saving.value = false
   }
@@ -197,9 +217,43 @@ async function moveDown() {
         />
       </div>
 
-      <!-- Video URL -->
+      <!-- Live session: meeting link + schedule -->
+      <template v-if="isLive">
+        <div>
+          <label :for="`lesson-meeting-${lesson.id}`" class="block text-xs font-medium text-gray-600 mb-1">
+            Enlace de la reunión
+          </label>
+          <input
+            :id="`lesson-meeting-${lesson.id}`"
+            v-model="formMeetingUrl"
+            type="url"
+            placeholder="https://meet.google.com/... o https://zoom.us/j/..."
+            class="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent"
+          />
+          <p class="text-xs text-gray-500 mt-1">
+            Los alumnos lo verán 15 minutos antes de la sesión y hasta que termine.
+          </p>
+        </div>
+
+        <div>
+          <label :for="`lesson-starts-at-${lesson.id}`" class="block text-xs font-medium text-gray-600 mb-1">
+            Fecha y hora de la sesión
+          </label>
+          <input
+            :id="`lesson-starts-at-${lesson.id}`"
+            v-model="formStartsAt"
+            type="datetime-local"
+            class="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent"
+          />
+        </div>
+      </template>
+
+      <!-- Video URL — the recording for a live session, the lesson itself
+           for an on-demand course. -->
       <div>
-        <label class="block text-xs font-medium text-gray-600 mb-1">URL del video</label>
+        <label class="block text-xs font-medium text-gray-600 mb-1">
+          {{ isLive ? 'URL de la grabación (opcional)' : 'URL del video' }}
+        </label>
         <VideoUrlInput v-model="formVideoUrl" />
       </div>
 
@@ -252,5 +306,9 @@ async function moveDown() {
         </button>
       </div>
     </div>
+
+    <!-- Attendance sits outside the expanded form: it records what happened
+         in the session, it does not edit the session. -->
+    <AttendanceRoster v-if="isLive" :lesson-id="lesson.id" />
   </div>
 </template>

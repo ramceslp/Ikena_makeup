@@ -1,6 +1,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import BaseButton from '../ui/BaseButton.vue'
+import CourseDeliveryFields from '../course/CourseDeliveryFields.vue'
 
 /**
  * Shared metadata form for the admin course create/edit views.
@@ -27,6 +28,12 @@ const thumbnail = ref(props.course?.thumbnail ?? '')
 const instructorId = ref(props.course?.instructor_id ?? '')
 const categoryId = ref(props.course?.category_id ?? '')
 const offersCertificate = ref(props.course?.offers_certificate ?? false)
+const delivery = ref({
+  delivery_mode: props.course?.delivery_mode ?? 'on_demand',
+  starts_on: props.course?.starts_on ?? null,
+  ends_on: props.course?.ends_on ?? null,
+  total_hours: props.course?.total_hours == null ? null : Number(props.course.total_hours),
+})
 
 // Edit views load the course after mount, so the prop arrives filled later.
 watch(
@@ -40,6 +47,12 @@ watch(
     instructorId.value = course.instructor_id ?? ''
     categoryId.value = course.category_id ?? ''
     offersCertificate.value = course.offers_certificate ?? false
+    delivery.value = {
+      delivery_mode: course.delivery_mode ?? 'on_demand',
+      starts_on: course.starts_on ?? null,
+      ends_on: course.ends_on ?? null,
+      total_hours: course.total_hours == null ? null : Number(course.total_hours),
+    }
   },
 )
 
@@ -59,6 +72,7 @@ function handleSubmit() {
     instructor_id: instructorId.value === '' ? null : Number(instructorId.value),
     category_id: categoryId.value === '' ? null : Number(categoryId.value),
     offers_certificate: offersCertificate.value,
+    ...delivery.value,
   })
 }
 
@@ -150,6 +164,15 @@ const errorClass = 'mt-1 font-body-sm text-body-sm text-error'
         {{ fieldError('description') }}
       </p>
     </div>
+
+    <!-- Delivery mode + calendar -->
+    <CourseDeliveryFields
+      v-model="delivery"
+      :validation-errors="validationErrors"
+      :input-class="inputClass"
+      :label-class="labelClass"
+      :error-class="errorClass"
+    />
 
     <!-- Certificate -->
     <label for="offers_certificate" class="flex items-center gap-3 cursor-pointer">

@@ -73,6 +73,15 @@ function isFree(price) {
           <span class="material-symbols-outlined text-[14px]" aria-hidden="true">trending_up</span>
           Bestseller
         </BaseBadge>
+        <BaseBadge
+          v-if="course.delivery_mode === 'live'"
+          variant="primary"
+          pill
+          data-live-badge
+        >
+          <span class="material-symbols-outlined text-[14px]" aria-hidden="true">sensors</span>
+          En vivo
+        </BaseBadge>
         <BaseBadge v-if="course.offers_certificate" variant="secondary" pill>
           <span class="material-symbols-outlined text-[14px]" aria-hidden="true">workspace_premium</span>
           Certificado

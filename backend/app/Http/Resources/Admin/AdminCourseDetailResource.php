@@ -26,6 +26,10 @@ class AdminCourseDetailResource extends JsonResource
             'is_published'       => $this->is_published,
             'category_id'        => $this->category_id,
             'offers_certificate' => (bool) $this->offers_certificate,
+            'delivery_mode'      => $this->delivery_mode,
+            'starts_on'          => $this->starts_on?->toDateString(),
+            'ends_on'            => $this->ends_on?->toDateString(),
+            'total_hours'        => $this->total_hours,
             'instructor_id'      => $this->instructor_id,
             'instructor'         => $this->whenLoaded('instructor', fn () => $this->instructor ? [
                 'id'   => $this->instructor->id,

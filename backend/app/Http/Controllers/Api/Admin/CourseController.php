@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Admin;
 
+use App\Actions\CoursePublishGuard;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreCourseRequest;
 use App\Http\Requests\Admin\UpdateCourseRequest;
@@ -88,6 +89,10 @@ class CourseController extends Controller
             // rule and is the single place the push notification fires from.
             'is_published'       => false,
             'offers_certificate' => $data['offers_certificate'] ?? false,
+            'delivery_mode'      => $data['delivery_mode'] ?? Course::DELIVERY_ON_DEMAND,
+            'starts_on'          => $data['starts_on'] ?? null,
+            'ends_on'            => $data['ends_on'] ?? null,
+            'total_hours'        => $data['total_hours'] ?? null,
         ]);
 
         return response()->json([
@@ -141,12 +146,13 @@ class CourseController extends Controller
      * endpoint enforces. Admin authority does not extend to publishing an
      * empty course; that would ship a broken product page.
      */
-    public function publish(Course $course, PushDispatcher $pushDispatcher): JsonResponse
-    {
-        if ($course->lessons()->count() === 0) {
-            return response()->json([
-                'message' => 'Cannot publish a course with no lessons.',
-            ], 422);
+    public function publish(
+        Course $course,
+        PushDispatcher $pushDispatcher,
+        CoursePublishGuard $guard
+    ): JsonResponse {
+        if ($reason = $guard->reasonCannotPublish($course)) {
+            return response()->json(['message' => $reason], 422);
         }
 
         $course->update(['is_published' => true]);

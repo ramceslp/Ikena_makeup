@@ -4,7 +4,7 @@
 import BaseBadge from '../ui/BaseBadge.vue'
 
 defineProps({
-  // Array of { id, title, position, lessons: [{ id, title, position, is_free, duration, completed? }] }
+  // Array of { id, title, position, lessons: [{ id, title, position, is_free, duration, starts_at?, completed? }] }
   sections: { type: Array, default: () => [] },
   // { [sectionId]: boolean } — which sections are expanded
   openSections: { type: Object, default: () => ({}) },
@@ -14,6 +14,22 @@ const emit = defineEmits([
   // Emitted when a section header is clicked; parent updates openSections
   'toggle-section',
 ])
+
+/**
+ * A scheduled session is described by WHEN it happens, not how long the video
+ * is — that is the one thing a buyer needs to check against their own week.
+ * starts_at arrives as an ISO instant, so the browser renders it in the
+ * viewer's own timezone, which is the correct behaviour for a fixed moment.
+ */
+function formatSession(startsAt) {
+  return new Date(startsAt).toLocaleString('es-EC', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
 
 function formatDuration(seconds) {
   if (!seconds) return '0:00'
@@ -118,7 +134,14 @@ function formatDuration(seconds) {
               <BaseBadge v-if="lesson.is_free" variant="blush" pill>
                 Gratis
               </BaseBadge>
-              <span class="font-label-sm text-label-sm text-outline">
+              <span
+                v-if="lesson.starts_at"
+                class="font-label-sm text-label-sm text-outline"
+                data-session-date
+              >
+                {{ formatSession(lesson.starts_at) }}
+              </span>
+              <span v-else class="font-label-sm text-label-sm text-outline">
                 {{ formatDuration(lesson.duration) }}
               </span>
             </div>

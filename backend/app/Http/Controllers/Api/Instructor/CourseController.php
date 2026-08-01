@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Instructor;
 
+use App\Actions\CoursePublishGuard;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Instructor\StoreCourseRequest;
 use App\Http\Requests\Instructor\UpdateCourseRequest;
@@ -52,6 +53,10 @@ class CourseController extends Controller
             'thumbnail'          => $data['thumbnail'] ?? null,
             'is_published'       => false,
             'offers_certificate' => $data['offers_certificate'] ?? false,
+            'delivery_mode'      => $data['delivery_mode'] ?? Course::DELIVERY_ON_DEMAND,
+            'starts_on'          => $data['starts_on'] ?? null,
+            'ends_on'            => $data['ends_on'] ?? null,
+            'total_hours'        => $data['total_hours'] ?? null,
         ]);
 
         $course->loadCount('lessons');
@@ -123,20 +128,20 @@ class CourseController extends Controller
 
     /**
      * POST /api/instructor/courses/{slug}/publish
-     * Publish course — 422 if course has 0 lessons.
+     * Publish course — 422 with a reason when CoursePublishGuard rejects it.
      */
-    public function publish(Request $request, string $slug, PushDispatcher $pushDispatcher): JsonResponse
-    {
+    public function publish(
+        Request $request,
+        string $slug,
+        PushDispatcher $pushDispatcher,
+        CoursePublishGuard $guard
+    ): JsonResponse {
         $course = Course::where('slug', $slug)->firstOrFail();
 
         $this->authorizeCourseOwnership($request, $course);
 
-        $lessonCount = $course->lessons()->count();
-
-        if ($lessonCount === 0) {
-            return response()->json([
-                'message' => 'Cannot publish a course with no lessons.',
-            ], 422);
+        if ($reason = $guard->reasonCannotPublish($course)) {
+            return response()->json(['message' => $reason], 422);
         }
 
         $course->update(['is_published' => true]);

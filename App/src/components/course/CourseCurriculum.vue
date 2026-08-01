@@ -11,9 +11,30 @@ import BaseBadge from '../ui/BaseBadge.vue'
 // there is no "completed" state or toggle-section event to lift up, unlike
 // the frontend's version.
 defineProps({
-  // Array of { id, title, position, lessons: [{ id, title, position, is_free, duration }] }
+  // Array of { id, title, position, lessons: [{ id, title, position, is_free, duration, starts_at? }] }
   sections: { type: Array, default: () => [] },
+  // Enrolled students get a way into each live room; everyone else only sees
+  // the schedule, which is what they are deciding on.
+  canJoin: { type: Boolean, default: false },
+  // Lesson id currently being opened, so only that row shows a pending state.
+  joiningLessonId: { type: Number, default: null },
 })
+
+const emit = defineEmits(['join'])
+
+/**
+ * starts_at is an ISO instant, so the browser renders it in the student's own
+ * timezone — correct for a fixed moment, unlike the course's calendar days.
+ */
+function formatSession(startsAt) {
+  return new Date(startsAt).toLocaleString('es-EC', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
 
 // { [sectionId]: boolean } -- explicit overrides only. When a section has no
 // entry here, isOpen() falls back to "first section starts open" so the
@@ -100,7 +121,7 @@ function formatDuration(seconds) {
           class="flex items-center gap-3 px-6 py-3 border-t border-blush-canvas/10"
         >
           <span class="material-symbols-outlined text-[20px] text-primary shrink-0" aria-hidden="true">
-            play_circle
+            {{ lesson.starts_at ? 'sensors' : 'play_circle' }}
           </span>
 
           <!-- Lesson title -->
@@ -108,12 +129,32 @@ function formatDuration(seconds) {
             {{ lesson.title }}
           </span>
 
-          <!-- Badges + duration -->
+          <!-- Badges + schedule or duration -->
           <div class="flex items-center gap-2 shrink-0">
             <BaseBadge v-if="lesson.is_free" variant="blush" pill>
               Vista previa
             </BaseBadge>
-            <span class="font-label-sm text-label-sm text-outline">
+
+            <button
+              v-if="canJoin && lesson.starts_at"
+              type="button"
+              :disabled="joiningLessonId === lesson.id"
+              class="inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1 font-label-sm text-label-sm text-on-primary disabled:opacity-50"
+              data-join-session
+              @click="emit('join', lesson.id)"
+            >
+              <span class="material-symbols-outlined text-[16px]" aria-hidden="true">videocam</span>
+              {{ joiningLessonId === lesson.id ? 'Abriendo...' : 'Entrar' }}
+            </button>
+
+            <span
+              v-if="lesson.starts_at"
+              class="font-label-sm text-label-sm text-outline"
+              data-session-date
+            >
+              {{ formatSession(lesson.starts_at) }}
+            </span>
+            <span v-else class="font-label-sm text-label-sm text-outline">
               {{ formatDuration(lesson.duration) }}
             </span>
           </div>
