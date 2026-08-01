@@ -23,7 +23,7 @@ class UpdateCourseRequest extends FormRequest
             'title'              => ['sometimes', 'string', 'max:255'],
             'description'        => ['sometimes', 'string'],
             'price'              => ['sometimes', 'numeric', 'min:0'],
-            'thumbnail'          => ['nullable', 'url'],
+            'thumbnail'          => ['nullable', 'url:http,https', 'max:2048'],
             'category_id'        => ['nullable', 'integer', 'exists:categories,id'],
             'offers_certificate' => ['sometimes', 'boolean'],
 

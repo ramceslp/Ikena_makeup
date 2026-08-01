@@ -33,4 +33,27 @@ class PurifierConfigTest extends TestCase
         $this->assertStringContainsString('iframe', $htmlAllowed);
         $this->assertStringContainsString('a[', $htmlAllowed);
     }
+
+    // =========================================================================
+    // Anchor hardening — the profile allows a[target], which without a
+    // matching rel lets the opened page reach back via window.opener
+    // (reverse tabnabbing). HTMLPurifier can inject rel itself.
+    // =========================================================================
+
+    public function test_posts_purifier_profile_forces_target_noopener(): void
+    {
+        $profile = config('purifier.settings.posts');
+
+        $this->assertTrue(
+            (bool) ($profile['HTML.TargetNoopener'] ?? false),
+            'a[target] without rel=noopener enables reverse tabnabbing.',
+        );
+    }
+
+    public function test_posts_purifier_profile_forces_target_noreferrer(): void
+    {
+        $profile = config('purifier.settings.posts');
+
+        $this->assertTrue((bool) ($profile['HTML.TargetNoreferrer'] ?? false));
+    }
 }

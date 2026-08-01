@@ -52,6 +52,15 @@ return [
             'URI.SafeIframeRegexp'     => '%^https://(www\.youtube\.com/embed/|player\.vimeo\.com/video/)%',
             'AutoFormat.AutoParagraph' => false,
             'Output.TidyFormat'        => false,
+
+            // The allowlist above permits a[target]. Without a matching rel,
+            // the opened page can reach back through window.opener and
+            // navigate this one (reverse tabnabbing). These make HTMLPurifier
+            // inject rel="noopener noreferrer" itself, so an author cannot
+            // omit it. Locked by tests/Unit/PurifierConfigTest.php.
+            'HTML.TargetNoopener'      => true,
+            'HTML.TargetNoreferrer'    => true,
+
             'HTML.DefinitionID'        => 'posts-embeds',
             'HTML.DefinitionRev'       => 1,
         ],

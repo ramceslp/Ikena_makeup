@@ -31,7 +31,7 @@ class UpdatePostRequest extends FormRequest
             'type'         => ['sometimes', 'string', 'in:noticia,nuevo_curso,oferta,evento,lanzamiento,certificacion,contenido'],
             'is_featured'  => ['sometimes', 'boolean'],
             'cta_label'    => ['sometimes', 'nullable', 'string', 'max:100'],
-            'cta_url'      => ['sometimes', 'nullable', 'url'],
+            'cta_url'      => ['sometimes', 'nullable', 'url:http,https', 'max:2048'],
             'is_published' => ['sometimes', 'boolean'],
             'published_at' => ['sometimes', 'nullable', 'date'],
             'cover_image'  => ['sometimes', 'nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
