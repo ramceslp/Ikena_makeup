@@ -47,6 +47,17 @@ function excerpt(text, length = 100) {
       <BaseBadge v-if="course.is_bestseller" variant="accent" class="absolute top-3 left-3">
         Más vendido
       </BaseBadge>
+
+      <!-- Modality: a course that requires showing up at a fixed time must be
+           tellable apart from a self-paced one before the detail page. -->
+      <BaseBadge
+        v-if="course.delivery_mode === 'live'"
+        variant="primary"
+        class="absolute top-3 right-3"
+        data-live-badge
+      >
+        En vivo
+      </BaseBadge>
     </div>
 
     <!-- Content -->
