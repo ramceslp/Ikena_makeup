@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import { useInstructorStore } from '../stores/instructor.js'
 import { useCoursesStore } from '../stores/courses.js'
 import SectionEditor from '../components/SectionEditor.vue'
+import CourseDeliveryFields from '../components/course/CourseDeliveryFields.vue'
 
 const route = useRoute()
 const instructorStore = useInstructorStore()
@@ -21,6 +22,12 @@ const formPrice = ref(0)
 const formThumbnail = ref('')
 const formCategoryId = ref('')
 const formOffersCertificate = ref(false)
+const formDelivery = ref({
+  delivery_mode: 'on_demand',
+  starts_on: null,
+  ends_on: null,
+  total_hours: null,
+})
 const savingCourse = ref(false)
 
 // New section input
@@ -35,6 +42,14 @@ watch(course, (val) => {
     formThumbnail.value = val.thumbnail ?? ''
     formCategoryId.value = val.category_id ?? ''
     formOffersCertificate.value = val.offers_certificate ?? false
+    formDelivery.value = {
+      delivery_mode: val.delivery_mode ?? 'on_demand',
+      starts_on: val.starts_on ?? null,
+      ends_on: val.ends_on ?? null,
+      total_hours: val.total_hours === null || val.total_hours === undefined
+        ? null
+        : Number(val.total_hours),
+    }
   }
 }, { immediate: true })
 
@@ -53,6 +68,7 @@ async function handleSaveCourse() {
       thumbnail: formThumbnail.value.trim() || undefined,
       category_id: formCategoryId.value ? Number(formCategoryId.value) : null,
       offers_certificate: formOffersCertificate.value,
+      ...formDelivery.value,
     })
   } finally {
     savingCourse.value = false
@@ -218,6 +234,12 @@ async function handleAddSection() {
                 {{ Array.isArray(validationErrors.category_id) ? validationErrors.category_id[0] : validationErrors.category_id }}
               </p>
             </div>
+
+            <!-- Delivery mode + calendar -->
+            <CourseDeliveryFields
+              v-model="formDelivery"
+              :validation-errors="validationErrors"
+            />
 
             <!-- Offers certificate -->
             <div class="flex items-center gap-3">

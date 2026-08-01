@@ -38,7 +38,10 @@ class InstructorCourseDetailResource extends JsonResource
                             // The author always sees the raw link — the
                             // scheduled-window rule guards the STUDENT view.
                             'meeting_url' => $lesson->meeting_url,
-                            'starts_at'   => $lesson->starts_at?->toISOString(),
+                            // Academy wall-clock for a datetime-local input —
+                            // see InstructorLessonResource for why this is not
+                            // an ISO instant.
+                            'starts_at'   => $lesson->starts_at?->format('Y-m-d\TH:i'),
                             'duration'    => $lesson->duration,
                             'position'    => $lesson->position,
                             'is_free'     => $lesson->is_free,

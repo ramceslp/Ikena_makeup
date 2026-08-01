@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useInstructorStore } from '../stores/instructor.js'
 import { useCoursesStore } from '../stores/courses.js'
+import CourseDeliveryFields from '../components/course/CourseDeliveryFields.vue'
 
 const router = useRouter()
 const instructorStore = useInstructorStore()
@@ -14,6 +15,12 @@ const price = ref(0)
 const thumbnail = ref('')
 const categoryId = ref('')
 const offersCertificate = ref(false)
+const delivery = ref({
+  delivery_mode: 'on_demand',
+  starts_on: null,
+  ends_on: null,
+  total_hours: null,
+})
 
 const loading = computed(() => instructorStore.loading)
 const validationErrors = computed(() => instructorStore.validationErrors)
@@ -30,6 +37,7 @@ async function handleSubmit() {
     price: Number(price.value),
     category_id: categoryId.value ? Number(categoryId.value) : null,
     offers_certificate: offersCertificate.value,
+    ...delivery.value,
   }
   if (thumbnail.value.trim()) {
     payload.thumbnail = thumbnail.value.trim()
@@ -162,6 +170,12 @@ async function handleSubmit() {
             {{ Array.isArray(validationErrors.category_id) ? validationErrors.category_id[0] : validationErrors.category_id }}
           </p>
         </div>
+
+        <!-- Delivery mode + calendar -->
+        <CourseDeliveryFields
+          v-model="delivery"
+          :validation-errors="validationErrors"
+        />
 
         <!-- Offers certificate -->
         <div class="flex items-center gap-3">

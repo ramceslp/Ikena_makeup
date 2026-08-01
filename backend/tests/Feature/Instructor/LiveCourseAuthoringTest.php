@@ -210,6 +210,34 @@ class LiveCourseAuthoringTest extends TestCase
             ->assertJsonPath('data.meeting_url', 'https://meet.google.com/abc-defg-hij');
     }
 
+    /**
+     * Laravel does not convert a datetime to the app timezone on save, so a
+     * round-trip through the editor must never pick up the UTC offset: what
+     * the author typed is what comes back, and what is stored.
+     */
+    public function test_session_schedule_round_trips_as_academy_wall_clock(): void
+    {
+        $instructor = $this->instructor();
+        $course = Course::factory()->live()->create(['instructor_id' => $instructor->id]);
+        $section = $this->sectionFor($course);
+
+        Sanctum::actingAs($instructor);
+
+        $lessonId = $this->postJson("/api/instructor/sections/{$section->id}/lessons", [
+            'title'       => 'Sesión nocturna',
+            'meeting_url' => 'https://meet.google.com/abc-defg-hij',
+            'starts_at'   => '2026-09-01T19:00',
+        ])
+            ->assertStatus(201)
+            ->assertJsonPath('data.starts_at', '2026-09-01T19:00')
+            ->json('data.id');
+
+        $this->assertSame(
+            '2026-09-01 19:00:00',
+            Lesson::find($lessonId)->starts_at->format('Y-m-d H:i:s')
+        );
+    }
+
     public function test_live_lesson_accepts_a_zoom_link(): void
     {
         $instructor = $this->instructor();
