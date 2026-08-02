@@ -26,6 +26,18 @@ final class LedgerCsvStream
 {
     private const INJECTION_PREFIXES = ['=', '+', '-', '@'];
 
+    /**
+     * Empty string, NOT PHP's historical `\\` default. With the default, a
+     * cell containing a backslash immediately followed by a quote loses its
+     * RFC 4180 quote-doubling — `a\"b,c` is written as `"a\"b,c"`, which
+     * re-parses as `a\b` plus a spurious extra column, silently truncating
+     * the value and shifting every later column on that row. Counterparty is
+     * a user-supplied name, so that input is reachable. `''` is also the PHP
+     * 9 default, so passing it explicitly clears the 8.4 deprecation these
+     * call sites would otherwise emit once per exported row.
+     */
+    private const ESCAPE = '';
+
     private const HEADER = ['Fecha', 'Origen', 'Cliente', 'Monto (USD)'];
 
     public function __construct(private readonly LedgerQuery $query)
@@ -37,7 +49,7 @@ final class LedgerCsvStream
         return new StreamedResponse(function () use ($filter) {
             $handle = fopen('php://output', 'w');
             fwrite($handle, "\xEF\xBB\xBF");
-            fputcsv($handle, self::HEADER);
+            fputcsv($handle, self::HEADER, escape: self::ESCAPE);
 
             foreach ($this->query->cursor($filter) as $row) {
                 fputcsv($handle, [
@@ -45,7 +57,7 @@ final class LedgerCsvStream
                     $this->sanitize((string) $row->label),
                     $this->sanitize((string) ($row->counterparty ?? '')),
                     number_format(((int) $row->amount_cents) / 100, 2, '.', ''),
-                ]);
+                ], escape: self::ESCAPE);
             }
 
             fclose($handle);

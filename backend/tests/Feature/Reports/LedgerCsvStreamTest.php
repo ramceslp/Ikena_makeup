@@ -89,6 +89,30 @@ class LedgerCsvStreamTest extends TestCase
         $this->assertStringContainsString("'=cmd", $csv);
     }
 
+    /**
+     * A counterparty name containing a backslash immediately followed by a
+     * quote must not corrupt the row. PHP's `fputcsv` defaults `$escape` to
+     * `\\`, which suppresses the RFC 4180 quote-doubling for that sequence
+     * and emits a structurally broken field: `"a\"b,c"` re-parses as `a\b`
+     * plus a spurious extra column, silently truncating the value and
+     * shifting every later column on that row. Passing `escape: ''` restores
+     * standard CSV quoting (and is the PHP 9 default, so it also clears the
+     * 8.4 deprecation this call site would otherwise emit once per row).
+     */
+    public function test_a_backslash_quote_in_a_counterparty_name_does_not_corrupt_the_row(): void
+    {
+        $name = 'Ana\\"Q, Ltd';
+        $this->makeOrder(['user_id' => User::factory()->create(['name' => $name])->id]);
+
+        $csv = $this->renderedCsv($this->filterFor('2026-08-01', '2026-08-31'));
+        $dataRow = explode("\n", trim(substr($csv, 3)))[1];
+
+        $fields = str_getcsv($dataRow, ',', '"', '');
+
+        $this->assertCount(4, $fields);
+        $this->assertSame($name, $fields[2]);
+    }
+
     public function test_export_row_count_matches_the_on_screen_ledger_for_an_identical_filter(): void
     {
         foreach (['2026-08-02', '2026-08-05', '2026-08-09'] as $i => $date) {
