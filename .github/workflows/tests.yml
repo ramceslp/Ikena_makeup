@@ -57,6 +57,79 @@ jobs:
       - name: Run PHPUnit test suite
         run: php artisan test
 
+  # backend-tests-mysql — design D3. Production runs MySQL 8.0
+  # (ARCHITECTURE.md, backend/.env.example, README.md); the job above only
+  # ever exercises SQLite (phpunit.xml forces it), so this job is the only
+  # place CI ever proves the Reports queries behave the same against the
+  # real production engine — most importantly MySQL 8's ONLY_FULL_GROUP_BY,
+  # which is ON by default and rejects GROUP BY projections SQLite silently
+  # accepts. Scoped to the `Reports` testsuite (phpunit.mysql.xml) so CI time
+  # stays bounded and every OTHER suite's behaviour is untouched — see design
+  # D3 "Rejected: full matrix" for why the whole suite does not run here.
+  #
+  # Deliberately does NOT use continue-on-error or any other soft-fail path:
+  # if the MySQL service container fails to come up, this job must fail, not
+  # report a deceptively green result (mirrors the "no markTestSkipped in
+  # this suite" rule enforced at the test level).
+  backend-tests-mysql:
+    name: Backend PHPUnit (MySQL)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: ikena_makeup_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: mbstring, pdo, pdo_mysql, bcmath, curl, dom, fileinfo, filter, hash, tokenizer, xml, ctype, json, openssl
+          coverage: none
+
+      - name: Resolve Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('backend/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Prepare environment file
+        run: cp .env.example .env
+
+      - name: Generate application key
+        run: php artisan key:generate
+
+      # phpunit.mysql.xml forces DB_CONNECTION=mysql plus the connection
+      # details matching the `mysql` service container above (force="true",
+      # so nothing in .env can override it). --testsuite=Reports is
+      # explicit here even though it is the only testsuite phpunit.mysql.xml
+      # defines, to keep the intent readable at the call site.
+      - name: Run PHPUnit Reports test suite against MySQL
+        run: php artisan test -c phpunit.mysql.xml --testsuite=Reports
+
   frontend-tests:
     name: Frontend (Vitest)
     runs-on: ubuntu-latest

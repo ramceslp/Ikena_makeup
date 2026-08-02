@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Mirrors phpunit.xml (design D3), but forces the MySQL driver instead of
+    SQLite so the `Reports` testsuite runs against production's real
+    database engine in CI.
+
+    Why this exists at all, and why it is scoped to just the `Reports`
+    testsuite (tests/Feature/Reports/):
+
+    phpunit.xml:26-27 forces DB_CONNECTION=sqlite / DB_DATABASE=:memory: with
+    force="true" — the developer's .env cannot override it, and CI has never
+    exercised MySQL, even though production is MySQL 8.0
+    (ARCHITECTURE.md:12, backend/.env.example, README.md). SQLite silently
+    accepts things MySQL 8 rejects by default — most importantly
+    ONLY_FULL_GROUP_BY, which rejects GROUP BY projections SQLite tolerates.
+    That divergence is the single most likely "green CI, 500 in production"
+    failure class for the reporting queries this design introduces (D3),
+    which is why a MySQL job exists at all rather than trusting the
+    PHP-only PeriodCalendar abstraction (D3) to have eliminated every risk.
+
+    Running the WHOLE suite against MySQL was deliberately rejected (design
+    D3 "Rejected: full matrix") — it doubles CI minutes and surfaces
+    unrelated, pre-existing divergences that have nothing to do with this
+    change. Scoping to `Reports` keeps CI time bounded while still covering
+    every genuinely new query this design adds.
+
+    `markTestSkipped` is BANNED for every test discovered under this
+    testsuite (design D3): if the MySQL service container is unavailable,
+    the job must fail loudly, not report a deceptively green skip.
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+>
+    <testsuites>
+        <testsuite name="Reports">
+            <directory>tests/Feature/Reports</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory>app</directory>
+        </include>
+    </source>
+    <php>
+        <env name="APP_ENV" value="testing"/>
+        <env name="APP_MAINTENANCE_DRIVER" value="file"/>
+        <env name="BCRYPT_ROUNDS" value="4"/>
+        <env name="BROADCAST_CONNECTION" value="null"/>
+        <env name="CACHE_STORE" value="array"/>
+        <!--
+            The one deliberate divergence from phpunit.xml: MySQL instead of
+            SQLite. Values match the `mysql:8` service container defined in
+            .github/workflows/tests.yml's backend-tests-mysql job.
+        -->
+        <env name="DB_CONNECTION" value="mysql" force="true"/>
+        <env name="DB_HOST" value="127.0.0.1" force="true"/>
+        <env name="DB_PORT" value="3306" force="true"/>
+        <env name="DB_DATABASE" value="ikena_makeup_test" force="true"/>
+        <env name="DB_USERNAME" value="root" force="true"/>
+        <env name="DB_PASSWORD" value="root" force="true"/>
+        <env name="DB_URL" value="" force="true"/>
+        <env name="MAIL_MAILER" value="array"/>
+        <env name="QUEUE_CONNECTION" value="sync"/>
+        <env name="SESSION_DRIVER" value="array"/>
+        <env name="PULSE_ENABLED" value="false"/>
+        <env name="TELESCOPE_ENABLED" value="false"/>
+        <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <env name="PAYMENT_DRIVER" value="fake"/>
+        <env name="PUSH_ENABLED" value="false" force="true"/>
+    </php>
+</phpunit>
