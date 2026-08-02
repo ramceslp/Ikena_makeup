@@ -8,6 +8,7 @@ import ReportFilters from '../../components/admin/reports/ReportFilters.vue'
 import KpiCard from '../../components/admin/reports/KpiCard.vue'
 import RevenueTimelineChart from '../../components/admin/reports/RevenueTimelineChart.vue'
 import CompositionBars from '../../components/admin/reports/CompositionBars.vue'
+import LedgerTable from '../../components/admin/reports/LedgerTable.vue'
 
 // Control-panel container (Phase 4 / PR2b). Reads the three read-only
 // endpoints wired in PR2a (`/admin/reports/{summary,timeline,composition}`)
@@ -23,6 +24,9 @@ const granularity = ref('day')
 const summary = ref(null)
 const timeline = ref(null)
 const composition = ref(null)
+const ledger = ref(null)
+const ledgerPage = ref(1)
+const ledgerStream = ref('')
 const isLoading = ref(false)
 const loadError = ref('')
 
@@ -30,19 +34,27 @@ function queryParams() {
   return { from: from.value, to: to.value, granularity: granularity.value }
 }
 
+function ledgerParams() {
+  const params = { from: from.value, to: to.value, page: ledgerPage.value }
+  if (ledgerStream.value) params.stream = [ledgerStream.value]
+  return params
+}
+
 async function loadReports() {
   isLoading.value = true
   loadError.value = ''
   try {
     const params = queryParams()
-    const [summaryRes, timelineRes, compositionRes] = await Promise.all([
+    const [summaryRes, timelineRes, compositionRes, ledgerRes] = await Promise.all([
       api.get('/admin/reports/summary', { params }),
       api.get('/admin/reports/timeline', { params }),
       api.get('/admin/reports/composition', { params }),
+      api.get('/admin/reports/ledger', { params: ledgerParams() }),
     ])
     summary.value = summaryRes.data.data
     timeline.value = timelineRes.data.data
     composition.value = compositionRes.data.data
+    ledger.value = ledgerRes.data
   } catch (err) {
     loadError.value = err.response?.data?.message || 'Error al cargar los reportes'
   } finally {
@@ -50,8 +62,20 @@ async function loadReports() {
   }
 }
 
-watch([from, to, granularity], loadReports)
+// Ledger page/stream changes reuse the same combined fetch as the other
+// filters (simpler than an isolated fetch path, at the cost of re-running
+// the three aggregate endpoints on every ledger page change too).
+watch([from, to, granularity, ledgerPage, ledgerStream], loadReports)
 onMounted(loadReports)
+
+function onLedgerPageChange(page) {
+  ledgerPage.value = page
+}
+
+function onLedgerStreamChange(stream) {
+  ledgerPage.value = 1
+  ledgerStream.value = stream
+}
 
 // The filter metadata is identical on all three responses (ReportController
 // merges the same `filterMeta()` into each) — timeline is used as the
@@ -71,7 +95,7 @@ const effectiveGranularity = computed(() => timeline.value?.effective_granularit
     </div>
 
     <ReportFilters
-      class="mb-6"
+      class="no-print mb-6"
       :from="from"
       :to="to"
       :granularity="granularity"
@@ -92,7 +116,7 @@ const effectiveGranularity = computed(() => timeline.value?.effective_granularit
     </div>
 
     <template v-else-if="summary">
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div class="no-print grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <KpiCard label="Ingresos confirmados" :value="formatCurrency(summary.confirmed_revenue_cents)" />
         <KpiCard
           label="Depósitos retenidos"
@@ -107,7 +131,7 @@ const effectiveGranularity = computed(() => timeline.value?.effective_granularit
         />
       </div>
 
-      <div class="bg-surface rounded-2xl border border-blush-canvas/20 p-5 mb-6">
+      <div class="no-print bg-surface rounded-2xl border border-blush-canvas/20 p-5 mb-6">
         <h2 class="font-title-md text-title-md text-on-surface mb-4">Ingresos en el tiempo</h2>
         <RevenueTimelineChart
           v-if="timeline"
@@ -118,9 +142,22 @@ const effectiveGranularity = computed(() => timeline.value?.effective_granularit
 
       <CompositionBars
         v-if="composition"
+        class="no-print"
         :by-type="composition.by_type"
         :retained-deposits-cents="composition.retained_deposits_cents"
         :total-cents="composition.total_cents"
+      />
+
+      <LedgerTable
+        v-if="ledger"
+        class="mt-6"
+        :rows="ledger.data"
+        :meta="ledger.meta"
+        :stream-filter="ledgerStream"
+        :from="from"
+        :to="to"
+        @update:page="onLedgerPageChange"
+        @update:stream="onLedgerStreamChange"
       />
     </template>
   </div>
