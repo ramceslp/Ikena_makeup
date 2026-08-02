@@ -171,8 +171,17 @@ class CheckoutController extends Controller
                 $order->loadMissing('appointment');
 
                 if ($order->appointment) {
+                    // D1 — record the deposit-collected money channel: the
+                    // amount is whatever this order actually captured
+                    // (amount_cents), never the quote-only deposit_amount_cents.
+                    // This is a write-once pair (Appointment::booted()
+                    // enforces it) — safe here because the idempotency check
+                    // above already returned early for an order that was
+                    // already 'paid', so this branch only runs once per order.
                     $order->appointment->update([
                         'status' => 'paid',
+                        'deposit_collected_cents' => $order->amount_cents,
+                        'deposit_collected_at' => now(),
                     ]);
 
                     // Push notification trigger (mobile-capacitor-setup PR3,
