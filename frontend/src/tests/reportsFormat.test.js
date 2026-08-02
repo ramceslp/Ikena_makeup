@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { granularityLabel, degradationMessage, defaultReportDateRange } from '../utils/reportsFormat.js'
+import {
+  granularityLabel,
+  degradationMessage,
+  defaultReportDateRange,
+  costCoveragePercent,
+  isFullCostCoverage,
+} from '../utils/reportsFormat.js'
 
 describe('granularityLabel', () => {
   it('maps day/week/month to Spanish labels', () => {
@@ -34,5 +40,37 @@ describe('defaultReportDateRange', () => {
   it('crosses a year boundary correctly', () => {
     const range = defaultReportDateRange('2026-01-10')
     expect(range).toEqual({ from: '2025-12-12', to: '2026-01-10' })
+  })
+})
+
+describe('costCoveragePercent', () => {
+  it('computes the percentage of revenue that has a known cost basis', () => {
+    expect(costCoveragePercent(50000, 30000)).toBe(60)
+  })
+
+  it('returns 100 when every unit sold has a known cost', () => {
+    expect(costCoveragePercent(20000, 20000)).toBe(100)
+  })
+
+  it('returns 100 for zero revenue instead of dividing by zero', () => {
+    expect(costCoveragePercent(0, 0)).toBe(100)
+  })
+
+  it('returns 0 when no line in the range has a known cost', () => {
+    expect(costCoveragePercent(50000, 0)).toBe(0)
+  })
+})
+
+describe('isFullCostCoverage', () => {
+  it('is true when known-cost revenue matches total revenue', () => {
+    expect(isFullCostCoverage(20000, 20000)).toBe(true)
+  })
+
+  it('is false when only part of the revenue has a known cost', () => {
+    expect(isFullCostCoverage(50000, 30000)).toBe(false)
+  })
+
+  it('is true for zero revenue (nothing to cover)', () => {
+    expect(isFullCostCoverage(0, 0)).toBe(true)
   })
 })
