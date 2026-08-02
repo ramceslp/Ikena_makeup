@@ -123,10 +123,23 @@ class AppointmentController extends Controller
                 'cancelled_at'    => now(),
             ]);
 
-            // FIX 4 — transition linked order to 'cancelled' so order status
+            // FIX 4 — transition linked order to 'canceled' so order status
             // stays consistent with the appointment lifecycle.
+            //
+            // Spelling note (design D5): this used to write 'cancelled' (two
+            // Ls), which was the only production write site for that spelling
+            // on `orders.status`. Corrected here, in PR1a, alongside the
+            // `Order::STATUSES` guard added in the same batch — the guard
+            // rejects 'cancelled' on an order, so leaving this write
+            // uncorrected would make every cancellation 500. The tasks
+            // artifact nominally scopes this one-line write fix to PR1b
+            // (task 2.11); it was pulled forward into PR1a to keep the
+            // pre-existing test suite green, consistent with the "ONE
+            // exception" carved out for this exact file in the apply
+            // instructions. `appointments.status` itself is untouched — it
+            // correctly keeps writing 'cancelled' (two Ls, Appointment::STATUSES).
             if ($appointment->order) {
-                $appointment->order->update(['status' => 'cancelled']);
+                $appointment->order->update(['status' => 'canceled']);
             }
         });
 

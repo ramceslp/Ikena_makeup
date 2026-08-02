@@ -19,6 +19,7 @@ class Product extends Model
         'slug',
         'description',
         'price',
+        'cost', // admin-entered unit cost, used by the TopProducts margin report (PR4a)
         'stock_qty',
         'is_published',
     ];
@@ -27,6 +28,7 @@ class Product extends Model
     {
         return [
             'price'        => 'decimal:2',
+            'cost'         => 'decimal:2',
             'stock_qty'    => 'integer',
             'is_published' => 'boolean',
         ];

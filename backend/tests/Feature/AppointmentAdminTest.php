@@ -253,6 +253,12 @@ class AppointmentAdminTest extends TestCase
         $this->assertNotNull($updated->cancelled_at);
     }
 
+    // FIX 4 (updated PR1a) — cancelling an appointment now writes
+    // orders.status = 'canceled' (single L, Order::STATUSES). The old
+    // assertions here expected 'cancelled' (two Ls), which was the historical
+    // spelling bug design D5 fixes; appointments.status is unaffected and
+    // still correctly uses 'cancelled' (two Ls, Appointment::STATUSES).
+
     /**
      * BOOK-006: cancelling an appointment excludes it from venue-wide overlap
      * counts, freeing capacity for that interval so a second user can book it.
@@ -410,10 +416,11 @@ class AppointmentAdminTest extends TestCase
             'slot_key' => null,
         ]);
 
-        // Linked order must also be cancelled
+        // Linked order must also be cancelled — orders.status uses the
+        // single-L 'canceled' spelling (design D5, Order::STATUSES).
         $this->assertDatabaseHas('orders', [
             'id'     => $order->id,
-            'status' => 'cancelled',
+            'status' => 'canceled',
         ]);
     }
 
