@@ -108,4 +108,49 @@ class ReportFilterTest extends TestCase
 
         ReportFilter::fromRequest($request, $this->calendar());
     }
+
+    // -------------------------------------------------------------------------
+    // PR3 — LedgerQuery-only fields (streams, perPage)
+    // -------------------------------------------------------------------------
+
+    public function test_streams_and_per_page_default_to_empty_and_twenty_five(): void
+    {
+        $request = Request::create('/api/admin/reports/ledger', 'GET', [
+            'from' => '2026-08-01',
+            'to' => '2026-08-02',
+        ]);
+
+        $filter = ReportFilter::fromRequest($request, $this->calendar());
+
+        $this->assertSame([], $filter->streams);
+        $this->assertSame(25, $filter->perPage);
+    }
+
+    public function test_a_valid_stream_filter_is_parsed_into_stream_key_cases(): void
+    {
+        $request = Request::create('/api/admin/reports/ledger', 'GET', [
+            'from' => '2026-08-01',
+            'to' => '2026-08-02',
+            'stream' => ['product_sale'],
+            'per_page' => 10,
+        ]);
+
+        $filter = ReportFilter::fromRequest($request, $this->calendar());
+
+        $this->assertSame([\App\Reports\Money\StreamKey::ProductSale], $filter->streams);
+        $this->assertSame(10, $filter->perPage);
+    }
+
+    public function test_an_unknown_stream_filter_value_is_rejected_at_validation(): void
+    {
+        $this->expectException(ValidationException::class);
+
+        $request = Request::create('/api/admin/reports/ledger', 'GET', [
+            'from' => '2026-08-01',
+            'to' => '2026-08-02',
+            'stream' => ['not_a_real_stream'],
+        ]);
+
+        ReportFilter::fromRequest($request, $this->calendar());
+    }
 }
