@@ -4,7 +4,9 @@ namespace App\Reports\Money;
 
 use App\Models\Appointment;
 use App\Models\Order;
+use App\Models\OrderItem;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 
 /**
  * RevenueStreams — the ONLY class in `app/Reports/` permitted to touch the
@@ -70,6 +72,50 @@ final class RevenueStreams
             StreamKey::AppointmentDeposit, StreamKey::AppointmentDepositRetained => 'deposit_collected_at',
             StreamKey::AppointmentSettlement => 'settled_at',
         };
+    }
+
+    /**
+     * `order_items` joined to their PAID `product_cart` order — same
+     * type/status/paid_at scope as `productSaleQuery()` — used by
+     * `TopProductsQuery` (PR4a) to rank products by revenue and margin.
+     * `order_items` is not itself a money-touching table for this class's
+     * five-stream enumeration, but the join reaches into `orders` to keep
+     * only PAID product sales, so it lives here alongside every other
+     * `orders` access (design D4).
+     */
+    public function productSaleItemsQuery(): QueryBuilder
+    {
+        return OrderItem::query()
+            ->join('orders', 'orders.id', '=', 'order_items.order_id')
+            ->where('orders.type', 'product_cart')
+            ->where('orders.status', 'paid')
+            ->whereNotNull('orders.paid_at')
+            ->toBase();
+    }
+
+    /**
+     * Every order regardless of type or status — the sole other permitted
+     * touchpoint on the orders table, used ONLY by the order-status funnel
+     * (spec's "Order-status funnel" requirement). Every other method here
+     * scopes to a specific type+status+paid_at combination because it is
+     * summing money; a funnel is explicitly a count of ALL orders by
+     * status, so this is the one deliberate exception.
+     */
+    public function ordersQuery(): Builder
+    {
+        return Order::query();
+    }
+
+    /**
+     * The normalized status list the order-status funnel zero-fills against
+     * — exposed here so `FunnelQuery` never needs its own reference to the
+     * Order model.
+     *
+     * @return string[]
+     */
+    public function orderStatuses(): array
+    {
+        return Order::STATUSES;
     }
 
     // -------------------------------------------------------------------------
