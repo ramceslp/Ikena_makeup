@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\Service;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -25,6 +26,21 @@ use Tests\TestCase;
 class AppointmentDepositCollectedTest extends TestCase
 {
     use RefreshDatabase;
+
+    /**
+     * The approved-payment path transitions the appointment to paid, which
+     * dispatches BookingConfirmed over FCM. Faking the notification keeps this
+     * suite independent of Firebase credentials — CI copies .env.example, which
+     * has none, so a real send fails with "Unable to determine the Firebase
+     * Project ID" even though the money assertions below never touch FCM.
+     * Same convention as BookingConfirmedNotificationTest.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Notification::fake();
+    }
 
     private function makeService(float $price = 100.00, int $depositPct = 30): Service
     {
