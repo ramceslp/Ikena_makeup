@@ -24,6 +24,7 @@ const adminLinks = [
   { to: '/admin/agenda', label: 'Agenda del local' },
   { to: '/admin/notificaciones', label: 'Notificaciones' },
   { to: '/admin/certificate', label: 'Certificados' },
+  { to: '/admin/reportes', label: 'Reportes' },
 ]
 
 // Desktop dropdown open/close + click-outside.
