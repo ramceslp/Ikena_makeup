@@ -66,8 +66,17 @@ class AppointmentController extends Controller
      *
      * FIX 1 — both writes are wrapped in a DB::transaction so a partial failure
      * (appointment updated but order update fails) cannot leave them in inconsistent states.
+     *
+     * Design D1 — also records the SECOND write-once money channel,
+     * `settled_amount_cents`/`settled_at` (money collected IN PERSON). The
+     * request MAY pass an explicit `settled_amount_cents` (persisted verbatim,
+     * never recomputed — e.g. a discount granted in person); when omitted,
+     * `Appointment::defaultSettlementAmountCents()` supplies the default,
+     * which subtracts the COLLECTED deposit, never the merely QUOTED one —
+     * see that method's docblock for why this is the anti-double-count
+     * formula the whole reports design depends on.
      */
-    public function markPaid(Appointment $appointment): JsonResponse
+    public function markPaid(Request $request, Appointment $appointment): JsonResponse
     {
         if (! in_array($appointment->status, ['pending', 'confirmed'], true)) {
             return response()->json([
@@ -75,10 +84,19 @@ class AppointmentController extends Controller
             ], 422);
         }
 
-        DB::transaction(function () use ($appointment) {
+        $validated = $request->validate([
+            'settled_amount_cents' => ['nullable', 'integer', 'min:0'],
+        ]);
+
+        DB::transaction(function () use ($appointment, $validated) {
+            $settledAmountCents = $validated['settled_amount_cents']
+                ?? $appointment->defaultSettlementAmountCents();
+
             $appointment->update([
-                'status'       => 'paid',
-                'payment_mode' => 'manual',
+                'status'                => 'paid',
+                'payment_mode'          => 'manual',
+                'settled_amount_cents'  => $settledAmountCents,
+                'settled_at'            => now(),
             ]);
 
             if ($appointment->order) {

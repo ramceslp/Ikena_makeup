@@ -146,6 +146,13 @@ class CreateBookingAction
                 'whatsapp' => $whatsapp,
                 'payment_mode' => 'gateway',
                 'deposit_amount_cents' => $depositCents,
+                // D1 — price snapshot taken at booking time, in cents, from the
+                // service's CURRENT price. Never recomputed afterward: a later
+                // change to services.price must not retroactively change what
+                // this appointment is worth (see Appointment::booted()'s
+                // "required snapshot" guard, and the settlement default that
+                // reads this column, not the live price).
+                'service_price_cents' => (int) round((float) $service->price * 100),
                 'status' => 'pending',
             ]);
 
