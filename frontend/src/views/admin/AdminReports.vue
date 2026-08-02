@@ -40,21 +40,28 @@ function ledgerParams() {
   return params
 }
 
-async function loadReports() {
+async function loadAggregates() {
+  const params = queryParams()
+  const [summaryRes, timelineRes, compositionRes] = await Promise.all([
+    api.get('/admin/reports/summary', { params }),
+    api.get('/admin/reports/timeline', { params }),
+    api.get('/admin/reports/composition', { params }),
+  ])
+  summary.value = summaryRes.data.data
+  timeline.value = timelineRes.data.data
+  composition.value = compositionRes.data.data
+}
+
+async function loadLedger() {
+  const { data } = await api.get('/admin/reports/ledger', { params: ledgerParams() })
+  ledger.value = data
+}
+
+async function run(loaders) {
   isLoading.value = true
   loadError.value = ''
   try {
-    const params = queryParams()
-    const [summaryRes, timelineRes, compositionRes, ledgerRes] = await Promise.all([
-      api.get('/admin/reports/summary', { params }),
-      api.get('/admin/reports/timeline', { params }),
-      api.get('/admin/reports/composition', { params }),
-      api.get('/admin/reports/ledger', { params: ledgerParams() }),
-    ])
-    summary.value = summaryRes.data.data
-    timeline.value = timelineRes.data.data
-    composition.value = compositionRes.data.data
-    ledger.value = ledgerRes.data
+    await Promise.all(loaders.map((load) => load()))
   } catch (err) {
     loadError.value = err.response?.data?.message || 'Error al cargar los reportes'
   } finally {
@@ -62,11 +69,19 @@ async function loadReports() {
   }
 }
 
-// Ledger page/stream changes reuse the same combined fetch as the other
-// filters (simpler than an isolated fetch path, at the cost of re-running
-// the three aggregate endpoints on every ledger page change too).
-watch([from, to, granularity, ledgerPage, ledgerStream], loadReports)
-onMounted(loadReports)
+// The aggregates depend on the range and granularity only; the ledger also
+// pages and filters by stream. Split watchers keep a page click to ONE round
+// trip instead of four, on the one screen built for browsing.
+watch([from, to, granularity], () => {
+  // A new range invalidates the current page — asking for page 3 of a result
+  // set that now has one page returns an empty table. Resetting fires the
+  // ledger watcher below, so only load the ledger here when it will not.
+  const alreadyFirstPage = ledgerPage.value === 1
+  ledgerPage.value = 1
+  run(alreadyFirstPage ? [loadAggregates, loadLedger] : [loadAggregates])
+})
+watch([ledgerPage, ledgerStream], () => run([loadLedger]))
+onMounted(() => run([loadAggregates, loadLedger]))
 
 function onLedgerPageChange(page) {
   ledgerPage.value = page

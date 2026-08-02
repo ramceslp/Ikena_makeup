@@ -17,6 +17,7 @@ vi.mock('../services/api.js', () => ({
 
 import api from '../services/api.js'
 import AdminReports from '../views/admin/AdminReports.vue'
+import LedgerTable from '../components/admin/reports/LedgerTable.vue'
 
 const router = createRouter({
   history: createMemoryHistory(),
@@ -160,6 +161,27 @@ describe('AdminReports.vue', () => {
 
     expect(api.get).toHaveBeenCalledWith('/admin/reports/composition', {
       params: expect.objectContaining({ granularity: 'week' }),
+    })
+  })
+
+  it('re-fetches only the ledger when its page changes, not the three aggregates', async () => {
+    mockReportResponses()
+
+    const wrapper = await mountAdminReports()
+    await flushPromises()
+
+    api.get.mockClear()
+    api.get.mockResolvedValueOnce(ledgerResponse({ meta: { current_page: 2, last_page: 2, total: 20 } }))
+
+    wrapper.findComponent(LedgerTable).vm.$emit('update:page', 2)
+    await flushPromises()
+
+    // Paging is a ledger-only concern — the aggregates depend on the date
+    // range alone, so re-running them here would be three wasted round trips
+    // per page click on the one screen built for browsing.
+    expect(api.get).toHaveBeenCalledTimes(1)
+    expect(api.get).toHaveBeenCalledWith('/admin/reports/ledger', {
+      params: expect.objectContaining({ page: 2 }),
     })
   })
 
