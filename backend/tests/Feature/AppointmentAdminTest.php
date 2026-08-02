@@ -426,6 +426,42 @@ class AppointmentAdminTest extends TestCase
         ]);
     }
 
+    /**
+     * Task 2.10 (design D1) — cancel() must leave both write-once money
+     * channels untouched, even when a deposit was already collected before
+     * the cancellation. `cancel()` has no code path that writes the
+     * deposit_collected_* or settled_* columns at all — this pins that
+     * absence so a future edit cannot accidentally start zeroing or
+     * recomputing them.
+     * Retaining a collected-but-unsettled deposit on cancellation is exactly
+     * the "retained deposits" income stream (spec, PR4a scope) — it must
+     * still be readable from this appointment after cancel, not erased.
+     */
+    public function test_cancel_leaves_already_collected_deposit_and_settlement_untouched(): void
+    {
+        $admin   = $this->makeAdmin();
+        $service = $this->makeService();
+        $user    = $this->makeUser();
+
+        [$appointment] = $this->makeAppointmentWithOrder($service, $user);
+        $appointment->update([
+            'deposit_collected_cents' => 3000,
+            'deposit_collected_at'    => now(),
+        ]);
+
+        Sanctum::actingAs($admin);
+
+        $this->patchJson("/api/admin/appointments/{$appointment->id}/cancel")
+             ->assertStatus(200);
+
+        $fresh = $appointment->fresh();
+
+        $this->assertSame(3000, $fresh->deposit_collected_cents);
+        $this->assertNotNull($fresh->deposit_collected_at);
+        $this->assertNull($fresh->settled_amount_cents);
+        $this->assertNull($fresh->settled_at);
+    }
+
     // -------------------------------------------------------------------------
     // FIX 5 — AppointmentResource includes whatsapp field
     // -------------------------------------------------------------------------

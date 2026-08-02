@@ -23,6 +23,13 @@ class AppointmentResource extends JsonResource
             'status'              => $this->status,
             'payment_mode'        => $this->payment_mode,
             'deposit_amount_cents' => $this->deposit_amount_cents,
+            // PR1b (design D1) — the two write-once money channels, surfaced
+            // so the admin panel can show what was actually collected/settled
+            // instead of only the quoted deposit_amount_cents above.
+            'deposit_collected_cents' => $this->deposit_collected_cents,
+            'deposit_collected_at'    => $this->deposit_collected_at,
+            'settled_amount_cents'    => $this->settled_amount_cents,
+            'settled_at'              => $this->settled_at,
             // FIX 5 — whatsapp field added for admin contact visibility
             'whatsapp'            => $this->whatsapp,
             'order'               => $this->whenLoaded('order', fn () => [
