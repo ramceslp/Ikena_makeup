@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\Admin\InstructorController as AdminInstructorContro
 use App\Http\Controllers\Api\Admin\PostController as AdminPostController;
 use App\Http\Controllers\Api\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\Api\Admin\PushNotificationController as AdminPushNotificationController;
+use App\Http\Controllers\Api\Admin\ReportController as AdminReportController;
 use App\Http\Controllers\Api\Admin\ServiceController as AdminServiceController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BookingController;
@@ -257,6 +258,16 @@ Route::middleware(['auth:sanctum', RejectScopedCheckoutToken::class])->group(fun
         Route::get('/agenda/{block}', [AdminAgendaBlockController::class, 'show']);
         Route::patch('/agenda/{block}', [AdminAgendaBlockController::class, 'update']);
         Route::delete('/agenda/{block}', [AdminAgendaBlockController::class, 'destroy']);
+
+        // Reports center — read-only settlement/revenue aggregates
+        // (admin-reports-center design D3/D4). Thin controller, delegates
+        // to app/Reports/Queries/*; ledger + export are PR3, rankings/
+        // funnel/receivables are PR4a.
+        Route::prefix('reports')->group(function () {
+            Route::get('/summary', [AdminReportController::class, 'summary']);
+            Route::get('/timeline', [AdminReportController::class, 'timeline']);
+            Route::get('/composition', [AdminReportController::class, 'composition']);
+        });
     });
 
     // Instructor authoring routes
