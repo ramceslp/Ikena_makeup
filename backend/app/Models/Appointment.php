@@ -77,18 +77,24 @@ class Appointment extends Model
      *     impossible: there is no code path that can write the same money
      *     event twice.
      *
-     * `service_price_cents` is intentionally NOT enforced as "required on
-     * create" here — see the migration docblock
-     * (2026_08_01_100000_add_settlement_columns_to_appointments.php) and the
-     * PR1a apply-progress for why: `CreateBookingAction` (PR1b scope) does not
-     * yet supply this snapshot, and this guard must not break that write path
-     * before PR1b lands. The DB-level NOT NULL constraint plus a bridging
-     * DEFAULT 0 covers the schema-integrity concern in the interim.
+     * 3. Required snapshot — every NEW appointment must carry
+     *    `service_price_cents`. Deferred out of PR1a (see the PR1a
+     *    apply-progress and architecture/admin-reports-pr-budget carried-debt
+     *    item 2) because `CreateBookingAction` did not yet write this
+     *    snapshot; PR1b wires that write (see `CreateBookingAction`) and
+     *    drops the bridging DEFAULT 0
+     *    (2026_08_02_100000_drop_default_from_appointments_service_price_cents.php),
+     *    so this closes the third invariant design D2 always called for.
+     *    Enforced only on create — an existing row's snapshot is itself
+     *    write-protected by nothing here (updating unrelated fields must not
+     *    require repeating an unchanged value), but nothing in this codebase
+     *    ever mutates `service_price_cents` after creation.
      */
     protected static function booted(): void
     {
         static::saving(function (Appointment $appointment) {
             static::assertKnownStatus($appointment);
+            static::assertServicePriceSnapshotPresent($appointment);
             static::assertDepositPairing($appointment);
             static::assertDepositImmutable($appointment);
             static::assertSettlementPairing($appointment);
@@ -104,6 +110,24 @@ class Appointment extends Model
                 implode(', ', self::STATUSES) . '. ' .
                 "Note: orders use a different status enum ('canceled', single L) — " .
                 'see Order::STATUSES.'
+            );
+        }
+    }
+
+    private static function assertServicePriceSnapshotPresent(Appointment $appointment): void
+    {
+        if ($appointment->exists) {
+            // Only enforced at creation — see the booted() docblock.
+            return;
+        }
+
+        if (is_null($appointment->service_price_cents)) {
+            throw new DomainException(
+                'service_price_cents must be set when creating an Appointment — it is the ' .
+                'price snapshot every settlement default (see defaultSettlementAmountCents()) ' .
+                'and every future revenue report reads, and it must never be recomputed from ' .
+                "the live services.price afterward. Appointment for service_id={$appointment->service_id} " .
+                'was created without it.'
             );
         }
     }
@@ -254,6 +278,33 @@ class Appointment extends Model
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
+
+    /**
+     * The anti-double-count settlement default (design D1), extracted here so
+     * the "collected, not quoted" contract is discoverable from the method
+     * signature rather than buried inline in a controller:
+     *
+     *   settled_amount_cents = max(0, service_price_cents - deposit_collected_cents)
+     *
+     * Subtracts `deposit_collected_cents` — money the GATEWAY actually
+     * captured — never `deposit_amount_cents`, which is only the QUOTED
+     * deposit and is not necessarily income yet. Subtracting the quoted-but-
+     * uncollected amount is exactly the double-count bug this design exists
+     * to prevent: it would subtract money that never arrived.
+     *
+     * One formula covers both product cases:
+     *  - deposit captured    → default = balance         → income = deposit + balance = price
+     *  - deposit never captured → deposit_collected_cents=0 → default = FULL price → income = 0 + price = price
+     *
+     * `max(0, ...)` guards against a settled amount going negative if
+     * `deposit_collected_cents` ever exceeded `service_price_cents` (e.g. a
+     * data-entry error upstream) — the resulting appointment then owes
+     * nothing further rather than reporting negative income.
+     */
+    public function defaultSettlementAmountCents(): int
+    {
+        return max(0, $this->service_price_cents - $this->deposit_collected_cents);
+    }
 
     /**
      * Build the slot_key string that uniquely identifies a booking slot.

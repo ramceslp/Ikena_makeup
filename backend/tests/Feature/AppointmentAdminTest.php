@@ -73,6 +73,8 @@ class AppointmentAdminTest extends TestCase
             'whatsapp'            => '+593099912345',
             'payment_mode'        => 'gateway',
             'deposit_amount_cents' => $depositCents,
+            // PR1b: required at creation — mirrors CreateBookingAction's snapshot.
+            'service_price_cents' => (int) round((float) $service->price * 100),
             'status'              => $status,
         ]);
 

@@ -64,6 +64,12 @@ class AppointmentMoneyInvariantTest extends TestCase
             'whatsapp'             => '+593099912345',
             'payment_mode'         => 'gateway',
             'deposit_amount_cents' => 3000,
+            // PR1b: service_price_cents is now required at creation (no
+            // bridging default — see the "required snapshot" guard below).
+            // Every helper in this file that does NOT test that guard itself
+            // must supply it so the pairing/write-once tests stay isolated
+            // to the invariant they actually exercise.
+            'service_price_cents'  => 10000,
             'status'               => 'pending',
         ], $overrides));
 
@@ -194,5 +200,49 @@ class AppointmentMoneyInvariantTest extends TestCase
         // same appointment is exactly the double-count shape this guard
         // exists to make impossible.
         $appointment->update(['settled_amount_cents' => 8000, 'settled_at' => now()]);
+    }
+
+    // -------------------------------------------------------------------------
+    // Required snapshot — the third invariant from design D2, deferred out of
+    // PR1a (see architecture/admin-reports-pr-budget carried-debt item 2) and
+    // closed here now that CreateBookingAction always supplies the value.
+    // -------------------------------------------------------------------------
+
+    public function test_creating_an_appointment_without_service_price_cents_throws_domain_exception(): void
+    {
+        $this->expectException(DomainException::class);
+
+        $user    = $this->makeUser();
+        $service = $this->makeService();
+
+        Appointment::create([
+            'service_id'           => $service->id,
+            'user_id'              => $user->id,
+            'order_id'             => null,
+            'scheduled_date'       => '2026-08-10',
+            'scheduled_time'       => '10:00',
+            'slot_key'             => "{$service->id}|2026-08-10|10:00",
+            'whatsapp'             => '+593099912345',
+            'payment_mode'         => 'gateway',
+            'deposit_amount_cents' => 3000,
+            'status'               => 'pending',
+            // service_price_cents intentionally omitted.
+        ]);
+    }
+
+    public function test_updating_an_existing_appointment_without_service_price_cents_set_does_not_throw(): void
+    {
+        // The guard only fires on CREATE (design D2's "required on create").
+        // An existing row already carries a value — an unrelated update must
+        // not be blocked by this guard even though the update payload itself
+        // does not repeat service_price_cents.
+        [$appointment] = $this->makeAppointment();
+
+        $appointment->update(['whatsapp' => '+593099998888']);
+
+        $this->assertDatabaseHas('appointments', [
+            'id'       => $appointment->id,
+            'whatsapp' => '+593099998888',
+        ]);
     }
 }

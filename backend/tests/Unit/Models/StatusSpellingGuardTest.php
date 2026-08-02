@@ -118,6 +118,7 @@ class StatusSpellingGuardTest extends TestCase
             'whatsapp'               => '+593099912345',
             'payment_mode'           => 'gateway',
             'deposit_amount_cents'   => 3000,
+            'service_price_cents'    => 10000,
             'status'                 => 'cancelled', // two Ls — correct here per Appointment::STATUSES
         ]);
 
@@ -141,6 +142,7 @@ class StatusSpellingGuardTest extends TestCase
             'whatsapp'               => '+593099912345',
             'payment_mode'           => 'gateway',
             'deposit_amount_cents'   => 3000,
+            'service_price_cents'    => 10000,
             'status'                 => 'not_a_real_status',
         ]);
     }

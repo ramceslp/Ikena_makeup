@@ -49,6 +49,27 @@ class AppointmentsSettlementMigrationTest extends TestCase
         $this->assertSame(1, $column->notnull, 'service_price_cents must be NOT NULL');
     }
 
+    /**
+     * PR1b, carried-debt item 1 (architecture/admin-reports-pr-budget): PR1a
+     * shipped `service_price_cents` with a bridging DEFAULT 0 because
+     * `CreateBookingAction` did not yet write the snapshot. Now that PR1b's
+     * migration 2026_08_02_100000_drop_default_from_appointments_service_price_cents
+     * removes it, the column must be NOT NULL with NO default — a raw insert
+     * that omits the column must fail at the DB level, not silently store 0.
+     */
+    public function test_service_price_cents_has_no_bridging_default(): void
+    {
+        $columns = DB::select('PRAGMA table_info(appointments)');
+        $column = collect($columns)->firstWhere('name', 'service_price_cents');
+
+        $this->assertNotNull($column, 'service_price_cents column must exist');
+        $this->assertNull(
+            $column->dflt_value,
+            'service_price_cents must not have a bridging default once CreateBookingAction ' .
+            'supplies the snapshot on every write (PR1b) — see architecture/admin-reports-pr-budget.'
+        );
+    }
+
     public function test_products_table_has_cost_column(): void
     {
         $this->assertTrue(Schema::hasColumn('products', 'cost'));

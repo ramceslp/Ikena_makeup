@@ -153,6 +153,43 @@ class CreateBookingActionTest extends TestCase
         ]);
     }
 
+    // -------------------------------------------------------------------------
+    // D1 — price snapshot at booking (PR1b, spec "Price snapshot at booking")
+    // -------------------------------------------------------------------------
+
+    public function test_booking_snapshots_service_price_cents_at_creation(): void
+    {
+        $user = $this->makeUser();
+        // price=100.00 -> 10000 cents.
+        [$service] = $this->makeBookableService(100.00, 30);
+
+        ($this->action())($user, $service->id, $this->today(), '10:00', '+593099912345');
+
+        $appointment = Appointment::where('service_id', $service->id)->first();
+        $this->assertNotNull($appointment);
+        $this->assertSame(10000, $appointment->service_price_cents);
+    }
+
+    /**
+     * Spec scenario "Service price changes after booking": the stored
+     * snapshot must NOT be recomputed from the live services.price once the
+     * appointment exists.
+     */
+    public function test_service_price_change_after_booking_does_not_affect_stored_snapshot(): void
+    {
+        $user = $this->makeUser();
+        [$service] = $this->makeBookableService(50.00, 30);
+
+        ($this->action())($user, $service->id, $this->today(), '10:00', '+593099912345');
+
+        $appointment = Appointment::where('service_id', $service->id)->first();
+        $this->assertSame(5000, $appointment->service_price_cents);
+
+        $service->update(['price' => 60.00]);
+
+        $this->assertSame(5000, $appointment->fresh()->service_price_cents);
+    }
+
     public function test_scheduled_end_time_equals_start_plus_duration(): void
     {
         $user = $this->makeUser();
