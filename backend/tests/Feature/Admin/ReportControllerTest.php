@@ -123,4 +123,65 @@ class ReportControllerTest extends TestCase
 
         $response->assertStatus(422);
     }
+
+    // -------------------------------------------------------------------------
+    // PR3 — sales ledger + CSV export
+    // -------------------------------------------------------------------------
+
+    public function test_unauthenticated_request_to_the_ledger_is_rejected(): void
+    {
+        $response = $this->getJson('/api/admin/reports/ledger?from=2026-08-01&to=2026-08-05');
+
+        $response->assertStatus(401);
+    }
+
+    public function test_non_admin_cannot_reach_the_ledger_or_its_export(): void
+    {
+        $student = User::factory()->create(['role' => 'student']);
+        Sanctum::actingAs($student);
+
+        $this->getJson('/api/admin/reports/ledger?from=2026-08-01&to=2026-08-05')->assertStatus(403);
+        $this->getJson('/api/admin/reports/ledger/export?from=2026-08-01&to=2026-08-05')->assertStatus(403);
+    }
+
+    public function test_ledger_response_contains_paginated_rows_and_meta(): void
+    {
+        Sanctum::actingAs($this->makeAdmin());
+
+        Order::create([
+            'user_id' => User::factory()->create()->id,
+            'type' => 'product_cart',
+            'client_transaction_id' => 'ORD-ledger-endpoint',
+            'gateway' => 'fake',
+            'amount_cents' => 4500,
+            'currency' => 'USD',
+            'status' => 'paid',
+            'paid_at' => '2026-08-02 10:00:00',
+        ]);
+
+        $response = $this->getJson('/api/admin/reports/ledger?from=2026-08-01&to=2026-08-05');
+
+        $response->assertStatus(200)
+            ->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('meta.current_page', 1)
+            ->assertJsonPath('data.0.amount_cents', 4500)
+            ->assertJsonPath('data.0.stream', 'product_sale');
+    }
+
+    public function test_ledger_export_requires_a_date_range(): void
+    {
+        Sanctum::actingAs($this->makeAdmin());
+
+        $this->getJson('/api/admin/reports/ledger/export')->assertStatus(422);
+    }
+
+    public function test_ledger_export_streams_a_csv_with_the_correct_content_type(): void
+    {
+        Sanctum::actingAs($this->makeAdmin());
+
+        $response = $this->get('/api/admin/reports/ledger/export?from=2026-08-01&to=2026-08-05');
+
+        $response->assertStatus(200);
+        $this->assertStringStartsWith('text/csv', $response->headers->get('Content-Type'));
+    }
 }

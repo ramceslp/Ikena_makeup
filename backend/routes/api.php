@@ -267,6 +267,11 @@ Route::middleware(['auth:sanctum', RejectScopedCheckoutToken::class])->group(fun
             Route::get('/summary', [AdminReportController::class, 'summary']);
             Route::get('/timeline', [AdminReportController::class, 'timeline']);
             Route::get('/composition', [AdminReportController::class, 'composition']);
+            // /export MUST be registered before /{...} would ever be added —
+            // no such wildcard exists here today, but keeping the more
+            // specific route first avoids the trap if one ever is.
+            Route::get('/ledger/export', [AdminReportController::class, 'ledgerExport']);
+            Route::get('/ledger', [AdminReportController::class, 'ledger']);
         });
     });
 
