@@ -3,14 +3,17 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Reports\Export\LedgerCsvStream;
 use App\Reports\Money\RevenueStreams;
 use App\Reports\PeriodCalendar;
 use App\Reports\Queries\CompositionQuery;
+use App\Reports\Queries\LedgerQuery;
 use App\Reports\Queries\SummaryQuery;
 use App\Reports\Queries\TimelineQuery;
 use App\Reports\ReportFilter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * ReportController — thin (design's File Changes table: "delegates to Query
@@ -80,6 +83,53 @@ class ReportController extends Controller
         return response()->json([
             'data' => array_merge($this->filterMeta($filter), $data),
         ]);
+    }
+
+    /**
+     * GET /api/admin/reports/ledger
+     *
+     * Paginated, filterable (date range, stream) cross-source row list
+     * (spec `admin-reporting`'s "Sales ledger" requirement). Rows are
+     * mapped to an explicit key list rather than returned as raw stdClass
+     * rows, so callers get stable JSON keys regardless of how a given
+     * driver stringifies an aggregate column.
+     */
+    public function ledger(Request $request): JsonResponse
+    {
+        $filter = ReportFilter::fromRequest($request, $this->calendar);
+        $paginator = (new LedgerQuery($this->streams))->run($filter);
+
+        return response()->json([
+            'data' => collect($paginator->items())->map(fn ($row) => [
+                'occurred_at' => (string) $row->occurred_at,
+                'amount_cents' => (int) $row->amount_cents,
+                'stream' => $row->stream,
+                'label' => $row->label,
+                'counterparty' => $row->counterparty,
+            ])->all(),
+            'meta' => array_merge($this->filterMeta($filter), [
+                'current_page' => $paginator->currentPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+                'last_page' => $paginator->lastPage(),
+            ]),
+        ]);
+    }
+
+    /**
+     * GET /api/admin/reports/ledger/export
+     *
+     * Streamed CSV export of EVERY row matching the filter (not just the
+     * current page) — spec `report-export`'s "CSV export matches on-screen
+     * ledger" requirement. `from`/`to` are required by `ReportFilter`
+     * itself, which satisfies the "mandatory date range on export" design
+     * constraint without any export-specific validation here.
+     */
+    public function ledgerExport(Request $request): StreamedResponse
+    {
+        $filter = ReportFilter::fromRequest($request, $this->calendar);
+
+        return (new LedgerCsvStream(new LedgerQuery($this->streams)))->respond($filter);
     }
 
     /**

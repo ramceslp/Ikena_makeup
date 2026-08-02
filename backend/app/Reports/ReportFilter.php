@@ -2,15 +2,16 @@
 
 namespace App\Reports;
 
+use App\Reports\Money\StreamKey;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 /**
- * Validated DTO for the date-range/granularity report endpoints (Summary,
- * Timeline, Composition — design D4/D7 data flow). Wraps `PeriodCalendar`
- * directly at construction time so a caller can never observe a filter
- * whose `effectiveGranularity` and `periods` disagree with each other.
+ * Validated DTO for the report endpoints (Summary, Timeline, Composition,
+ * and — as of PR3 — Ledger). Wraps `PeriodCalendar` directly at
+ * construction time so a caller can never observe a filter whose
+ * `effectiveGranularity` and `periods` disagree with each other.
  *
  * `to` is accepted from the request as an INCLUSIVE calendar date (the last
  * day the caller wants included — matching how every other admin filter in
@@ -20,16 +21,16 @@ use Illuminate\Validation\Rule;
  * exist precisely so downstream code never has to reason about this
  * conversion again (design D3).
  *
- * `streams`/`search`/`perPage` from the design's Interfaces/Contracts
- * section are intentionally NOT part of this DTO yet — they are
- * `LedgerQuery`-only concerns that ship in PR3. Adding them now, unused,
- * would be dead surface area on a class the Summary/Timeline/Composition
- * endpoints already fully exercise without them.
+ * `streams`/`perPage` are `LedgerQuery`-only concerns (design's
+ * Interfaces/Contracts sketch), added in PR3. `search` from that same
+ * sketch is deliberately still omitted — no spec scenario requires it, and
+ * adding unused surface area is not worth the extra validation/plumbing.
  */
 final readonly class ReportFilter
 {
     /**
      * @param  Period[]  $periods
+     * @param  StreamKey[]  $streams
      */
     public function __construct(
         public CarbonImmutable $from,
@@ -38,6 +39,8 @@ final readonly class ReportFilter
         public Granularity $effectiveGranularity,
         public bool $degraded,
         public array $periods,
+        public array $streams = [],
+        public int $perPage = 25,
     ) {
     }
 
@@ -50,6 +53,12 @@ final readonly class ReportFilter
                 fn (Granularity $g) => $g->value,
                 Granularity::cases(),
             ))],
+            'stream' => ['nullable', 'array'],
+            'stream.*' => ['string', Rule::in(array_map(
+                fn (StreamKey $s) => $s->value,
+                StreamKey::cases(),
+            ))],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
         $from = CarbonImmutable::parse($validated['from'])->startOfDay();
@@ -62,6 +71,11 @@ final readonly class ReportFilter
 
         $result = $calendar->build($from, $to, $requested);
 
+        $streams = array_map(
+            fn (string $value) => StreamKey::from($value),
+            $validated['stream'] ?? [],
+        );
+
         return new self(
             from: $from,
             to: $to,
@@ -69,6 +83,8 @@ final readonly class ReportFilter
             effectiveGranularity: $result->effectiveGranularity,
             degraded: $result->degraded,
             periods: $result->periods,
+            streams: $streams,
+            perPage: $validated['per_page'] ?? 25,
         );
     }
 }
