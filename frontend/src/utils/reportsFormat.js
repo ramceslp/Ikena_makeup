@@ -50,13 +50,23 @@ export function defaultReportDateRange(today) {
  * figure shown without this context would silently overstate margin on
  * partially-costed products. Zero revenue counts as fully covered (nothing
  * to divide, nothing to hide).
+ *
+ * Truncates rather than rounds: the displayed figure must never claim more
+ * coverage than there is, or a badge shown BECAUSE coverage is partial would
+ * read "100%" and contradict its own reason for existing.
  */
 export function costCoveragePercent(revenueCents, knownCostRevenueCents) {
   if (revenueCents <= 0) return 100
-  return Math.round((knownCostRevenueCents / revenueCents) * 100)
+  return Math.floor((knownCostRevenueCents / revenueCents) * 100)
 }
 
-/** True when every cent of revenue has a known cost basis behind its margin. */
+/**
+ * True when every cent of revenue has a known cost basis behind its margin.
+ * Compares cents directly rather than reusing the percentage above — deriving
+ * this from a rounded percentage made anything at or above 99.5% report as
+ * fully covered, hiding the very warning this indicator exists to raise.
+ */
 export function isFullCostCoverage(revenueCents, knownCostRevenueCents) {
-  return costCoveragePercent(revenueCents, knownCostRevenueCents) >= 100
+  if (revenueCents <= 0) return true
+  return knownCostRevenueCents >= revenueCents
 }

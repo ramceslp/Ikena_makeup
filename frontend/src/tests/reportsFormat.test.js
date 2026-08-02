@@ -52,6 +52,14 @@ describe('costCoveragePercent', () => {
     expect(costCoveragePercent(20000, 20000)).toBe(100)
   })
 
+  // The displayed percentage must never round UP past the real coverage: a
+  // badge reading "100%" while it is only shown BECAUSE coverage is partial
+  // contradicts itself. Truncating keeps the figure conservative.
+  it('never rounds partial coverage up to 100', () => {
+    expect(costCoveragePercent(1000000, 996000)).toBe(99)
+    expect(costCoveragePercent(1000000, 999999)).toBe(99)
+  })
+
   it('returns 100 for zero revenue instead of dividing by zero', () => {
     expect(costCoveragePercent(0, 0)).toBe(100)
   })
@@ -72,5 +80,14 @@ describe('isFullCostCoverage', () => {
 
   it('is true for zero revenue (nothing to cover)', () => {
     expect(isFullCostCoverage(0, 0)).toBe(true)
+  })
+
+  // Regression: coverage was derived from the ROUNDED percentage, so anything
+  // at or above 99.5% rounded up to 100 and reported as full coverage — the
+  // margin then rendered with no warning at all, which is precisely what the
+  // indicator exists to prevent. Cents must be compared directly.
+  it('is false for coverage just short of complete', () => {
+    expect(isFullCostCoverage(1000000, 996000)).toBe(false)
+    expect(isFullCostCoverage(1000000, 999999)).toBe(false)
   })
 })
