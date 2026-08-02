@@ -7,9 +7,14 @@ use App\Reports\Export\LedgerCsvStream;
 use App\Reports\Money\RevenueStreams;
 use App\Reports\PeriodCalendar;
 use App\Reports\Queries\CompositionQuery;
+use App\Reports\Queries\FunnelQuery;
 use App\Reports\Queries\LedgerQuery;
+use App\Reports\Queries\ReceivablesQuery;
 use App\Reports\Queries\SummaryQuery;
 use App\Reports\Queries\TimelineQuery;
+use App\Reports\Queries\TopCoursesQuery;
+use App\Reports\Queries\TopProductsQuery;
+use App\Reports\Queries\TopServicesQuery;
 use App\Reports\ReportFilter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -130,6 +135,73 @@ class ReportController extends Controller
         $filter = ReportFilter::fromRequest($request, $this->calendar);
 
         return (new LedgerCsvStream(new LedgerQuery($this->streams)))->respond($filter);
+    }
+
+    /**
+     * GET /api/admin/reports/rankings/products
+     *
+     * Top products by revenue, with margin computed from the
+     * `unit_cost_cents` snapshot and a coverage indicator (PR4a scope).
+     */
+    public function topProducts(Request $request): JsonResponse
+    {
+        $filter = ReportFilter::fromRequest($request, $this->calendar);
+        $data = (new TopProductsQuery($this->streams))->run($filter);
+
+        return response()->json(['data' => $data, 'meta' => $this->filterMeta($filter)]);
+    }
+
+    /**
+     * GET /api/admin/reports/rankings/services
+     *
+     * Top services by delivered revenue divided by duration_hours — no
+     * margin figure (services have no cost basis).
+     */
+    public function topServices(Request $request): JsonResponse
+    {
+        $filter = ReportFilter::fromRequest($request, $this->calendar);
+        $data = (new TopServicesQuery($this->streams))->run($filter);
+
+        return response()->json(['data' => $data, 'meta' => $this->filterMeta($filter)]);
+    }
+
+    /**
+     * GET /api/admin/reports/rankings/courses
+     *
+     * Top courses by paid enrollment revenue, with free enrollments counted
+     * apart from the revenue figure.
+     */
+    public function topCourses(Request $request): JsonResponse
+    {
+        $filter = ReportFilter::fromRequest($request, $this->calendar);
+        $data = (new TopCoursesQuery($this->streams))->run($filter);
+
+        return response()->json(['data' => $data, 'meta' => $this->filterMeta($filter)]);
+    }
+
+    /**
+     * GET /api/admin/reports/funnel
+     *
+     * Order-status and appointment-status counts for the selected range.
+     */
+    public function funnel(Request $request): JsonResponse
+    {
+        $filter = ReportFilter::fromRequest($request, $this->calendar);
+        $data = (new FunnelQuery($this->streams))->run($filter);
+
+        return response()->json(['data' => $data, 'meta' => $this->filterMeta($filter)]);
+    }
+
+    /**
+     * GET /api/admin/reports/receivables
+     *
+     * Current outstanding money across the three receivable buckets
+     * (design D6) — a snapshot of "now", not scoped to a date range, so it
+     * takes no ReportFilter.
+     */
+    public function receivables(): JsonResponse
+    {
+        return response()->json(['data' => (new ReceivablesQuery())->run()]);
     }
 
     /**

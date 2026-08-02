@@ -184,4 +184,87 @@ class ReportControllerTest extends TestCase
         $response->assertStatus(200);
         $this->assertStringStartsWith('text/csv', $response->headers->get('Content-Type'));
     }
+
+    // -------------------------------------------------------------------------
+    // PR4a — rankings, funnels, receivables
+    // -------------------------------------------------------------------------
+
+    public function test_unauthenticated_request_is_rejected_for_every_pr4a_endpoint(): void
+    {
+        $this->getJson('/api/admin/reports/rankings/products?from=2026-08-01&to=2026-08-05')->assertStatus(401);
+        $this->getJson('/api/admin/reports/rankings/services?from=2026-08-01&to=2026-08-05')->assertStatus(401);
+        $this->getJson('/api/admin/reports/rankings/courses?from=2026-08-01&to=2026-08-05')->assertStatus(401);
+        $this->getJson('/api/admin/reports/funnel?from=2026-08-01&to=2026-08-05')->assertStatus(401);
+        $this->getJson('/api/admin/reports/receivables')->assertStatus(401);
+    }
+
+    public function test_non_admin_cannot_reach_any_pr4a_endpoint(): void
+    {
+        $student = User::factory()->create(['role' => 'student']);
+        Sanctum::actingAs($student);
+
+        $this->getJson('/api/admin/reports/rankings/products?from=2026-08-01&to=2026-08-05')->assertStatus(403);
+        $this->getJson('/api/admin/reports/rankings/services?from=2026-08-01&to=2026-08-05')->assertStatus(403);
+        $this->getJson('/api/admin/reports/rankings/courses?from=2026-08-01&to=2026-08-05')->assertStatus(403);
+        $this->getJson('/api/admin/reports/funnel?from=2026-08-01&to=2026-08-05')->assertStatus(403);
+        $this->getJson('/api/admin/reports/receivables')->assertStatus(403);
+    }
+
+    public function test_admin_can_reach_every_pr4a_endpoint(): void
+    {
+        Sanctum::actingAs($this->makeAdmin());
+
+        $this->getJson('/api/admin/reports/rankings/products?from=2026-08-01&to=2026-08-05')->assertStatus(200);
+        $this->getJson('/api/admin/reports/rankings/services?from=2026-08-01&to=2026-08-05')->assertStatus(200);
+        $this->getJson('/api/admin/reports/rankings/courses?from=2026-08-01&to=2026-08-05')->assertStatus(200);
+        $this->getJson('/api/admin/reports/funnel?from=2026-08-01&to=2026-08-05')->assertStatus(200);
+        $this->getJson('/api/admin/reports/receivables')->assertStatus(200);
+    }
+
+    public function test_top_products_response_reconciles_against_a_hand_summed_fixture(): void
+    {
+        Sanctum::actingAs($this->makeAdmin());
+
+        $product = \App\Models\Product::factory()->create(['cost' => 2.00]);
+        $order = Order::create([
+            'user_id' => User::factory()->create()->id,
+            'type' => 'product_cart',
+            'client_transaction_id' => 'ORD-controller-topproducts',
+            'gateway' => 'fake',
+            'amount_cents' => 2000,
+            'currency' => 'USD',
+            'status' => 'paid',
+            'paid_at' => '2026-08-02 10:00:00',
+        ]);
+        \App\Models\OrderItem::create([
+            'order_id' => $order->id,
+            'product_id' => $product->id,
+            'product_title' => $product->title,
+            'quantity' => 1,
+            'unit_price_cents' => 2000,
+            'line_total_cents' => 2000,
+            'unit_cost_cents' => 200,
+        ]);
+
+        $response = $this->getJson('/api/admin/reports/rankings/products?from=2026-08-01&to=2026-08-05');
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.0.product_id', $product->id)
+            ->assertJsonPath('data.0.revenue_cents', 2000)
+            ->assertJsonPath('data.0.margin_cents', 1800);
+    }
+
+    public function test_receivables_response_has_the_three_bucket_shape(): void
+    {
+        Sanctum::actingAs($this->makeAdmin());
+
+        $response = $this->getJson('/api/admin/reports/receivables');
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.bucket_a.count', 0)
+            ->assertJsonPath('data.bucket_b.count', 0)
+            ->assertJsonPath('data.bucket_c.count', 0)
+            ->assertJsonPath('data.total_receivable_cents', 0)
+            ->assertJsonPath('data.projection_cents', 0);
+    }
 }

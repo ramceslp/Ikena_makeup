@@ -272,6 +272,11 @@ Route::middleware(['auth:sanctum', RejectScopedCheckoutToken::class])->group(fun
             // specific route first avoids the trap if one ever is.
             Route::get('/ledger/export', [AdminReportController::class, 'ledgerExport']);
             Route::get('/ledger', [AdminReportController::class, 'ledger']);
+            Route::get('/rankings/products', [AdminReportController::class, 'topProducts']);
+            Route::get('/rankings/services', [AdminReportController::class, 'topServices']);
+            Route::get('/rankings/courses', [AdminReportController::class, 'topCourses']);
+            Route::get('/funnel', [AdminReportController::class, 'funnel']);
+            Route::get('/receivables', [AdminReportController::class, 'receivables']);
         });
     });
 
