@@ -67,6 +67,9 @@ const AdminAgendaBlocks = () => import('../views/admin/AdminAgendaBlocks.vue')
 // Certificate branding — admin
 const AdminCertificateSettings = () => import('../views/admin/AdminCertificateSettings.vue')
 
+// Reports — admin
+const AdminReports = () => import('../views/admin/AdminReports.vue')
+
 const routes = [
   {
     path: '/',
@@ -323,6 +326,14 @@ const routes = [
     path: '/admin/certificate',
     name: 'AdminCertificateSettings',
     component: AdminCertificateSettings,
+    meta: { requiresAdmin: true },
+  },
+
+  // ── Admin: Reports ────────────────────────────────────────────────────────
+  {
+    path: '/admin/reportes',
+    name: 'AdminReports',
+    component: AdminReports,
     meta: { requiresAdmin: true },
   },
 ]
