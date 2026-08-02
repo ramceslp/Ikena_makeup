@@ -9,6 +9,9 @@ import KpiCard from '../../components/admin/reports/KpiCard.vue'
 import RevenueTimelineChart from '../../components/admin/reports/RevenueTimelineChart.vue'
 import CompositionBars from '../../components/admin/reports/CompositionBars.vue'
 import LedgerTable from '../../components/admin/reports/LedgerTable.vue'
+import RankingTable from '../../components/admin/reports/RankingTable.vue'
+import FunnelChart from '../../components/admin/reports/FunnelChart.vue'
+import ReceivableBuckets from '../../components/admin/reports/ReceivableBuckets.vue'
 
 // Control-panel container (Phase 4 / PR2b). Reads the three read-only
 // endpoints wired in PR2a (`/admin/reports/{summary,timeline,composition}`)
@@ -24,6 +27,11 @@ const granularity = ref('day')
 const summary = ref(null)
 const timeline = ref(null)
 const composition = ref(null)
+const topProducts = ref(null)
+const topServices = ref(null)
+const topCourses = ref(null)
+const funnel = ref(null)
+const receivables = ref(null)
 const ledger = ref(null)
 const ledgerPage = ref(1)
 const ledgerStream = ref('')
@@ -42,19 +50,36 @@ function ledgerParams() {
 
 async function loadAggregates() {
   const params = queryParams()
-  const [summaryRes, timelineRes, compositionRes] = await Promise.all([
+  const [summaryRes, timelineRes, compositionRes, productsRes, servicesRes, coursesRes, funnelRes] = await Promise.all([
     api.get('/admin/reports/summary', { params }),
     api.get('/admin/reports/timeline', { params }),
     api.get('/admin/reports/composition', { params }),
+    api.get('/admin/reports/rankings/products', { params }),
+    api.get('/admin/reports/rankings/services', { params }),
+    api.get('/admin/reports/rankings/courses', { params }),
+    api.get('/admin/reports/funnel', { params }),
   ])
   summary.value = summaryRes.data.data
   timeline.value = timelineRes.data.data
   composition.value = compositionRes.data.data
+  topProducts.value = productsRes.data.data
+  topServices.value = servicesRes.data.data
+  topCourses.value = coursesRes.data.data
+  funnel.value = funnelRes.data.data
 }
 
 async function loadLedger() {
   const { data } = await api.get('/admin/reports/ledger', { params: ledgerParams() })
   ledger.value = data
+}
+
+// Receivables are a snapshot of "now" (design D6) — they carry no
+// ReportFilter and must NOT be re-fetched on every range change, unlike
+// rankings/funnel above which are range-scoped and live in loadAggregates.
+// Loaded once on mount only; deliberately absent from both watchers below.
+async function loadReceivables() {
+  const { data } = await api.get('/admin/reports/receivables')
+  receivables.value = data.data
 }
 
 async function run(loaders) {
@@ -81,7 +106,7 @@ watch([from, to, granularity], () => {
   run(alreadyFirstPage ? [loadAggregates, loadLedger] : [loadAggregates])
 })
 watch([ledgerPage, ledgerStream], () => run([loadLedger]))
-onMounted(() => run([loadAggregates, loadLedger]))
+onMounted(() => run([loadAggregates, loadLedger, loadReceivables]))
 
 function onLedgerPageChange(page) {
   ledgerPage.value = page
@@ -173,6 +198,26 @@ const effectiveGranularity = computed(() => timeline.value?.effective_granularit
         :to="to"
         @update:page="onLedgerPageChange"
         @update:stream="onLedgerStreamChange"
+      />
+
+      <RankingTable
+        v-if="topProducts"
+        class="no-print mt-6"
+        :products="topProducts"
+        :services="topServices"
+        :courses="topCourses"
+      />
+
+      <FunnelChart v-if="funnel" class="no-print mt-6" :orders="funnel.orders" :appointments="funnel.appointments" />
+
+      <ReceivableBuckets
+        v-if="receivables"
+        class="no-print mt-6"
+        :bucket-a="receivables.bucket_a"
+        :bucket-b="receivables.bucket_b"
+        :bucket-c="receivables.bucket_c"
+        :total-receivable-cents="receivables.total_receivable_cents"
+        :projection-cents="receivables.projection_cents"
       />
     </template>
   </div>

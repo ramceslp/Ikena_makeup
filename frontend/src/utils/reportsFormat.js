@@ -41,3 +41,32 @@ export function defaultReportDateRange(today) {
     to: today,
   }
 }
+
+/**
+ * How much of a ranking row's `revenue_cents` is actually covered by a known
+ * `unit_cost_cents` snapshot (backend's `TopProductsQuery` coverage
+ * indicator). `unit_cost_cents` is manual data entry defaulting to 0, which
+ * is indistinguishable at the DB level from a genuinely free item — a margin
+ * figure shown without this context would silently overstate margin on
+ * partially-costed products. Zero revenue counts as fully covered (nothing
+ * to divide, nothing to hide).
+ *
+ * Truncates rather than rounds: the displayed figure must never claim more
+ * coverage than there is, or a badge shown BECAUSE coverage is partial would
+ * read "100%" and contradict its own reason for existing.
+ */
+export function costCoveragePercent(revenueCents, knownCostRevenueCents) {
+  if (revenueCents <= 0) return 100
+  return Math.floor((knownCostRevenueCents / revenueCents) * 100)
+}
+
+/**
+ * True when every cent of revenue has a known cost basis behind its margin.
+ * Compares cents directly rather than reusing the percentage above — deriving
+ * this from a rounded percentage made anything at or above 99.5% report as
+ * fully covered, hiding the very warning this indicator exists to raise.
+ */
+export function isFullCostCoverage(revenueCents, knownCostRevenueCents) {
+  if (revenueCents <= 0) return true
+  return knownCostRevenueCents >= revenueCents
+}
