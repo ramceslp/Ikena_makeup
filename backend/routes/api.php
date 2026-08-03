@@ -115,12 +115,14 @@ Route::get('/certificate-settings', [CertificateSettingController::class, 'show'
 // bearer token when present (for user_id attribution) but never rejects a
 // guest — a 401 is structurally impossible here.
 //
-// NOTE: the 'throttle:analytics' override (see the same trap documented
-// above at 'submissions/{submission}/{variant}') is added in a later task
-// once its limiter is registered — until then this route still carries the
-// default 60/min 'throttle:api' group limiter.
+// A route-level throttle does NOT replace the group one — see the same trap
+// documented above at 'submissions/{submission}/{variant}' — both would apply
+// and the tighter 60/min 'api' baseline would still bind, so it is explicitly
+// dropped here in favor of 'throttle:analytics' (120/min), sized for a
+// pageview per navigation rather than a deliberate API call.
 Route::post('/analytics/events', [VisitorEventController::class, 'store'])
-    ->middleware('auth.optional');
+    ->withoutMiddleware('throttle:api')
+    ->middleware(['auth.optional', 'throttle:analytics']);
 
 // Checkout-handoff redeem — public because the browser opened from the app
 // is a separate, logged-out session (see CheckoutHandoffController::redeem
