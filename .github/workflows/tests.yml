@@ -60,12 +60,16 @@ jobs:
   # backend-tests-mysql — design D3. Production runs MySQL 8.0
   # (ARCHITECTURE.md, backend/.env.example, README.md); the job above only
   # ever exercises SQLite (phpunit.xml forces it), so this job is the only
-  # place CI ever proves the Reports queries behave the same against the
-  # real production engine — most importantly MySQL 8's ONLY_FULL_GROUP_BY,
-  # which is ON by default and rejects GROUP BY projections SQLite silently
-  # accepts. Scoped to the `Reports` testsuite (phpunit.mysql.xml) so CI time
-  # stays bounded and every OTHER suite's behaviour is untouched — see design
-  # D3 "Rejected: full matrix" for why the whole suite does not run here.
+  # place CI ever proves the Reports and Analytics queries behave the same
+  # against the real production engine — most importantly MySQL 8's
+  # ONLY_FULL_GROUP_BY, which is ON by default and rejects GROUP BY
+  # projections SQLite silently accepts, and MySQL's strict-mode VARCHAR(n)
+  # length enforcement, which SQLite's dynamic typing ignores. Scoped to the
+  # `Reports` and `Analytics` testsuites (phpunit.mysql.xml) so CI time stays
+  # bounded and every OTHER suite's behaviour is untouched — see design D3
+  # "Rejected: full matrix" for why the whole suite does not run here.
+  # phpunit.mysql.xml declares both testsuites; MysqlSuiteCoverageTest fails
+  # loudly if a testsuite is declared there but not listed below.
   #
   # Deliberately does NOT use continue-on-error or any other soft-fail path:
   # if the MySQL service container fails to come up, this job must fail, not
@@ -124,11 +128,12 @@ jobs:
 
       # phpunit.mysql.xml forces DB_CONNECTION=mysql plus the connection
       # details matching the `mysql` service container above (force="true",
-      # so nothing in .env can override it). --testsuite=Reports is
-      # explicit here even though it is the only testsuite phpunit.mysql.xml
-      # defines, to keep the intent readable at the call site.
-      - name: Run PHPUnit Reports test suite against MySQL
-        run: php artisan test -c phpunit.mysql.xml --testsuite=Reports
+      # so nothing in .env can override it). Both testsuites
+      # phpunit.mysql.xml defines are listed explicitly here — adding a
+      # third declared testsuite without also adding it to this flag is
+      # caught by MysqlSuiteCoverageTest, not left as a silent skip.
+      - name: Run PHPUnit Reports and Analytics test suites against MySQL
+        run: php artisan test -c phpunit.mysql.xml --testsuite=Reports,Analytics
 
   frontend-tests:
     name: Frontend (Vitest)
