@@ -107,6 +107,53 @@ class CartCheckoutActionTest extends TestCase
         $this->assertTrue($order->reserved_until->isFuture());
     }
 
+    // -------------------------------------------------------------------------
+    // PR4a's cost snapshot (D1's sibling for products) — written here so
+    // TopProducts margin (PR4a) never has to trust the live, mutable
+    // products.cost for a historical sale.
+    // -------------------------------------------------------------------------
+
+    public function test_checkout_snapshots_unit_cost_cents_from_product_cost(): void
+    {
+        $user = $this->makeUser();
+        $product = $this->makeProduct(['price' => 100.00, 'cost' => 40.00, 'stock_qty' => 10]);
+
+        $result = ($this->action())($user, [
+            ['product_id' => $product->id, 'quantity' => 1],
+        ]);
+
+        $this->assertDatabaseHas('order_items', [
+            'order_id' => $result['order']->id,
+            'product_id' => $product->id,
+            'unit_cost_cents' => 4000,
+        ]);
+    }
+
+    /**
+     * Mirrors the "Product cost changes after sale" spec scenario for
+     * TopProducts (PR4a): the sold line item's snapshot must not follow a
+     * later change to the live products.cost.
+     */
+    public function test_product_cost_change_after_sale_does_not_affect_stored_snapshot(): void
+    {
+        $user = $this->makeUser();
+        $product = $this->makeProduct(['price' => 100.00, 'cost' => 30.00, 'stock_qty' => 10]);
+
+        $result = ($this->action())($user, [
+            ['product_id' => $product->id, 'quantity' => 1],
+        ]);
+
+        $orderItem = \App\Models\OrderItem::where('order_id', $result['order']->id)
+            ->where('product_id', $product->id)
+            ->first();
+
+        $this->assertSame(3000, $orderItem->unit_cost_cents);
+
+        $product->update(['cost' => 50.00]);
+
+        $this->assertSame(3000, $orderItem->fresh()->unit_cost_cents);
+    }
+
     public function test_iva_parity_subtotal_21400_tax_3210_total_24610(): void
     {
         // Product at $107.00 x 2 = $214.00 subtotal -> 21400 cents

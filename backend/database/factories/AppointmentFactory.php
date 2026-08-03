@@ -30,6 +30,10 @@ class AppointmentFactory extends Factory
             'whatsapp'            => '+5930999' . fake()->numerify('####'),
             'payment_mode'        => 'gateway',
             'deposit_amount_cents' => fake()->numberBetween(1000, 10000),
+            // D1: price snapshot taken at booking. The factory mirrors the
+            // real booking flow (CreateBookingAction, PR1b) by snapshotting
+            // the service's price at creation time.
+            'service_price_cents' => (int) round((float) $service->price * 100),
             'status'              => 'pending',
             'cancelled_by_id'     => null,
             'cancelled_at'        => null,

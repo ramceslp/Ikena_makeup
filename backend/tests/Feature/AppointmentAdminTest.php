@@ -73,6 +73,8 @@ class AppointmentAdminTest extends TestCase
             'whatsapp'            => '+593099912345',
             'payment_mode'        => 'gateway',
             'deposit_amount_cents' => $depositCents,
+            // PR1b: required at creation — mirrors CreateBookingAction's snapshot.
+            'service_price_cents' => (int) round((float) $service->price * 100),
             'status'              => $status,
         ]);
 
@@ -253,6 +255,12 @@ class AppointmentAdminTest extends TestCase
         $this->assertNotNull($updated->cancelled_at);
     }
 
+    // FIX 4 (updated PR1a) — cancelling an appointment now writes
+    // orders.status = 'canceled' (single L, Order::STATUSES). The old
+    // assertions here expected 'cancelled' (two Ls), which was the historical
+    // spelling bug design D5 fixes; appointments.status is unaffected and
+    // still correctly uses 'cancelled' (two Ls, Appointment::STATUSES).
+
     /**
      * BOOK-006: cancelling an appointment excludes it from venue-wide overlap
      * counts, freeing capacity for that interval so a second user can book it.
@@ -410,11 +418,48 @@ class AppointmentAdminTest extends TestCase
             'slot_key' => null,
         ]);
 
-        // Linked order must also be cancelled
+        // Linked order must also be cancelled — orders.status uses the
+        // single-L 'canceled' spelling (design D5, Order::STATUSES).
         $this->assertDatabaseHas('orders', [
             'id'     => $order->id,
-            'status' => 'cancelled',
+            'status' => 'canceled',
         ]);
+    }
+
+    /**
+     * Task 2.10 (design D1) — cancel() must leave both write-once money
+     * channels untouched, even when a deposit was already collected before
+     * the cancellation. `cancel()` has no code path that writes the
+     * deposit_collected_* or settled_* columns at all — this pins that
+     * absence so a future edit cannot accidentally start zeroing or
+     * recomputing them.
+     * Retaining a collected-but-unsettled deposit on cancellation is exactly
+     * the "retained deposits" income stream (spec, PR4a scope) — it must
+     * still be readable from this appointment after cancel, not erased.
+     */
+    public function test_cancel_leaves_already_collected_deposit_and_settlement_untouched(): void
+    {
+        $admin   = $this->makeAdmin();
+        $service = $this->makeService();
+        $user    = $this->makeUser();
+
+        [$appointment] = $this->makeAppointmentWithOrder($service, $user);
+        $appointment->update([
+            'deposit_collected_cents' => 3000,
+            'deposit_collected_at'    => now(),
+        ]);
+
+        Sanctum::actingAs($admin);
+
+        $this->patchJson("/api/admin/appointments/{$appointment->id}/cancel")
+             ->assertStatus(200);
+
+        $fresh = $appointment->fresh();
+
+        $this->assertSame(3000, $fresh->deposit_collected_cents);
+        $this->assertNotNull($fresh->deposit_collected_at);
+        $this->assertNull($fresh->settled_amount_cents);
+        $this->assertNull($fresh->settled_at);
     }
 
     // -------------------------------------------------------------------------

@@ -15,6 +15,19 @@ class Order extends Model
     /** @use HasFactory<OrderFactory> */
     use HasFactory;
 
+    /**
+     * The single documented spelling for `orders.status` (design D5).
+     * `CheckoutController` and `ReleaseExpiredReservations` already write
+     * 'canceled'; the historical 'cancelled' (two Ls) writer was
+     * `Admin\AppointmentController::cancel()`, corrected alongside this guard.
+     *
+     * See `Appointment::STATUSES` for the sibling guard — 'cancelled' (two Ls)
+     * is the CORRECT spelling there. The two guards sitting side by side are
+     * the documentation of why the columns legitimately disagree: they are
+     * two different domain concepts that happen to share an English word.
+     */
+    public const STATUSES = ['pending', 'paid', 'failed', 'canceled'];
+
     protected $fillable = [
         'user_id',
         'course_id',
@@ -98,6 +111,18 @@ class Order extends Model
                     "Unknown order type '{$order->type}'."
                 ),
             };
+
+            // Step 3: enforce the single documented status spelling (design D5).
+            // Fires on both create and update — the guard lives in `saving`, not
+            // `creating`, so a create-then-update cannot smuggle 'cancelled' in.
+            if (! in_array($order->status, self::STATUSES, true)) {
+                throw new DomainException(
+                    "Unknown order status '{$order->status}'. Must be one of: " .
+                    implode(', ', self::STATUSES) . '. ' .
+                    "Note: appointments use a different status enum ('cancelled', two Ls) — " .
+                    'see Appointment::STATUSES.'
+                );
+            }
         });
     }
 

@@ -73,6 +73,7 @@ describe('NavBar — unified admin menu', () => {
       '/admin/noticias',
       '/admin/notificaciones',
       '/admin/products',
+      '/admin/reportes',
       '/admin/services',
     ])
   })

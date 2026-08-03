@@ -66,8 +66,17 @@ class AppointmentController extends Controller
      *
      * FIX 1 — both writes are wrapped in a DB::transaction so a partial failure
      * (appointment updated but order update fails) cannot leave them in inconsistent states.
+     *
+     * Design D1 — also records the SECOND write-once money channel,
+     * `settled_amount_cents`/`settled_at` (money collected IN PERSON). The
+     * request MAY pass an explicit `settled_amount_cents` (persisted verbatim,
+     * never recomputed — e.g. a discount granted in person); when omitted,
+     * `Appointment::defaultSettlementAmountCents()` supplies the default,
+     * which subtracts the COLLECTED deposit, never the merely QUOTED one —
+     * see that method's docblock for why this is the anti-double-count
+     * formula the whole reports design depends on.
      */
-    public function markPaid(Appointment $appointment): JsonResponse
+    public function markPaid(Request $request, Appointment $appointment): JsonResponse
     {
         if (! in_array($appointment->status, ['pending', 'confirmed'], true)) {
             return response()->json([
@@ -75,10 +84,19 @@ class AppointmentController extends Controller
             ], 422);
         }
 
-        DB::transaction(function () use ($appointment) {
+        $validated = $request->validate([
+            'settled_amount_cents' => ['nullable', 'integer', 'min:0'],
+        ]);
+
+        DB::transaction(function () use ($appointment, $validated) {
+            $settledAmountCents = $validated['settled_amount_cents']
+                ?? $appointment->defaultSettlementAmountCents();
+
             $appointment->update([
-                'status'       => 'paid',
-                'payment_mode' => 'manual',
+                'status'                => 'paid',
+                'payment_mode'          => 'manual',
+                'settled_amount_cents'  => $settledAmountCents,
+                'settled_at'            => now(),
             ]);
 
             if ($appointment->order) {
@@ -123,10 +141,23 @@ class AppointmentController extends Controller
                 'cancelled_at'    => now(),
             ]);
 
-            // FIX 4 — transition linked order to 'cancelled' so order status
+            // FIX 4 — transition linked order to 'canceled' so order status
             // stays consistent with the appointment lifecycle.
+            //
+            // Spelling note (design D5): this used to write 'cancelled' (two
+            // Ls), which was the only production write site for that spelling
+            // on `orders.status`. Corrected here, in PR1a, alongside the
+            // `Order::STATUSES` guard added in the same batch — the guard
+            // rejects 'cancelled' on an order, so leaving this write
+            // uncorrected would make every cancellation 500. The tasks
+            // artifact nominally scopes this one-line write fix to PR1b
+            // (task 2.11); it was pulled forward into PR1a to keep the
+            // pre-existing test suite green, consistent with the "ONE
+            // exception" carved out for this exact file in the apply
+            // instructions. `appointments.status` itself is untouched — it
+            // correctly keeps writing 'cancelled' (two Ls, Appointment::STATUSES).
             if ($appointment->order) {
-                $appointment->order->update(['status' => 'cancelled']);
+                $appointment->order->update(['status' => 'canceled']);
             }
         });
 

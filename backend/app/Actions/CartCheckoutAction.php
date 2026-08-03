@@ -80,6 +80,11 @@ class CartCheckoutAction
                 'quantity' => (int) $item['quantity'],
                 'unit_price_cents' => $unitPriceCents,
                 'line_total_cents' => $lineTotalCents,
+                // Sibling of D1's appointment price snapshot: TopProducts
+                // margin (PR4a) reads this instead of the live, mutable
+                // products.cost, so a later cost change never retroactively
+                // changes a historical sale's margin.
+                'unit_cost_cents' => (int) round((float) $product->cost * 100),
             ];
         }
 
@@ -130,6 +135,7 @@ class CartCheckoutAction
                     'quantity' => $line['quantity'],
                     'unit_price_cents' => $line['unit_price_cents'],
                     'line_total_cents' => $line['line_total_cents'],
+                    'unit_cost_cents' => $line['unit_cost_cents'],
                 ]);
             }
 

@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\Admin\InstructorController as AdminInstructorContro
 use App\Http\Controllers\Api\Admin\PostController as AdminPostController;
 use App\Http\Controllers\Api\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\Api\Admin\PushNotificationController as AdminPushNotificationController;
+use App\Http\Controllers\Api\Admin\ReportController as AdminReportController;
 use App\Http\Controllers\Api\Admin\ServiceController as AdminServiceController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BookingController;
@@ -257,6 +258,26 @@ Route::middleware(['auth:sanctum', RejectScopedCheckoutToken::class])->group(fun
         Route::get('/agenda/{block}', [AdminAgendaBlockController::class, 'show']);
         Route::patch('/agenda/{block}', [AdminAgendaBlockController::class, 'update']);
         Route::delete('/agenda/{block}', [AdminAgendaBlockController::class, 'destroy']);
+
+        // Reports center — read-only settlement/revenue aggregates
+        // (admin-reports-center design D3/D4). Thin controller, delegates
+        // to app/Reports/Queries/*; ledger + export are PR3, rankings/
+        // funnel/receivables are PR4a.
+        Route::prefix('reports')->group(function () {
+            Route::get('/summary', [AdminReportController::class, 'summary']);
+            Route::get('/timeline', [AdminReportController::class, 'timeline']);
+            Route::get('/composition', [AdminReportController::class, 'composition']);
+            // /export MUST be registered before /{...} would ever be added —
+            // no such wildcard exists here today, but keeping the more
+            // specific route first avoids the trap if one ever is.
+            Route::get('/ledger/export', [AdminReportController::class, 'ledgerExport']);
+            Route::get('/ledger', [AdminReportController::class, 'ledger']);
+            Route::get('/rankings/products', [AdminReportController::class, 'topProducts']);
+            Route::get('/rankings/services', [AdminReportController::class, 'topServices']);
+            Route::get('/rankings/courses', [AdminReportController::class, 'topCourses']);
+            Route::get('/funnel', [AdminReportController::class, 'funnel']);
+            Route::get('/receivables', [AdminReportController::class, 'receivables']);
+        });
     });
 
     // Instructor authoring routes

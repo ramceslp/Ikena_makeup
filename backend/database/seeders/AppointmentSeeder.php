@@ -63,6 +63,9 @@ class AppointmentSeeder extends Seeder
                     'whatsapp'             => '+593099900' . $days,
                     'payment_mode'         => $paymentMode,
                     'deposit_amount_cents' => (int) round($service->price * $service->depositPercentage()),
+                    // PR1b: required at creation — price snapshot (design D1),
+                    // mirrors CreateBookingAction's real write path.
+                    'service_price_cents'  => (int) round((float) $service->price * 100),
                     'status'               => $status,
                     'cancelled_by_id'      => $cancelledById,
                     'cancelled_at'         => $isCancelled ? now() : null,

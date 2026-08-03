@@ -14,6 +14,7 @@ class OrderItem extends Model
         'quantity',
         'unit_price_cents',
         'line_total_cents',
+        'unit_cost_cents', // PR4a: cost snapshot at sale time, for margin reporting
     ];
 
     protected function casts(): array
@@ -22,6 +23,7 @@ class OrderItem extends Model
             'quantity'         => 'integer',
             'unit_price_cents' => 'integer',
             'line_total_cents' => 'integer',
+            'unit_cost_cents'  => 'integer',
         ];
     }
 

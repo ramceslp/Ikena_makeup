@@ -62,6 +62,7 @@ class ProfileOrdersHistoryTest extends TestCase
             'whatsapp'            => '+593099912345',
             'payment_mode'        => 'gateway',
             'deposit_amount_cents' => $depositCents,
+            'service_price_cents' => (int) round((float) $service->price * 100),
             'status'              => 'pending',
         ]);
 
