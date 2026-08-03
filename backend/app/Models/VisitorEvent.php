@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -41,5 +42,32 @@ class VisitorEvent extends Model
             'is_bot' => 'boolean',
             'occurred_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Scope: rows that should count toward reported figures — excludes bot
+     * traffic and staff (admin/instructor) browsing.
+     *
+     * The nested closure is NOT stylistic. SQL's `NOT IN` evaluates to NULL
+     * for a NULL `user_id`, and SQL discards NULL rows in a WHERE clause —
+     * a bare `whereNotIn('user_id', $staffIds)` would silently drop every
+     * anonymous event, which is most of this site's traffic. The explicit
+     * `whereNull('user_id')` branch keeps anonymous rows regardless of the
+     * staff exclusion.
+     */
+    public function scopeReportable(Builder $q): Builder
+    {
+        return $q->where('is_bot', false)
+            ->where(fn (Builder $inner) => $inner
+                ->whereNull('user_id')
+                ->orWhereNotIn('user_id', static::staffIds()));
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    protected static function staffIds(): array
+    {
+        return User::query()->whereIn('role', ['admin', 'instructor'])->pluck('id')->all();
     }
 }
