@@ -35,6 +35,7 @@ use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\SubmissionFileController;
+use App\Http\Controllers\Api\VisitorEventController;
 use App\Http\Middleware\RejectScopedCheckoutToken;
 use App\Models\PracticeSubmission;
 use Illuminate\Support\Facades\Route;
@@ -107,6 +108,21 @@ Route::get('/submissions/{submission}/{variant}', [SubmissionFileController::cla
 // Public certificate branding (logo, business name, copy, signer, design variant)
 // for the certificate canvas. No auth — returns defaults when unseeded.
 Route::get('/certificate-settings', [CertificateSettingController::class, 'show']);
+
+// Visitor analytics ingestion — public, unauthenticated by design (design D4:
+// sdd/visitor-analytics/design). Emitted from router.afterEach and
+// cart.addItem() once PR3 lands; inert until then. 'auth.optional' resolves a
+// bearer token when present (for user_id attribution) but never rejects a
+// guest — a 401 is structurally impossible here.
+//
+// A route-level throttle does NOT replace the group one — see the same trap
+// documented above at 'submissions/{submission}/{variant}' — both would apply
+// and the tighter 60/min 'api' baseline would still bind, so it is explicitly
+// dropped here in favor of 'throttle:analytics' (120/min), sized for a
+// pageview per navigation rather than a deliberate API call.
+Route::post('/analytics/events', [VisitorEventController::class, 'store'])
+    ->withoutMiddleware('throttle:api')
+    ->middleware(['auth.optional', 'throttle:analytics']);
 
 // Checkout-handoff redeem — public because the browser opened from the app
 // is a separate, logged-out session (see CheckoutHandoffController::redeem

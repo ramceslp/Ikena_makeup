@@ -116,5 +116,13 @@ class AppServiceProvider extends ServiceProvider
         // cannot send one.
         RateLimiter::for('media', fn (Request $request) => Limit::perMinute(300)
             ->by($request->ip()));
+
+        // Visitor analytics ingestion (public, unauthenticated route — see
+        // routes/api.php). A pageview fires per navigation, so the 60/min
+        // 'api' baseline is too tight for normal browsing; keyed on the
+        // authenticated user first, IP second, same NAT-sharing reasoning as
+        // 'api' above. Still bounded, not unlimited — see AnalyticsThrottleTest.
+        RateLimiter::for('analytics', fn (Request $request) => Limit::perMinute(120)
+            ->by($request->user()?->id ?: $request->ip()));
     }
 }

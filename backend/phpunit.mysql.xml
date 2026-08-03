@@ -1,32 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
     Mirrors phpunit.xml (design D3), but forces the MySQL driver instead of
-    SQLite so the `Reports` testsuite runs against production's real
-    database engine in CI.
+    SQLite so the `Reports` and `Analytics` testsuites run against
+    production's real database engine in CI.
 
-    Why this exists at all, and why it is scoped to just the `Reports`
-    testsuite (tests/Feature/Reports/):
+    Why this exists at all, and why it is scoped to just the `Reports` and
+    `Analytics` testsuites (tests/Feature/Reports/, tests/Feature/Analytics/,
+    tests/Unit/Analytics/):
 
     phpunit.xml:26-27 forces DB_CONNECTION=sqlite / DB_DATABASE=:memory: with
     force="true" — the developer's .env cannot override it, and CI has never
     exercised MySQL, even though production is MySQL 8.0
     (ARCHITECTURE.md:12, backend/.env.example, README.md). SQLite silently
     accepts things MySQL 8 rejects by default — most importantly
-    ONLY_FULL_GROUP_BY, which rejects GROUP BY projections SQLite tolerates.
-    That divergence is the single most likely "green CI, 500 in production"
-    failure class for the reporting queries this design introduces (D3),
-    which is why a MySQL job exists at all rather than trusting the
-    PHP-only PeriodCalendar abstraction (D3) to have eliminated every risk.
+    ONLY_FULL_GROUP_BY, which rejects GROUP BY projections SQLite tolerates,
+    and MySQL's strict-mode VARCHAR(n) length enforcement, which SQLite's
+    dynamic typing ignores entirely (see the `Analytics` suite's
+    path/route_name length validation). That divergence is the single most
+    likely "green CI, 500 in production" failure class for the reporting and
+    analytics queries this codebase introduces, which is why a MySQL job
+    exists at all rather than trusting SQLite to have eliminated every risk.
 
     Running the WHOLE suite against MySQL was deliberately rejected (design
     D3 "Rejected: full matrix") — it doubles CI minutes and surfaces
     unrelated, pre-existing divergences that have nothing to do with this
-    change. Scoping to `Reports` keeps CI time bounded while still covering
-    every genuinely new query this design adds.
+    change. Scoping to `Reports` and `Analytics` keeps CI time bounded while
+    still covering every genuinely new query and driver-sensitive validation
+    these features add. `Analytics` includes `tests/Unit/Analytics` (not
+    just Feature) because `VisitorEventModelTest` and
+    `VisitorEventReportableScopeTest` both use `RefreshDatabase` and
+    genuinely hit the database.
 
-    `markTestSkipped` is BANNED for every test discovered under this
+    `markTestSkipped` is BANNED for every test discovered under either
     testsuite (design D3): if the MySQL service container is unavailable,
     the job must fail loudly, not report a deceptively green skip.
+
+    Every testsuite declared below MUST be invoked by
+    .github/workflows/tests.yml's "testsuite" CLI flag, or it silently never
+    runs against MySQL. `MysqlSuiteCoverageTest` (tests/Feature/Analytics/)
+    enforces this by parsing both files and failing if they diverge.
 -->
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
@@ -36,6 +48,10 @@
     <testsuites>
         <testsuite name="Reports">
             <directory>tests/Feature/Reports</directory>
+        </testsuite>
+        <testsuite name="Analytics">
+            <directory>tests/Feature/Analytics</directory>
+            <directory>tests/Unit/Analytics</directory>
         </testsuite>
     </testsuites>
     <source>
