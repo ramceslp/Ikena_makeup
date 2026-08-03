@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Analytics;
 
+use App\Models\VisitorEvent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -117,5 +118,75 @@ class StoreVisitorEventRequestTest extends TestCase
             'event_type' => 'page_view',
             'path' => str_repeat('a', 255),
         ])->assertStatus(204);
+    }
+
+    // -------------------------------------------------------------------
+    // Length validation MUST run against the NORMALIZED path (query
+    // string and fragment stripped), not the raw submitted value.
+    // Orchestrator-flagged defect: validating the raw value before
+    // normalization silently rejected valid, short, storable pageviews
+    // whose raw form (e.g. a filtered catalogue URL with several query
+    // parameters) happened to exceed 255 characters before stripping.
+    // -------------------------------------------------------------------
+
+    public function test_a_raw_path_over_255_characters_that_normalizes_short_is_accepted(): void
+    {
+        // Raw length (with query string) is well over 255; the
+        // normalized path ('/productos') is 10 characters — trivially
+        // storable. This is the regression test for the defect: it must
+        // be observed FAILING (422) against the pre-fix code before the
+        // fix, since the pre-fix code validates the raw value.
+        $rawPath = '/productos?'.str_repeat('categoria=maquillaje&marca=ikena&orden=precio&pagina=1&', 5);
+        $this->assertGreaterThan(255, strlen($rawPath));
+
+        $this->postJson('/api/analytics/events', [
+            'event_type' => 'page_view',
+            'path' => $rawPath,
+        ])->assertStatus(204);
+
+        $event = VisitorEvent::query()->firstOrFail();
+
+        $this->assertSame('/productos', $event->path);
+    }
+
+    public function test_a_path_whose_normalized_form_still_exceeds_255_characters_is_rejected(): void
+    {
+        // The guard must not be weakened into uselessness: a path whose
+        // NORMALIZED form is still over 255 characters must still 422.
+        $rawPath = str_repeat('a', 300).'?short=1';
+
+        $this->postJson('/api/analytics/events', [
+            'event_type' => 'page_view',
+            'path' => $rawPath,
+        ])->assertStatus(422)
+            ->assertJsonValidationErrors('path');
+
+        $this->assertSame(0, VisitorEvent::query()->count());
+    }
+
+    public function test_a_path_with_fragment_before_query_string_normalizes_correctly(): void
+    {
+        // Order of '?' and '#' in the raw string must not matter — both
+        // must be stripped regardless of which comes first.
+        $this->postJson('/api/analytics/events', [
+            'event_type' => 'page_view',
+            'path' => '/productos/labial-mate#reviews?ref=ig',
+        ])->assertStatus(204);
+
+        $event = VisitorEvent::query()->firstOrFail();
+
+        $this->assertSame('/productos/labial-mate', $event->path);
+    }
+
+    public function test_a_path_with_query_string_before_fragment_normalizes_correctly(): void
+    {
+        $this->postJson('/api/analytics/events', [
+            'event_type' => 'page_view',
+            'path' => '/productos/labial-mate?ref=ig#reviews',
+        ])->assertStatus(204);
+
+        $event = VisitorEvent::query()->firstOrFail();
+
+        $this->assertSame('/productos/labial-mate', $event->path);
     }
 }

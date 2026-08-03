@@ -9,7 +9,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreVisitorEventRequest;
 use App\Models\VisitorEvent;
 use Illuminate\Http\Response;
-use Illuminate\Support\Str;
 
 /**
  * VisitorEventController — POST /api/analytics/events (visitor-analytics
@@ -46,11 +45,13 @@ class VisitorEventController extends Controller
     {
         $validated = $request->validated();
 
-        $path = Str::of($validated['path'])->before('?')->before('#')->value();
-
+        // 'path' arrives already normalized (query string / fragment
+        // stripped) — see StoreVisitorEventRequest::prepareForValidation(),
+        // which runs BEFORE the max:255 rule so the length check applies
+        // to the value that is actually stored.
         VisitorEvent::create([
             'event_type' => $validated['event_type'],
-            'path' => $path,
+            'path' => $validated['path'],
             'route_name' => $validated['route_name'] ?? null,
             'entity_type' => $validated['entity_type'] ?? null,
             'entity_id' => $this->entityResolver->resolve(

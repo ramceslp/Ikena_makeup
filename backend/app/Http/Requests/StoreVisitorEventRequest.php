@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 /**
@@ -32,6 +33,18 @@ use Illuminate\Validation\Rule;
  * `referrer_group` is never client input at all — it is always one of
  * four short, hard-coded literals produced by ReferrerGrouper — so it
  * needs no validation here.
+ *
+ * `path` is normalized (query string / fragment stripped) in
+ * `prepareForValidation()`, BEFORE the `max:255` rule runs — not after,
+ * in the controller. Validating the raw value would reject a valid,
+ * short, storable path whenever its raw form (e.g. a filtered catalogue
+ * URL with several query parameters) happened to exceed 255 characters
+ * before stripping, silently losing exactly the pageviews for the
+ * longest, most-filtered URLs — plausibly the most interesting rows in
+ * a "most-viewed pages" ranking, and invisible to everyone since the
+ * client discards the 422 response body (design D5). Normalizing here
+ * also keeps the stripping logic and its length rule in one place so
+ * they cannot drift apart again.
  */
 class StoreVisitorEventRequest extends FormRequest
 {
@@ -40,6 +53,15 @@ class StoreVisitorEventRequest extends FormRequest
         // Public endpoint (auth.optional middleware) — every visitor,
         // logged in or not, may submit an analytics event.
         return true;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if (is_string($this->input('path'))) {
+            $this->merge([
+                'path' => Str::of($this->input('path'))->before('?')->before('#')->value(),
+            ]);
+        }
     }
 
     public function rules(): array
